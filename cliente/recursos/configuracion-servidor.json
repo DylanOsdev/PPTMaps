@@ -1,0 +1,4 @@
+{
+  "apiBase": "/api/v1",
+  "descripcion": "URLs relativas: mismo dominio que el servidor FastAPI. Para otro host, define window.TPPMAPS_API antes de cargar la app."
+}

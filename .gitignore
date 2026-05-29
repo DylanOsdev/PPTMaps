@@ -1,50 +1,25 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-*.egg
-
-# Entorno virtual
-venv/
-env/
 .venv/
-ENV/
-
-# Variables de entorno (¡NUNCA subir al repo!)
+venv/
 .env
-
-# Base de datos local (SQLite de testing)
-*.db
-
-# Alembic cache
-alembic/__pycache__/
-
-# Testing
+*.egg-info/
 .pytest_cache/
-.coverage
-htmlcov/
 
-# IDEs
-.vscode/
+# IDE
 .idea/
+.vscode/
 *.swp
-*.swo
 
 # OS
-.DS_Store
 Thumbs.db
+.DS_Store
 
-# Logs
+# Datos locales
 *.log
-logs/
+pgdata/
 
-# Docker
-*.env.local
-
-# Node
-node_modules/
+# Modelos ML
+backend/app/ml/models/*.pkl
+backend/app/ml/models/*.joblib

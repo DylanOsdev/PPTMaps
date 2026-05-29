@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TPPMAPS — Plataforma Inteligencia Vial para Medellín y el Valle de Aburrá. Rutas seguras, reporte de incidentes y monitoreo climático SIATA." />
+  <title>TPPMAPS — Plataforma Inteligente de Tránsito</title>
+  <link rel="stylesheet" href="estatico/css/landing.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <h1>TPPMAPS</h1>
+        <span>Movilidad Urbana</span>
+      </div>
+      <div class="system-badge" id="systemBadge">
+        <div class="badge-pulse"></div>
+        <span id="systemStatusText">Sistema activo</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main>
+    <!-- Section 1: Hero & Simplified Map Mockup Split -->
+    <section class="hero-split-grid">
+      <div class="hero-left">
+        <span class="subtitle-tag">Movilidad Inteligente — Medellín</span>
+        <h2>Plataforma Sencilla de<br><span>Tránsito y Seguridad Vial</span></h2>
+        <p>
+          Monitoreo de tráfico en tiempo real, alertas climáticas integradas con SIATA y cálculo de rutas seguras para desplazarte de forma tranquila y eficiente en la ciudad.
+        </p>
+        <div class="cta-wrapper">
+          <a href="app.html" class="cta-btn" id="btnEnter">Entrar a TPPMAPS</a>
+        </div>
+      </div>
+
+      <!-- Right Column: Simplified Map Mockup -->
+      <div class="map-sim-container" aria-hidden="true">
+        <div class="map-grid-bg"></div>
+        <div class="street street-h1"></div>
+        <div class="street street-h2"></div>
+        <div class="street street-v1"></div>
+        <div class="street street-v2"></div>
+        <div class="street street-diagonal"></div>
+        
+        <!-- Radar Scan Sweeper -->
+        <div class="radar-sweep">
+          <div class="radar-pulse-ring"></div>
+        </div>
+
+        <!-- Simulated moving vehicles -->
+        <div class="car car-1"></div>
+        <div class="car car-2"></div>
+        <div class="car car-3"></div>
+
+        <!-- Fictional weather alert polygon -->
+        <div class="weather-risk-poly"></div>
+        <div class="weather-poly-lbl">ALERTA LLUVIA</div>
+
+        <!-- Faint map coordinates -->
+        <div class="map-overlay-text overlay-tl">Coordenadas Medellín</div>
+        <div class="map-overlay-text overlay-tr">Uptime: 99.9%</div>
+        <div class="map-overlay-text overlay-bl">Tránsito en vivo</div>
+        <div class="map-overlay-text overlay-br">Monitoreo SIATA</div>
+      </div>
+    </section>
+
+    <!-- Section 2: Interactive Terminal Command Center -->
+    <section class="terminal-section">
+      <div class="section-head">
+        <h2>Consola de Datos en Vivo</h2>
+        <p>Prueba el simulador interactivo para consultar el estado del tráfico y las alertas del clima en Medellín.</p>
+      </div>
+
+      <div class="terminal-window">
+        <div class="terminal-header">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-title">Consola de Desarrollo TPPMAPS</div>
+        </div>
+
+        <div class="terminal-body" id="terminalBody">
+          <div class="terminal-line output-grey">TPPMAPS INTERFACE [Versión 0.2.0]</div>
+          <div class="terminal-line output-grey">Estableciendo conexión con la base de datos...</div>
+          <div class="terminal-line output-green">Conexión exitosa con el servidor (12ms)</div>
+          <div class="terminal-line output-grey">Cargando datos climáticos de SIATA...</div>
+          <div class="terminal-line output-cyan">SIATA: Conexión activa. Monitoreando deprimidos viales.</div>
+          <div class="terminal-line output-grey">Analizando reportes de tránsito locales...</div>
+          <div class="terminal-line output-green">Listo. Escribe o presiona 'ayuda' para ver los comandos interactivos disponibles.</div>
+          <div class="terminal-line">--------------------------------------------------------------------------------</div>
+        </div>
+
+        <!-- Interactive shortcuts bar -->
+        <div class="terminal-shortcuts-bar">
+          <div class="terminal-shortcuts-lbl">ATAJOS DE COMANDO RÁPIDOS:</div>
+          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('ayuda')">ayuda</button>
+          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('escanear')">escanear</button>
+          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('clima')">clima</button>
+          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('sistema')">sistema</button>
+          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('limpiar')">limpiar</button>
+        </div>
+
+        <!-- Prompt input line -->
+        <div class="terminal-shortcuts-bar" style="border-top:none; padding-top:0">
+          <div class="prompt-row" style="width:100%">
+            <span class="prompt-prefix">tppmaps@medellin:~$</span>
+            <input type="text" class="prompt-input-field" id="terminalInput" placeholder="Escribe un comando (ej: escanear) y presiona Enter..." autocomplete="off" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Open-Source Architecture Stack -->
+    <section class="tech-architecture">
+      <div class="section-head">
+        <h2>Tecnologías Usadas en el Proyecto</h2>
+        <p>Estructura moderna y ágil que permite la consulta rápida de datos de movilidad.</p>
+      </div>
+
+      <div class="architecture-grid">
+        <div class="tech-node">
+          <div class="tech-node-icon">⚡</div>
+          <h3>FastAPI</h3>
+          <p>API backend rápida y moderna en Python para servir los datos.</p>
+        </div>
+
+        <div class="tech-node">
+          <div class="tech-node-icon">🐘</div>
+          <h3>PostgreSQL</h3>
+          <p>Base de datos con extensión PostGIS para geocodificación viales.</p>
+        </div>
+
+        <div class="tech-node">
+          <div class="tech-node-icon">🌧</div>
+          <h3>SIATA API</h3>
+          <p>Conexión directa con alertas de lluvias y deprimidos de la ciudad.</p>
+        </div>
+
+        <div class="tech-node">
+          <div class="tech-node-icon">💾</div>
+          <h3>Redis</h3>
+          <p>Almacenamiento rápido en memoria para telemetría ágil.</p>
+        </div>
+
+        <div class="tech-node">
+          <div class="tech-node-icon">🗺</div>
+          <h3>Leaflet.js</h3>
+          <p>Biblioteca interactiva liviana para el despliegue del mapa web.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Friendly Features Grid -->
+    <section class="features-section">
+      <div class="section-head">
+        <h2>Funciones Principales</h2>
+        <p>Conoce los servicios clave desarrollados para mejorar tu navegación cotidiana.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="card-icon">🗺</div>
+          <h3>Mapa Interactivo</h3>
+          <p>Visualización clara y rápida de las 16 comunas de Medellín, calles principales y herramientas integradas de consulta.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🛡</div>
+          <h3>Rutas Sugeridas</h3>
+          <p>Planificación de recorridos inteligentes evitando colisiones activas y obstáculos reportados en las vías principales.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🌧</div>
+          <h3>Monitoreo de Lluvias</h3>
+          <p>Información en tiempo real sobre lluvias y estado de inundación de deprimidos viales críticos de la ciudad.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🔮</div>
+          <h3>Alertas con IA</h3>
+          <p>Predicciones de riesgo de lluvias fuertes y congestión vehicular a 2 horas para tomar decisiones preventivas.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Clean Footer Status Bar -->
+  <footer class="telemetry-ticker">
+    <div class="ticker-content">
+      <div class="ticker-item">
+        <span>Estado:</span>
+        <strong class="status-green" id="syncStatus">Conectado</strong>
+      </div>
+      <div class="ticker-item">
+        <span>Red Vial:</span>
+        <strong id="nodesCount">14 vehículos activos</strong>
+      </div>
+      <div class="ticker-item">
+        <span>Procesamiento:</span>
+        <strong id="dbscanCount">3,912 pts/seg</strong>
+      </div>
+      <div class="ticker-item">
+        <span>Hora ZULU:</span>
+        <strong id="zuluTimeTicker">--:--:-- Z</strong>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Live UI updates for dynamic feeling
+    function updateZuluTime() {
+      const now = new Date();
+      const zulu = now.toISOString().split('T')[1].substring(0, 8);
+      document.getElementById('zuluTimeTicker').textContent = zulu + ' Z';
+    }
+
+    function randomizeTelemetry() {
+      const nodes = Math.floor(Math.random() * 5) + 12;
+      const pts = (Math.random() * 800 + 3500).toFixed(0);
+      
+      document.getElementById('nodesCount').textContent = nodes + ' vehículos activos';
+      document.getElementById('dbscanCount').textContent = pts.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + ' pts/seg';
+    }
+
+    // Initialize intervals
+    setInterval(updateZuluTime, 1000);
+    setInterval(randomizeTelemetry, 3000);
+    updateZuluTime();
+    randomizeTelemetry();
+
+    // ==========================================================================
+    // INTERACTIVE TACTICAL TERMINAL SIMULATOR LOGIC
+    // ==========================================================================
+    const terminalBody = document.getElementById('terminalBody');
+    const terminalInput = document.getElementById('terminalInput');
+
+    terminalInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        const cmd = terminalInput.value.trim();
+        if (cmd) {
+          executeCmd(cmd);
+        }
+        terminalInput.value = '';
+      }
+    });
+
+    function printLine(text, styleClass = '') {
+      const line = document.createElement('div');
+      line.className = 'terminal-line ' + styleClass;
+      line.textContent = text;
+      terminalBody.appendChild(line);
+      terminalBody.scrollTop = terminalBody.scrollHeight; // Auto-scroll
+    }
+
+    function executeCmd(cmdText) {
+      const cleanCmd = cmdText.toLowerCase().trim();
+      
+      // Print user prompt first
+      printLine('tppmaps@medellin:~$ ' + cmdText, 'command');
+
+      // Command dispatcher logic
+      setTimeout(function() {
+        switch (cleanCmd) {
+          case 'ayuda':
+          case 'help':
+            printLine('--- COMANDOS DISPONIBLES ---', 'output-yellow');
+            printLine('  escanear : Realiza un reporte de tráfico de las comunas de Medellín.');
+            printLine('  clima    : Verifica el nivel de agua en deprimidos viales (SIATA).');
+            printLine('  sistema  : Muestra las tecnologías y el estado de la conexión.');
+            printLine('  limpiar  : Limpia los mensajes en pantalla.');
+            printLine('  ayuda    : Muestra esta ayuda.');
+            break;
+            
+          case 'escanear':
+          case 'scan':
+            printLine('[REPORTE DE TRÁNSITO] Iniciando escaneo de comunas viales...', 'output-cyan');
+            setTimeout(() => {
+              printLine('  Comuna 10 (La Candelaria) : Congestión alta - Incidente en Av. Oriental. (Riesgo: 85%)', 'output-danger');
+              printLine('  Comuna 11 (Laureles)      : Flujo normal - Desplazamiento óptimo. (Riesgo: 12%)', 'output-green');
+              printLine('  Comuna 14 (El Poblado)    : Tránsito medio - Desplazamiento regular en Av. Inferior. (Riesgo: 28%)', 'output-yellow');
+              printLine('  Comuna 16 (Belén)         : Tránsito fluido - Ruta recomendada despejada.', 'output-green');
+              printLine('Escaneo finalizado. Reportes actualizados correctamente.', 'output-green');
+            }, 600);
+            break;
+
+          case 'clima':
+          case 'siata':
+            printLine('[MONITOREO DE DEPRIMIDOS VIALES] Conectando con sensores SIATA...', 'output-cyan');
+            setTimeout(() => {
+              printLine('  Deprimido Bulerías            : DESPEJADO - Nivel de agua: 5% (Tránsito seguro)', 'output-green');
+              printLine('  Deprimido Los Músicos         : MONITOREO - Nivel de agua: 35% (Precaución)', 'output-yellow');
+              printLine('  Deprimido Feria de Ganado     : ALERTA CRÍTICA - Nivel de agua: 78% (Tránsito restringido)', 'output-danger');
+              printLine('  Deprimido Parques del Río     : DESPEJADO - Nivel de agua: 8% (Tránsito seguro)', 'output-green');
+              printLine('Radar: Nubosidad detectada en el sur de la ciudad. Probabilidad de lluvia en 45 min.', 'output-yellow');
+            }, 600);
+            break;
+
+          case 'sistema':
+          case 'system':
+            printLine('--- ESPECIFICACIONES TÉCNICAS TPPMAPS ---', 'output-yellow');
+            printLine('  Servidor API     : FastAPI (Python 3.11) - Estado: Activo.');
+            printLine('  Base de Datos    : PostgreSQL 16 con extensión espacial PostGIS.');
+            printLine('  Caché de Datos   : Redis Server - Conexión activa.');
+            printLine('  Biblioteca Mapa  : Leaflet v1.9.4 integrado con capas GeoJSON.');
+            printLine('  Uptime Conexión  : 99.9% - Respuesta API: 14ms.');
+            break;
+
+          case 'limpiar':
+          case 'clear':
+            terminalBody.innerHTML = '';
+            printLine('Consola de comandos limpia. Escribe "ayuda" para ver opciones.', 'output-grey');
+            break;
+
+          default:
+            printLine('Comando no reconocido: "' + cmdText + '". Escribe "ayuda" para ver opciones.', 'output-danger');
+            break;
+        }
+      }, 150);
+    }
+  </script>
+</body>
+</html>

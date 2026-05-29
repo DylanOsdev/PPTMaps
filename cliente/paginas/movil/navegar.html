@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>MoviMed — Navegar | tppmaps</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../estatico/css/movil.css" />
+</head>
+<body>
+  <a class="desktop-link" href="../../app.html">← Vista comando tppmaps</a>
+  <div class="status-bar">
+    <span>TPPMAPS</span>
+    <span id="clock">13:41</span>
+    <span>98%</span>
+  </div>
+  <div class="sub-bar">
+    <span class="voice">🔊 Voz Activa</span>
+    <span>🕐 18 min</span>
+  </div>
+  <div class="alert-banner">⚠ Recalculando ruta segura…</div>
+  <main style="padding-top:0">
+    <div class="map-placeholder" style="height:min(52vh, 380px)">
+      <div class="route-line"></div>
+    </div>
+    <div class="route-card">
+      <h3>🛡 RUTA SEGURA MOVIMED</h3>
+      <div class="stats-row">
+        <div><div class="val">Belén</div><div class="lbl">Destino</div></div>
+        <div><div class="val" style="color:var(--green)">0%</div><div class="lbl">Riesgo lluvia</div></div>
+        <div><div class="val" style="color:var(--orange)">3</div><div class="lbl">Puntos evitados</div></div>
+      </div>
+    </div>
+  </main>
+  <nav class="nav-bottom">
+    <a href="inicio.html">📍 Inicio</a>
+    <a href="navegar.html" class="active">🧭 Navegar</a>
+    <a href="reportar.html">⚠ Reportar</a>
+  </nav>
+  <script>
+    setInterval(() => {
+      const n = new Date();
+      document.getElementById("clock").textContent =
+        n.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    }, 1000);
+  </script>
+</body>
+</html>
