@@ -1,21 +1,47 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+.Python
 *.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+dist/
+build/
+*.egg
 
-# Virtual environments
-.venv/
+# Entorno virtual
 venv/
 env/
+.venv/
+ENV/
 
-# Environment files
+# Variables de entorno (¡NUNCA subir al repo!)
 .env
-*.local
 
-# OS / editor
-.DS_Store
-.idea/
+# Base de datos local (SQLite de testing)
+*.db
+
+# Alembic cache
+alembic/__pycache__/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+*.env.local
