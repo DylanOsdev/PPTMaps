@@ -19,8 +19,13 @@ class Telemetry(Base):
     heading = Column(Float, nullable=True) # degrees
     
     # PostGIS geometry column for spatial queries
-    # SRID 4326 is standard WGS84 longitude/latitude
-    location = Column(Geometry(geometry_type='POINT', srid=4326), nullable=False)
+    # SRID 4326 is standard WGS84 longitude/latitude.
+    # spatial_index=False: the GIST index is declared explicitly below to keep
+    # a controlled name and avoid GeoAlchemy2 creating a duplicate index.
+    location = Column(
+        Geometry(geometry_type='POINT', srid=4326, spatial_index=False),
+        nullable=False,
+    )
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
