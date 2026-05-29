@@ -1,20 +1,28 @@
-from typing import Literal
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from app.models.report import ReportType
 
-from pydantic import BaseModel, Field
+class ReportBase(BaseModel):
+    reporter_id: Optional[int] = None
+    report_type: ReportType
+    description: Optional[str] = None
+    latitude: float
+    longitude: float
 
-ReportType = Literal["collision", "flood", "obstacle", "pothole"]
+class ReportCreate(ReportBase):
+    pass
 
+class ReportUpdate(BaseModel):
+    report_type: Optional[ReportType] = None
+    description: Optional[str] = None
 
-class ReportCreate(BaseModel):
-    type: ReportType
-    lat: float = Field(..., ge=-90, le=90)
-    lng: float = Field(..., ge=-180, le=180)
-    description: str | None = None
-
-
-class ReportRead(BaseModel):
+class ReportInDBBase(ReportBase):
     id: int
-    type: ReportType
-    lat: float
-    lng: float
-    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class Report(ReportInDBBase):
+    pass

@@ -20,7 +20,7 @@ export function initMap() {
 
   L.tileLayer(CONFIG.map.tileUrl, {
     attribution: CONFIG.map.tileAttribution,
-    subdomains: "abcd",
+    subdomains: "abc",
     maxZoom: CONFIG.map.maxZoom,
   }).addTo(map);
 

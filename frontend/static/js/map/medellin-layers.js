@@ -10,12 +10,94 @@ function ensurePane(map, name, zIndex) {
   return name;
 }
 
-export function createMedellinLayers(map, data) {
-  const paneCity = ensurePane(map, "medellinPane", 350);
-  const paneComunas = ensurePane(map, "comunasPane", 360);
-  const outline = data.city.outline;
-  const center = data.city.center;
+// ── Polígonos aproximados de las 16 comunas de Medellín ─────────────────────────
+// Coordenadas trazadas sobre cartografía real del IGAC/DANE
+// Los polígonos ahora se cargan exactamente desde el geojson
+// por lo tanto COMUNA_POLYGONS ya no es necesario
 
+// ── 9 Municipios del Área Metropolitana del Valle del Aburrá ───────────────────
+// Los polígonos ahora se cargan exactamente desde el geojson (data.municipios)
+
+// Bounding box de todo el Valle del Aburrá (para el fitBounds inicial)
+const VALLE_BOUNDS = [[6.055, -75.685], [6.478, -75.298]];
+
+export function createMedellinLayers(map, data) {
+  const paneMetro  = ensurePane(map, "metroPane",   340); // debajo de Medellín
+  const paneCity   = ensurePane(map, "medellinPane", 350);
+  const paneComunas = ensurePane(map, "comunasPane", 360);
+  const outline    = data.city.outline;
+  const center     = data.city.center;
+
+  // ── Municipios del Área Metropolitana ────────────────────────────────────────
+  const metroLayers = [];
+  const metroLabels = [];
+
+  const metroLayerData = data.municipios || [];
+  metroLayerData.forEach((mun) => {
+    let poly;
+    const styleObj = {
+      className: `metro-polygon metro-${mun.slug}`,
+      color: mun.color,
+      weight: 1.2,
+      opacity: 0.6,
+      fillColor: mun.color,
+      fillOpacity: 0.03,
+      dashArray: "6 4",
+    };
+
+    if (mun.geojson) {
+      poly = L.geoJSON(mun.geojson, { pane: paneMetro, style: styleObj });
+    } else {
+      poly = L.polygon(hexagonAround(mun.center, 0.012), { pane: paneMetro, ...styleObj });
+    }
+
+    const bindMetroEvents = (layer) => {
+      layer.on("mouseover", function () {
+        this.setStyle({ fillOpacity: 0.15, weight: 2.0 });
+      });
+      layer.on("mouseout", function () {
+        this.setStyle({ fillOpacity: 0.03, weight: 1.2 });
+      });
+      layer.on("click", () => {
+        map.flyTo(mun.center, 13, { duration: 0.9 });
+        L.popup({ className: "popup-dark" })
+          .setLatLng(mun.center)
+          .setContent(`
+            <div class="popup-driver">
+              <div class="popup-driver-id" style="color:${mun.color}">${mun.name}</div>
+              <div class="popup-driver-route">Valle del Aburrá · Área Metropolitana</div>
+              <div class="popup-driver-coords">${mun.center[0].toFixed(4)}, ${mun.center[1].toFixed(4)}</div>
+            </div>`)
+          .openOn(map);
+      });
+    };
+
+    if (mun.geojson) {
+      poly.eachLayer(bindMetroEvents);
+    } else {
+      bindMetroEvents(poly);
+    }
+
+    const label = L.marker(mun.center, {
+      pane: paneMetro,
+      interactive: false,
+      icon: L.divIcon({
+        className: "leaflet-div-icon-clean",
+        html: `<div class="metro-label-pill" style="--mclr:${mun.color}">
+                 <span class="metro-label-name">${escapeHtml(mun.name)}</span>
+               </div>`,
+        iconSize: [100, 20],
+        iconAnchor: [50, 10],
+      }),
+    });
+
+    metroLayers.push(poly);
+    metroLabels.push(label);
+  });
+
+  const metroGroup = L.layerGroup([...metroLayers, ...metroLabels]);
+
+  // ── Ciudad de Medellín (contorno) ────────────────────────────────────────────
   const areaGlow = L.polygon(outline, {
     pane: paneCity,
     className: "medellin-area-glow",
@@ -32,7 +114,7 @@ export function createMedellinLayers(map, data) {
     weight: 3,
     opacity: 0.95,
     fillColor: "#38bdf8",
-    fillOpacity: 0.1,
+    fillOpacity: 0.08,
     dashArray: "10, 6",
   });
 
@@ -58,51 +140,80 @@ export function createMedellinLayers(map, data) {
     }),
   });
 
+  // ── Comunas de Medellín (polígonos precisos + etiquetas pill) ─────────────────
   const comunaLayers = [];
   const comunaLabels = [];
 
   data.comunas.forEach((comuna, index) => {
-    const polygonCoords = hexagonAround(comuna.center, comuna.radius || 0.012);
-    comuna._polygon = polygonCoords;
-
     const color = COMUNA_COLORS[index % COMUNA_COLORS.length];
 
-    const poly = L.polygon(polygonCoords, {
-      pane: paneComunas,
+    let poly;
+    const styleObj = {
       className: `comuna-polygon comuna-${comuna.slug}`,
-      color,
-      weight: 2,
-      opacity: 0.85,
+      color: color,
+      weight: 1.2,
+      opacity: 0.7,
       fillColor: color,
-      fillOpacity: 0.15,
-    });
+      fillOpacity: 0.04,
+    };
 
-    poly.on("mouseover", function () {
-      this.setStyle({ fillOpacity: 0.35, weight: 3 });
-      highlightComunaUI(comuna);
-    });
-    poly.on("mouseout", function () {
-      this.setStyle({ fillOpacity: 0.15, weight: 2 });
-    });
-    poly.on("click", () => {
-      map.flyTo(comuna.center, 14, { duration: 0.8 });
-      L.popup()
-        .setLatLng(comuna.center)
-        .setContent(
-          `<strong>Comuna ${comuna.number}</strong><br>${escapeHtml(comuna.name)}`
-        )
-        .openOn(map);
-      highlightComunaUI(comuna);
-    });
+    if (comuna.geojson) {
+      let simpleCoords = null;
+      if (comuna.geojson.geometry.type === 'Polygon') {
+          simpleCoords = comuna.geojson.geometry.coordinates[0];
+      } else if (comuna.geojson.geometry.type === 'MultiPolygon') {
+          simpleCoords = comuna.geojson.geometry.coordinates[0][0];
+      }
+      comuna._polygon = simpleCoords ? simpleCoords.map(c => [c[1], c[0]]) : null;
+
+      poly = L.geoJSON(comuna.geojson, { pane: paneComunas, style: styleObj });
+    } else {
+      const coords = hexagonAround(comuna.center, comuna.radius || 0.012);
+      comuna._polygon = coords;
+      poly = L.polygon(coords, { pane: paneComunas, ...styleObj });
+    }
+
+    const bindPolyEvents = (layer) => {
+      layer.on("mouseover", function () {
+        this.setStyle({ fillOpacity: 0.20, weight: 2.2 });
+        highlightComunaUI(comuna);
+      });
+      layer.on("mouseout", function () {
+        this.setStyle({ fillOpacity: 0.04, weight: 1.2 });
+      });
+      layer.on("click", () => {
+        map.flyTo(comuna.center, 13, { duration: 0.8 });
+        const prefix = comuna.type === 'corregimiento' ? 'Corregimiento' : 'C' + comuna.number;
+        L.popup({ className: "popup-dark" })
+          .setLatLng(comuna.center)
+          .setContent(`
+            <div class="popup-driver">
+              <div class="popup-driver-id" style="color:${color}">${prefix} — ${escapeHtml(comuna.name)}</div>
+              <div class="popup-driver-route">Medellín · Valle del Aburrá</div>
+              <div class="popup-driver-coords">${comuna.center[0].toFixed(4)}, ${comuna.center[1].toFixed(4)}</div>
+            </div>`)
+          .openOn(map);
+        highlightComunaUI(comuna);
+      });
+    };
+
+    if (comuna.geojson) {
+      poly.eachLayer(bindPolyEvents);
+    } else {
+      bindPolyEvents(poly);
+    }
 
     const label = L.marker(comuna.center, {
       pane: paneComunas,
       interactive: false,
       icon: L.divIcon({
         className: "comuna-label-wrap",
-        html: `<span class="comuna-label" style="border-color:${color}88;color:${color}">C${comuna.number} ${escapeHtml(comuna.name)}</span>`,
-        iconSize: [120, 20],
-        iconAnchor: [60, 10],
+        html: `<div class="comuna-label-pill" style="--clr:${color}">
+                 <span class="comuna-label-num">${comuna.type === 'corregimiento' ? 'CG' : 'C'}${comuna.type === 'corregimiento' ? '' : comuna.number}</span>
+                 <span class="comuna-label-name">${escapeHtml(comuna.name)}</span>
+               </div>`,
+        iconSize: [130, 22],
+        iconAnchor: [65, 11],
       }),
     });
 
@@ -110,16 +221,20 @@ export function createMedellinLayers(map, data) {
     comunaLabels.push(label);
   });
 
-  const cityGroup = L.layerGroup([areaGlow, areaFill, corePulse, cityLabel]);
+  const cityGroup    = L.layerGroup([areaGlow, areaFill, corePulse, cityLabel]);
   const comunasGroup = L.layerGroup([...comunaLayers, ...comunaLabels]);
 
-  AppState.layerGroups["medellin-city"] = cityGroup;
+  AppState.layerGroups["medellin-city"]    = cityGroup;
   AppState.layerGroups["medellin-comunas"] = comunasGroup;
+  AppState.layerGroups["metro-municipios"] = metroGroup;
 
+  // Agregar todo al mapa
+  metroGroup.addTo(map);
   cityGroup.addTo(map);
   comunasGroup.addTo(map);
 
-  map.fitBounds(areaFill.getBounds(), { padding: [60, 60], maxZoom: 13 });
+  // Ajustar vista a TODO el Valle del Aburrá
+  map.fitBounds(VALLE_BOUNDS, { padding: [50, 50], maxZoom: 12 });
 
   return { outline, isInsideCity: (lat, lng) => pointInPolygon(lat, lng, outline) };
 }
@@ -127,7 +242,8 @@ export function createMedellinLayers(map, data) {
 function highlightComunaUI(comuna) {
   AppState.activeComuna = comuna;
   const el = document.getElementById("statComuna");
-  if (el) el.textContent = `Comuna ${comuna.number} — ${comuna.name}`;
+  const prefix = comuna.type === 'corregimiento' ? 'Corregimiento' : 'Comuna ' + comuna.number;
+  if (el) el.textContent = `${prefix} — ${comuna.name}`;
 
   document.querySelectorAll(".comuna-list-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.slug === comuna.slug);
@@ -142,7 +258,7 @@ export function renderComunasList(container, data, map) {
       (c) => `
     <li>
       <button type="button" class="comuna-list-item" data-slug="${c.slug}" data-lat="${c.center[0]}" data-lng="${c.center[1]}">
-        <span class="comuna-num">C${c.number}</span>
+        <span class="comuna-num">${c.type === 'corregimiento' ? 'CG' : 'C'}${c.type === 'corregimiento' ? '' : c.number}</span>
         <span class="comuna-name">${escapeHtml(c.name)}</span>
       </button>
     </li>`

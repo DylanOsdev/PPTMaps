@@ -1,329 +1,289 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="TPPMAPS — Plataforma Inteligencia Vial para Medellín y el Valle de Aburrá. Rutas seguras, reporte de incidentes y monitoreo climático SIATA." />
-  <title>TPPMAPS — Plataforma Inteligente de Tránsito</title>
-  <link rel="stylesheet" href="static/css/landing.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="tppmaps — Geospatial intelligence command for Valle del Aburrá (MoviMed)" />
+  <title>TPPMAPS — Geospatial Intelligence Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="static/css/tppmaps.css" />
 </head>
+
 <body>
-  <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <div class="logo">
-        <h1>TPPMAPS</h1>
-        <span>Movilidad Urbana</span>
-      </div>
-      <div class="system-badge" id="systemBadge">
-        <div class="badge-pulse"></div>
-        <span id="systemStatusText">Sistema activo</span>
-      </div>
-    </div>
-  </header>
+  <div id="map" class="map-fullscreen" aria-label="Map of Valle del Aburrá"></div>
+  <div id="panelBackdrop" class="panel-backdrop" aria-hidden="true"></div>
 
-  <!-- Main Container -->
-  <main>
-    <!-- Section 1: Hero & Simplified Map Mockup Split -->
-    <section class="hero-split-grid">
-      <div class="hero-left">
-        <span class="subtitle-tag">Movilidad Inteligente — Medellín</span>
-        <h2>Plataforma Sencilla de<br><span>Tránsito y Seguridad Vial</span></h2>
-        <p>
-          Monitoreo de tráfico en tiempo real, alertas climáticas integradas con SIATA y cálculo de rutas seguras para desplazarte de forma tranquila y eficiente en la ciudad.
-        </p>
-        <div class="cta-wrapper">
-          <a href="app.html" class="cta-btn" id="btnEnter">Entrar a TPPMAPS</a>
-        </div>
+  <div class="app-shell">
+    <header class="top-bar">
+      <div class="brand">
+        <h1 class="brand-title">TPPMAPS</h1>
+        <p class="brand-sub">GEOSPATIAL INTELLIGENCE COMMAND</p>
+        <span class="badge-open">OPEN SOURCE</span>
       </div>
 
-      <!-- Right Column: Simplified Map Mockup -->
-      <div class="map-sim-container" aria-hidden="true">
-        <div class="map-grid-bg"></div>
-        <div class="street street-h1"></div>
-        <div class="street street-h2"></div>
-        <div class="street street-v1"></div>
-        <div class="street street-v2"></div>
-        <div class="street street-diagonal"></div>
-        
-        <!-- Radar Scan Sweeper -->
-        <div class="radar-sweep">
-          <div class="radar-pulse-ring"></div>
-        </div>
-
-        <!-- Simulated moving vehicles -->
-        <div class="car car-1"></div>
-        <div class="car car-2"></div>
-        <div class="car car-3"></div>
-
-        <!-- Fictional weather alert polygon -->
-        <div class="weather-risk-poly"></div>
-        <div class="weather-poly-lbl">ALERTA LLUVIA</div>
-
-        <!-- Faint map coordinates -->
-        <div class="map-overlay-text overlay-tl">Coordenadas Medellín</div>
-        <div class="map-overlay-text overlay-tr">Uptime: 99.9%</div>
-        <div class="map-overlay-text overlay-bl">Tránsito en vivo</div>
-        <div class="map-overlay-text overlay-br">Monitoreo SIATA</div>
-      </div>
-    </section>
-
-    <!-- Section 2: Interactive Terminal Command Center -->
-    <section class="terminal-section">
-      <div class="section-head">
-        <h2>Consola de Datos en Vivo</h2>
-        <p>Prueba el simulador interactivo para consultar el estado del tráfico y las alertas del clima en Medellín.</p>
+      <div class="header-toolbar" aria-label="Menú móvil">
+        <button type="button" class="btn-icon" id="btnToggleLayers" aria-label="Abrir capas">☰</button>
+        <button type="button" class="btn-icon" id="btnToggleTools" aria-label="Abrir herramientas">⚙</button>
       </div>
 
-      <div class="terminal-window">
-        <div class="terminal-header">
-          <div class="window-dots">
-            <div class="window-dot dot-red"></div>
-            <div class="window-dot dot-yellow"></div>
-            <div class="window-dot dot-green"></div>
+      <div class="status-cluster" id="statusCluster">
+        <span class="status-item" id="zuluTime">ZULU --:--:--Z</span>
+        <span class="status-item status-ok" id="systemStatus">SYSTEM: CONNECTED</span>
+        <span class="status-item">SIATA: <span id="siataStatus">SYNC</span></span>
+        <span class="status-item"><span id="alertCount">7</span> ALERTS</span>
+        <span class="status-item">UPTIME: <span id="uptime">00:00:00</span></span>
+      </div>
+
+      <div class="header-actions">
+        <a href="/docs" class="btn-gold" title="API FastAPI Swagger">API / DOCS</a>
+        <button type="button" class="btn-gold" id="btnSupport">PROYECTO DE APOYO</button>
+      </div>
+    </header>
+
+    <aside class="panel panel-left" id="panelLayers" aria-label="Capas de datos">
+      <div class="panel-head">
+        <h2>DATA LAYERS</h2>
+        <span class="layer-fraction" id="layerFraction">6/14</span>
+        <button type="button" class="btn-mini" id="btnLayerPreset" title="Preset MoviMed">SET</button>
+        <button type="button" class="panel-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="panel-scroll" id="layersList">
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">🏙</span>
+            <span>VALLE DEL ABURRÁ — COMUNAS Y CORREGIMIENTOS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Contorno ciudad</span>
+                <input type="checkbox" class="toggle" data-layer="medellin-city" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Polígonos y etiquetas (Comunas/CG)</span>
+                <input type="checkbox" class="toggle" data-layer="medellin-comunas" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Municipios Área Metro (9)</span>
+                <input type="checkbox" class="toggle" data-layer="metro-municipios" checked />
+              </label>
+            </li>
+          </ul>
+          <div class="comunas-section">
+            <h3>GO TO LOCATION</h3>
+            <ul class="comunas-list" id="comunasList"></ul>
           </div>
-          <div class="window-title">Consola de Desarrollo TPPMAPS</div>
-        </div>
+        </details>
 
-        <div class="terminal-body" id="terminalBody">
-          <div class="terminal-line output-grey">TPPMAPS INTERFACE [Versión 0.2.0]</div>
-          <div class="terminal-line output-grey">Estableciendo conexión con la base de datos...</div>
-          <div class="terminal-line output-green">Conexión exitosa con el servidor (12ms)</div>
-          <div class="terminal-line output-grey">Cargando datos climáticos de SIATA...</div>
-          <div class="terminal-line output-cyan">SIATA: Conexión activa. Monitoreando deprimidos viales.</div>
-          <div class="terminal-line output-grey">Analizando reportes de tránsito locales...</div>
-          <div class="terminal-line output-green">Listo. Escribe o presiona 'ayuda' para ver los comandos interactivos disponibles.</div>
-          <div class="terminal-line">--------------------------------------------------------------------------------</div>
-        </div>
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">📡</span>
+            <span>TELEMETRÍA VIAL</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>GPS conductores (tiempo real)</span>
+                <input type="checkbox" class="toggle" data-layer="telemetry-gps" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Mapa predictivo congestión</span>
+                <input type="checkbox" class="toggle" data-layer="telemetry-predict" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Clusters accidentes (DBSCAN)</span>
+                <input type="checkbox" class="toggle" data-layer="accident-clusters" checked />
+              </label>
+            </li>
+          </ul>
+        </details>
 
-        <!-- Interactive shortcuts bar -->
-        <div class="terminal-shortcuts-bar">
-          <div class="terminal-shortcuts-lbl">ATAJOS DE COMANDO RÁPIDOS:</div>
-          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('ayuda')">ayuda</button>
-          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('escanear')">escanear</button>
-          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('clima')">clima</button>
-          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('sistema')">sistema</button>
-          <button type="button" class="cmd-shortcut-btn" onclick="executeCmd('limpiar')">limpiar</button>
-        </div>
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">🌧</span>
+            <span>SIATA Y CLIMA</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Deprimidos inundables</span>
+                <input type="checkbox" class="toggle" data-layer="flood-zones" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Riesgo lluvia (2h)</span>
+                <input type="checkbox" class="toggle" data-layer="rain-risk" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Alertas meteorológicas</span>
+                <input type="checkbox" class="toggle" data-layer="weather-alerts" />
+              </label>
+            </li>
+          </ul>
+        </details>
 
-        <!-- Prompt input line -->
-        <div class="terminal-shortcuts-bar" style="border-top:none; padding-top:0">
-          <div class="prompt-row" style="width:100%">
-            <span class="prompt-prefix">tppmaps@medellin:~$</span>
-            <input type="text" class="prompt-input-field" id="terminalInput" placeholder="Escribe un comando (ej: escanear) y presiona Enter..." autocomplete="off" />
+        <details class="layer-group">
+          <summary>
+            <span class="layer-icon">⚠</span>
+            <span>REPORTES CIUDADANOS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Colisiones activas</span>
+                <input type="checkbox" class="toggle" data-layer="reports-collision" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Inundaciones reportadas</span>
+                <input type="checkbox" class="toggle" data-layer="reports-flood" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Obstáculos y huecos</span>
+                <input type="checkbox" class="toggle" data-layer="reports-obstacle" />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <details class="layer-group">
+          <summary>
+            <span class="layer-icon">🛣</span>
+            <span>RUTAS SEGURAS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Ruta segura activa</span>
+                <input type="checkbox" class="toggle" data-layer="safe-route" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Vías bloqueadas</span>
+                <input type="checkbox" class="toggle" data-layer="blocked-roads" checked />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+      </div>
+    </aside>
+
+    <aside class="panel panel-right" id="panelTools" aria-label="Herramientas y alertas">
+      <div class="panel-head panel-head-tools">
+        <h2>KIT Y ALERTAS</h2>
+        <button type="button" class="panel-close" aria-label="Cerrar">×</button>
+      </div>
+      <section class="tool-section">
+        <div class="search-cmd">
+          <span class="search-prefix">⌕</span>
+          <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autocomplete="off" />
+        </div>
+        <div class="tool-grid" id="toolGrid">
+          <button type="button" class="tool-btn" data-cmd="ruta" title="Ruta segura">RUTA</button>
+          <button type="button" class="tool-btn" data-cmd="reporte">REPORTE</button>
+          <button type="button" class="tool-btn" data-cmd="siata">SIATA</button>
+          <button type="button" class="tool-btn" data-cmd="telemetria">GPS</button>
+          <button type="button" class="tool-btn" data-cmd="clusters">DBSCAN</button>
+          <button type="button" class="tool-btn" data-cmd="inundacion">INUNDA</button>
+          <button type="button" class="tool-btn" data-cmd="prediccion">IA 2H</button>
+          <button type="button" class="tool-btn" data-cmd="layers">CAPAS</button>
+          <button type="button" class="tool-btn" data-cmd="mobile">MÓVIL</button>
+          <button type="button" class="tool-btn tool-btn-all" data-cmd="all">TODO</button>
+        </div>
+        <div class="scan-box">
+          <p class="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
+          <div class="scan-row">
+            <input type="text" id="geoQuery" placeholder="Ej: Belén, San Cristóbal, Comuna 10" />
+            <button type="button" class="btn-scan" id="btnScan">ESCANEAR</button>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Section 3: Open-Source Architecture Stack -->
-    <section class="tech-architecture">
-      <div class="section-head">
-        <h2>Tecnologías Usadas en el Proyecto</h2>
-        <p>Estructura moderna y ágil que permite la consulta rápida de datos de movilidad.</p>
-      </div>
-
-      <div class="architecture-grid">
-        <div class="tech-node">
-          <div class="tech-node-icon">⚡</div>
-          <h3>FastAPI</h3>
-          <p>API backend rápida y moderna en Python para servir los datos.</p>
+      <section class="alerts-section">
+        <div class="alerts-head">
+          <h2>LIVE ALERTS</h2>
+          <div class="alert-tabs" role="tablist">
+            <button type="button" class="tab active" data-filter="all">ALL</button>
+            <button type="button" class="tab" data-filter="siata">SIATA</button>
+            <button type="button" class="tab" data-filter="reports">REPORTS</button>
+            <button type="button" class="tab" data-filter="traffic">TRAFFIC</button>
+          </div>
         </div>
+        <ul class="alerts-feed" id="alertsFeed" aria-live="polite"></ul>
+      </section>
+    </aside>
 
-        <div class="tech-node">
-          <div class="tech-node-icon">🐘</div>
-          <h3>PostgreSQL</h3>
-          <p>Base de datos con extensión PostGIS para geocodificación viales.</p>
-        </div>
-
-        <div class="tech-node">
-          <div class="tech-node-icon">🌧</div>
-          <h3>SIATA API</h3>
-          <p>Conexión directa con alertas de lluvias y deprimidos de la ciudad.</p>
-        </div>
-
-        <div class="tech-node">
-          <div class="tech-node-icon">💾</div>
-          <h3>Redis</h3>
-          <p>Almacenamiento rápido en memoria para telemetría ágil.</p>
-        </div>
-
-        <div class="tech-node">
-          <div class="tech-node-icon">🗺</div>
-          <h3>Leaflet.js</h3>
-          <p>Biblioteca interactiva liviana para el despliegue del mapa web.</p>
-        </div>
+    <footer class="bottom-bar">
+      <div class="bottom-left">
+        <button type="button" class="icon-btn" id="btnProfile" title="Perfil">👤</button>
+        <button type="button" class="icon-btn" id="btnVoice" title="Voz">🎤</button>
+        <span class="metro-label">Valle del Aburrá</span>
       </div>
-    </section>
-
-    <!-- Section 4: Friendly Features Grid -->
-    <section class="features-section">
-      <div class="section-head">
-        <h2>Funciones Principales</h2>
-        <p>Conoce los servicios clave desarrollados para mejorar tu navegación cotidiana.</p>
+      <div class="bottom-center" id="mapStats">
+        <span><strong id="statCoords">6.2445, -75.5827</strong></span>
+        <span class="sep">|</span>
+        <span id="statLocation">Medellín, Antioquia</span>
+        <span class="sep">|</span>
+        <span>Zoom <strong id="statZoom">12</strong></span>
+        <span class="sep">|</span>
+        <span>Capas <strong id="statLayers">6</strong></span>
+        <span class="sep">|</span>
+        <span>Alertas <strong id="statAlerts">7</strong></span>
       </div>
-
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="card-icon">🗺</div>
-          <h3>Mapa Interactivo</h3>
-          <p>Visualización clara y rápida de las 16 comunas de Medellín, calles principales y herramientas integradas de consulta.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">🛡</div>
-          <h3>Rutas Sugeridas</h3>
-          <p>Planificación de recorridos inteligentes evitando colisiones activas y obstáculos reportados en las vías principales.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">🌧</div>
-          <h3>Monitoreo de Lluvias</h3>
-          <p>Información en tiempo real sobre lluvias y estado de inundación de deprimidos viales críticos de la ciudad.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">🔮</div>
-          <h3>Alertas con IA</h3>
-          <p>Predicciones de riesgo de lluvias fuertes y congestión vehicular a 2 horas para tomar decisiones preventivas.</p>
-        </div>
+      <p class="stat-comuna" id="statComuna">Comuna — explore el mapa</p>
+      <div class="bottom-right">
+        <span class="throughput" id="statThroughput">0,00 MB/s</span>
       </div>
-    </section>
-  </main>
+    </footer>
 
-  <!-- Clean Footer Status Bar -->
-  <footer class="telemetry-ticker">
-    <div class="ticker-content">
-      <div class="ticker-item">
-        <span>Estado:</span>
-        <strong class="status-green" id="syncStatus">Conectado</strong>
-      </div>
-      <div class="ticker-item">
-        <span>Red Vial:</span>
-        <strong id="nodesCount">14 vehículos activos</strong>
-      </div>
-      <div class="ticker-item">
-        <span>Procesamiento:</span>
-        <strong id="dbscanCount">3,912 pts/seg</strong>
-      </div>
-      <div class="ticker-item">
-        <span>Hora ZULU:</span>
-        <strong id="zuluTimeTicker">--:--:-- Z</strong>
-      </div>
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track" id="tickerTrack"></div>
     </div>
-  </footer>
+  </div>
 
-  <script>
-    // Live UI updates for dynamic feeling
-    function updateZuluTime() {
-      const now = new Date();
-      const zulu = now.toISOString().split('T')[1].substring(0, 8);
-      document.getElementById('zuluTimeTicker').textContent = zulu + ' Z';
-    }
+  <div class="fab-map-actions" aria-label="Acciones rápidas">
+    <button type="button" class="btn-icon" id="fabLayers" aria-label="Capas">☰</button>
+    <button type="button" class="btn-icon" id="fabAlerts" aria-label="Alertas">⚠</button>
+  </div>
 
-    function randomizeTelemetry() {
-      const nodes = Math.floor(Math.random() * 5) + 12;
-      const pts = (Math.random() * 800 + 3500).toFixed(0);
-      
-      document.getElementById('nodesCount').textContent = nodes + ' vehículos activos';
-      document.getElementById('dbscanCount').textContent = pts.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + ' pts/seg';
-    }
+  <nav class="mobile-dock" aria-label="Vista móvil">
+    <a href="pages/mobile/inicio.html" class="dock-item">Inicio</a>
+    <a href="pages/mobile/navegar.html" class="dock-item">Navegar</a>
+    <a href="pages/mobile/reportar.html" class="dock-item">Reportar</a>
+    <a href="index.html" class="dock-item dock-active">Comando</a>
+  </nav>
 
-    // Initialize intervals
-    setInterval(updateZuluTime, 1000);
-    setInterval(randomizeTelemetry, 3000);
-    updateZuluTime();
-    randomizeTelemetry();
-
-    // ==========================================================================
-    // INTERACTIVE TACTICAL TERMINAL SIMULATOR LOGIC
-    // ==========================================================================
-    const terminalBody = document.getElementById('terminalBody');
-    const terminalInput = document.getElementById('terminalInput');
-
-    terminalInput.addEventListener('keydown', function(event) {
-      if (event.key === 'Enter') {
-        const cmd = terminalInput.value.trim();
-        if (cmd) {
-          executeCmd(cmd);
-        }
-        terminalInput.value = '';
-      }
-    });
-
-    function printLine(text, styleClass = '') {
-      const line = document.createElement('div');
-      line.className = 'terminal-line ' + styleClass;
-      line.textContent = text;
-      terminalBody.appendChild(line);
-      terminalBody.scrollTop = terminalBody.scrollHeight; // Auto-scroll
-    }
-
-    function executeCmd(cmdText) {
-      const cleanCmd = cmdText.toLowerCase().trim();
-      
-      // Print user prompt first
-      printLine('tppmaps@medellin:~$ ' + cmdText, 'command');
-
-      // Command dispatcher logic
-      setTimeout(function() {
-        switch (cleanCmd) {
-          case 'ayuda':
-          case 'help':
-            printLine('--- COMANDOS DISPONIBLES ---', 'output-yellow');
-            printLine('  escanear : Realiza un reporte de tráfico de las comunas de Medellín.');
-            printLine('  clima    : Verifica el nivel de agua en deprimidos viales (SIATA).');
-            printLine('  sistema  : Muestra las tecnologías y el estado de la conexión.');
-            printLine('  limpiar  : Limpia los mensajes en pantalla.');
-            printLine('  ayuda    : Muestra esta ayuda.');
-            break;
-            
-          case 'escanear':
-          case 'scan':
-            printLine('[REPORTE DE TRÁNSITO] Iniciando escaneo de comunas viales...', 'output-cyan');
-            setTimeout(() => {
-              printLine('  Comuna 10 (La Candelaria) : Congestión alta - Incidente en Av. Oriental. (Riesgo: 85%)', 'output-danger');
-              printLine('  Comuna 11 (Laureles)      : Flujo normal - Desplazamiento óptimo. (Riesgo: 12%)', 'output-green');
-              printLine('  Comuna 14 (El Poblado)    : Tránsito medio - Desplazamiento regular en Av. Inferior. (Riesgo: 28%)', 'output-yellow');
-              printLine('  Comuna 16 (Belén)         : Tránsito fluido - Ruta recomendada despejada.', 'output-green');
-              printLine('Escaneo finalizado. Reportes actualizados correctamente.', 'output-green');
-            }, 600);
-            break;
-
-          case 'clima':
-          case 'siata':
-            printLine('[MONITOREO DE DEPRIMIDOS VIALES] Conectando con sensores SIATA...', 'output-cyan');
-            setTimeout(() => {
-              printLine('  Deprimido Bulerías            : DESPEJADO - Nivel de agua: 5% (Tránsito seguro)', 'output-green');
-              printLine('  Deprimido Los Músicos         : MONITOREO - Nivel de agua: 35% (Precaución)', 'output-yellow');
-              printLine('  Deprimido Feria de Ganado     : ALERTA CRÍTICA - Nivel de agua: 78% (Tránsito restringido)', 'output-danger');
-              printLine('  Deprimido Parques del Río     : DESPEJADO - Nivel de agua: 8% (Tránsito seguro)', 'output-green');
-              printLine('Radar: Nubosidad detectada en el sur de la ciudad. Probabilidad de lluvia en 45 min.', 'output-yellow');
-            }, 600);
-            break;
-
-          case 'sistema':
-          case 'system':
-            printLine('--- ESPECIFICACIONES TÉCNICAS TPPMAPS ---', 'output-yellow');
-            printLine('  Servidor API     : FastAPI (Python 3.11) - Estado: Activo.');
-            printLine('  Base de Datos    : PostgreSQL 16 con extensión espacial PostGIS.');
-            printLine('  Caché de Datos   : Redis Server - Conexión activa.');
-            printLine('  Biblioteca Mapa  : Leaflet v1.9.4 integrado con capas GeoJSON.');
-            printLine('  Uptime Conexión  : 99.9% - Respuesta API: 14ms.');
-            break;
-
-          case 'limpiar':
-          case 'clear':
-            terminalBody.innerHTML = '';
-            printLine('Consola de comandos limpia. Escribe "ayuda" para ver opciones.', 'output-grey');
-            break;
-
-          default:
-            printLine('Comando no reconocido: "' + cmdText + '". Escribe "ayuda" para ver opciones.', 'output-danger');
-            break;
-        }
-      }, 150);
-    }
-  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="static/js/app.js"></script>
 </body>
+
 </html>
