@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="tppmaps — Comando de inteligencia geoespacial para Medellín (MoviMed)" />
+  <title>TPPMAPS — Comando de Inteligencia Geoespacial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="static/css/tppmaps.css" />
+</head>
+<body>
+  <div id="map" class="map-fullscreen" aria-label="Mapa de Medellín"></div>
+  <div id="panelBackdrop" class="panel-backdrop" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <header class="top-bar">
+      <div class="brand">
+        <h1 class="brand-title">TPPMAPS</h1>
+        <p class="brand-sub">COMANDO DE INTELIGENCIA GEOESPACIAL</p>
+        <span class="badge-open">CÓDIGO ABIERTO</span>
+      </div>
+
+      <div class="header-toolbar" aria-label="Menú móvil">
+        <button type="button" class="btn-icon" id="btnToggleLayers" aria-label="Abrir capas">☰</button>
+        <button type="button" class="btn-icon" id="btnToggleTools" aria-label="Abrir herramientas">⚙</button>
+      </div>
+
+      <div class="status-cluster" id="statusCluster">
+        <span class="status-item" id="zuluTime">ZULU --:--:--Z</span>
+        <span class="status-item status-ok" id="systemStatus">SISTEMA: CONECTADO</span>
+        <span class="status-item">SIATA: <span id="siataStatus">SYNC</span></span>
+        <span class="status-item"><span id="alertCount">7</span> ALERTAS</span>
+        <span class="status-item">UPTIME: <span id="uptime">00:00:00</span></span>
+      </div>
+
+      <div class="header-actions">
+        <a href="/docs" class="btn-gold" title="API FastAPI Swagger">API / DOCS</a>
+        <button type="button" class="btn-gold" id="btnSupport">PROYECTO DE APOYO</button>
+      </div>
+    </header>
+
+    <aside class="panel panel-left" id="panelLayers" aria-label="Capas de datos">
+      <div class="panel-head">
+        <h2>CAPAS DE DATOS</h2>
+        <span class="layer-fraction" id="layerFraction">6/14</span>
+        <button type="button" class="btn-mini" id="btnLayerPreset" title="Preset MoviMed">SET</button>
+        <button type="button" class="panel-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="panel-scroll" id="layersList">
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">🏙</span>
+            <span>MEDELLÍN — 16 COMUNAS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Contorno ciudad</span>
+                <input type="checkbox" class="toggle" data-layer="medellin-city" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Polígonos y etiquetas comunas</span>
+                <input type="checkbox" class="toggle" data-layer="medellin-comunas" checked />
+              </label>
+            </li>
+          </ul>
+          <div class="comunas-section">
+            <h3>IR A COMUNA</h3>
+            <ul class="comunas-list" id="comunasList"></ul>
+          </div>
+        </details>
+
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">📡</span>
+            <span>TELEMETRÍA VIAL</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>GPS conductores (tiempo real)</span>
+                <input type="checkbox" class="toggle" data-layer="telemetry-gps" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Mapa predictivo congestión</span>
+                <input type="checkbox" class="toggle" data-layer="telemetry-predict" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Clusters accidentes (DBSCAN)</span>
+                <input type="checkbox" class="toggle" data-layer="accident-clusters" checked />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <details class="layer-group" open>
+          <summary>
+            <span class="layer-icon">🌧</span>
+            <span>SIATA Y CLIMA</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Deprimidos inundables</span>
+                <input type="checkbox" class="toggle" data-layer="flood-zones" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Riesgo lluvia (2h)</span>
+                <input type="checkbox" class="toggle" data-layer="rain-risk" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Alertas meteorológicas</span>
+                <input type="checkbox" class="toggle" data-layer="weather-alerts" />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <details class="layer-group">
+          <summary>
+            <span class="layer-icon">⚠</span>
+            <span>REPORTES CIUDADANOS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Colisiones activas</span>
+                <input type="checkbox" class="toggle" data-layer="reports-collision" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Inundaciones reportadas</span>
+                <input type="checkbox" class="toggle" data-layer="reports-flood" />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Obstáculos y huecos</span>
+                <input type="checkbox" class="toggle" data-layer="reports-obstacle" />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <details class="layer-group">
+          <summary>
+            <span class="layer-icon">🛣</span>
+            <span>RUTAS SEGURAS</span>
+            <span class="chevron"></span>
+          </summary>
+          <ul class="layer-items">
+            <li>
+              <label class="layer-row">
+                <span>Ruta segura activa</span>
+                <input type="checkbox" class="toggle" data-layer="safe-route" checked />
+              </label>
+            </li>
+            <li>
+              <label class="layer-row">
+                <span>Vías bloqueadas</span>
+                <input type="checkbox" class="toggle" data-layer="blocked-roads" checked />
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <div class="layer-group layer-group-flat">
+          <p class="layer-section-label">MOSTRAR</p>
+          <label class="layer-row">
+            <span>Ciclo día / noche</span>
+            <input type="checkbox" class="toggle" data-layer="day-night" checked id="toggleDayNight" />
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="panel panel-right" id="panelTools" aria-label="Herramientas y alertas">
+      <div class="panel-head panel-head-tools">
+        <h2>KIT Y ALERTAS</h2>
+        <button type="button" class="panel-close" aria-label="Cerrar">×</button>
+      </div>
+      <section class="tool-section">
+        <div class="search-cmd">
+          <span class="search-prefix">⌕</span>
+          <input type="search" id="cmdSearch" placeholder="Comuna, barrio o coordenadas…" autocomplete="off" />
+        </div>
+        <div class="tool-grid" id="toolGrid">
+          <button type="button" class="tool-btn" data-cmd="ruta" title="Ruta segura">RUTA</button>
+          <button type="button" class="tool-btn" data-cmd="reporte">REPORTE</button>
+          <button type="button" class="tool-btn" data-cmd="siata">SIATA</button>
+          <button type="button" class="tool-btn" data-cmd="telemetria">GPS</button>
+          <button type="button" class="tool-btn" data-cmd="clusters">DBSCAN</button>
+          <button type="button" class="tool-btn" data-cmd="inundacion">INUNDA</button>
+          <button type="button" class="tool-btn" data-cmd="prediccion">IA 2H</button>
+          <button type="button" class="tool-btn" data-cmd="layers">CAPAS</button>
+          <button type="button" class="tool-btn" data-cmd="mobile">MÓVIL</button>
+          <button type="button" class="tool-btn tool-btn-all" data-cmd="all">TODO</button>
+        </div>
+        <div class="scan-box">
+          <p class="scan-warn">BÚSQUEDA — 16 COMUNAS MEDELLÍN</p>
+          <div class="scan-row">
+            <input type="text" id="geoQuery" placeholder="Ej: Belén, Poblado, Comuna 10" />
+            <button type="button" class="btn-scan" id="btnScan">ESCANEAR</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="alerts-section">
+        <div class="alerts-head">
+          <h2>ALERTAS EN VIVO</h2>
+          <div class="alert-tabs" role="tablist">
+            <button type="button" class="tab active" data-filter="all">TODO</button>
+            <button type="button" class="tab" data-filter="siata">SIATA</button>
+            <button type="button" class="tab" data-filter="reports">REPORTES</button>
+            <button type="button" class="tab" data-filter="traffic">TRÁFICO</button>
+          </div>
+        </div>
+        <ul class="alerts-feed" id="alertsFeed" aria-live="polite"></ul>
+      </section>
+    </aside>
+
+    <footer class="bottom-bar">
+      <div class="bottom-left">
+        <button type="button" class="icon-btn" id="btnProfile" title="Perfil">👤</button>
+        <button type="button" class="icon-btn" id="btnVoice" title="Voz">🎤</button>
+        <span class="metro-label">Medellín</span>
+      </div>
+      <div class="bottom-center" id="mapStats">
+        <span><strong id="statCoords">6.2445, -75.5827</strong></span>
+        <span class="sep">|</span>
+        <span id="statLocation">Medellín, Antioquia</span>
+        <span class="sep">|</span>
+        <span>Zoom <strong id="statZoom">12</strong></span>
+        <span class="sep">|</span>
+        <span>Capas <strong id="statLayers">6</strong></span>
+        <span class="sep">|</span>
+        <span>Alertas <strong id="statAlerts">7</strong></span>
+      </div>
+      <p class="stat-comuna" id="statComuna">Comuna — explore el mapa</p>
+      <div class="bottom-right">
+        <span class="throughput" id="statThroughput">0,00 MB/s</span>
+      </div>
+    </footer>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+  </div>
+
+  <div class="fab-map-actions" aria-label="Acciones rápidas">
+    <button type="button" class="btn-icon" id="fabLayers" aria-label="Capas">☰</button>
+    <button type="button" class="btn-icon" id="fabAlerts" aria-label="Alertas">⚠</button>
+  </div>
+
+  <nav class="mobile-dock" aria-label="Vista móvil">
+    <a href="pages/mobile/inicio.html" class="dock-item">Inicio</a>
+    <a href="pages/mobile/navegar.html" class="dock-item">Navegar</a>
+    <a href="pages/mobile/reportar.html" class="dock-item">Reportar</a>
+    <a href="index.html" class="dock-item dock-active">Comando</a>
+  </nav>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="static/js/app.js"></script>
+</body>
+</html>

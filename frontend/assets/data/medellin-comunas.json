@@ -1,0 +1,169 @@
+{
+  "city": {
+    "name": "Medellín",
+    "department": "Antioquia",
+    "country": "Colombia",
+    "center": [6.2442, -75.5812],
+    "outline": [
+      [6.298, -75.632],
+      [6.312, -75.595],
+      [6.308, -75.558],
+      [6.288, -75.528],
+      [6.262, -75.512],
+      [6.232, -75.518],
+      [6.202, -75.535],
+      [6.178, -75.562],
+      [6.172, -75.598],
+      [6.188, -75.628],
+      [6.218, -75.642],
+      [6.252, -75.638],
+      [6.278, -75.635]
+    ]
+  },
+  "comunas": [
+    {
+      "id": 1,
+      "number": 1,
+      "name": "Popular",
+      "slug": "popular",
+      "aliases": ["comuna 1", "c1"],
+      "center": [6.2935, -75.5425],
+      "radius": 0.014
+    },
+    {
+      "id": 2,
+      "number": 2,
+      "name": "Santa Cruz",
+      "slug": "santa-cruz",
+      "aliases": ["comuna 2", "c2"],
+      "center": [6.2985, -75.525],
+      "radius": 0.013
+    },
+    {
+      "id": 3,
+      "number": 3,
+      "name": "Manrique",
+      "slug": "manrique",
+      "aliases": ["comuna 3", "c3"],
+      "center": [6.273, -75.545],
+      "radius": 0.014
+    },
+    {
+      "id": 4,
+      "number": 4,
+      "name": "Aranjuez",
+      "slug": "aranjuez",
+      "aliases": ["comuna 4", "c4"],
+      "center": [6.276, -75.558],
+      "radius": 0.013
+    },
+    {
+      "id": 5,
+      "number": 5,
+      "name": "Castilla",
+      "slug": "castilla",
+      "aliases": ["comuna 5", "c5"],
+      "center": [6.292, -75.568],
+      "radius": 0.014
+    },
+    {
+      "id": 6,
+      "number": 6,
+      "name": "Doce de Octubre",
+      "slug": "doce-de-octubre",
+      "aliases": ["12 de octubre", "comuna 6", "c6"],
+      "center": [6.299, -75.579],
+      "radius": 0.013
+    },
+    {
+      "id": 7,
+      "number": 7,
+      "name": "Robledo",
+      "slug": "robledo",
+      "aliases": ["comuna 7", "c7"],
+      "center": [6.278, -75.605],
+      "radius": 0.015
+    },
+    {
+      "id": 8,
+      "number": 8,
+      "name": "Villa Hermosa",
+      "slug": "villa-hermosa",
+      "aliases": ["comuna 8", "c8"],
+      "center": [6.252, -75.545],
+      "radius": 0.013
+    },
+    {
+      "id": 9,
+      "number": 9,
+      "name": "Buenos Aires",
+      "slug": "buenos-aires",
+      "aliases": ["comuna 9", "c9"],
+      "center": [6.232, -75.552],
+      "radius": 0.014
+    },
+    {
+      "id": 10,
+      "number": 10,
+      "name": "La Candelaria",
+      "slug": "la-candelaria",
+      "aliases": ["candelaria", "centro", "comuna 10", "c10"],
+      "center": [6.251, -75.565],
+      "radius": 0.012
+    },
+    {
+      "id": 11,
+      "number": 11,
+      "name": "Laureles-Estadio",
+      "slug": "laureles-estadio",
+      "aliases": ["laureles", "estadio", "comuna 11", "c11"],
+      "center": [6.248, -75.59],
+      "radius": 0.013
+    },
+    {
+      "id": 12,
+      "number": 12,
+      "name": "La América",
+      "slug": "la-america",
+      "aliases": ["america", "comuna 12", "c12"],
+      "center": [6.255, -75.605],
+      "radius": 0.013
+    },
+    {
+      "id": 13,
+      "number": 13,
+      "name": "San Javier",
+      "slug": "san-javier",
+      "aliases": ["comuna 13", "c13", "sanjavier"],
+      "center": [6.248, -75.618],
+      "radius": 0.014
+    },
+    {
+      "id": 14,
+      "number": 14,
+      "name": "El Poblado",
+      "slug": "el-poblado",
+      "aliases": ["poblado", "comuna 14", "c14"],
+      "center": [6.208, -75.565],
+      "radius": 0.015
+    },
+    {
+      "id": 15,
+      "number": 15,
+      "name": "Guayabal",
+      "slug": "guayabal",
+      "aliases": ["comuna 15", "c15"],
+      "center": [6.218, -75.585],
+      "radius": 0.013
+    },
+    {
+      "id": 16,
+      "number": 16,
+      "name": "Belén",
+      "slug": "belen",
+      "aliases": ["comuna 16", "c16"],
+      "center": [6.233, -75.598],
+      "radius": 0.014
+    }
+  ]
+}
