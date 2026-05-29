@@ -1,0 +1,13 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic-settings>=2.6.0
+httpx>=0.28.0
+
+# SIG / producción (descomentar al conectar PostGIS)
+# sqlalchemy[asyncio]>=2.0.36
+# geoalchemy2>=0.15.0
+# psycopg[binary]>=3.2.0
+# shapely>=2.0.0
+# pyproj>=3.7.0
+# celery>=5.4.0
+# redis>=5.2.0

@@ -1,0 +1,167 @@
+{
+  "region": {
+    "name": "Valle de Aburrá",
+    "subtitle": "Área metropolitana de Medellín",
+    "department": "Antioquia",
+    "country": "Colombia",
+    "center": [6.230, -75.565],
+    "outline": [
+      [6.455, -75.720],
+      [6.420, -75.620],
+      [6.385, -75.520],
+      [6.340, -75.470],
+      [6.290, -75.485],
+      [6.240, -75.495],
+      [6.195, -75.510],
+      [6.155, -75.535],
+      [6.120, -75.575],
+      [6.085, -75.620],
+      [6.095, -75.665],
+      [6.130, -75.695],
+      [6.180, -75.710],
+      [6.240, -75.715],
+      [6.300, -75.705],
+      [6.360, -75.690],
+      [6.410, -75.700]
+    ],
+    "medellinOutline": [
+      [6.298, -75.632],
+      [6.312, -75.595],
+      [6.308, -75.558],
+      [6.288, -75.528],
+      [6.262, -75.512],
+      [6.232, -75.518],
+      [6.202, -75.535],
+      [6.178, -75.562],
+      [6.172, -75.598],
+      [6.188, -75.628],
+      [6.218, -75.642],
+      [6.252, -75.638],
+      [6.278, -75.635]
+    ]
+  },
+  "city": {
+    "name": "Valle de Aburrá",
+    "center": [6.230, -75.565],
+    "outline": [
+      [6.455, -75.720],
+      [6.420, -75.620],
+      [6.385, -75.520],
+      [6.340, -75.470],
+      [6.290, -75.485],
+      [6.240, -75.495],
+      [6.195, -75.510],
+      [6.155, -75.535],
+      [6.120, -75.575],
+      [6.085, -75.620],
+      [6.095, -75.665],
+      [6.130, -75.695],
+      [6.180, -75.710],
+      [6.240, -75.715],
+      [6.300, -75.705],
+      [6.360, -75.690],
+      [6.410, -75.700]
+    ]
+  },
+  "comunas": [
+    { "id": 1, "number": 1, "name": "Popular", "slug": "popular", "tipo": "comuna", "aliases": ["comuna 1", "c1"], "center": [6.2935, -75.5425], "radius": 0.014 },
+    { "id": 2, "number": 2, "name": "Santa Cruz", "slug": "santa-cruz", "tipo": "comuna", "aliases": ["comuna 2", "c2"], "center": [6.2985, -75.525], "radius": 0.013 },
+    { "id": 3, "number": 3, "name": "Manrique", "slug": "manrique", "tipo": "comuna", "aliases": ["comuna 3", "c3"], "center": [6.273, -75.545], "radius": 0.014 },
+    { "id": 4, "number": 4, "name": "Aranjuez", "slug": "aranjuez", "tipo": "comuna", "aliases": ["comuna 4", "c4"], "center": [6.276, -75.558], "radius": 0.013 },
+    { "id": 5, "number": 5, "name": "Castilla", "slug": "castilla", "tipo": "comuna", "aliases": ["comuna 5", "c5"], "center": [6.292, -75.568], "radius": 0.014 },
+    { "id": 6, "number": 6, "name": "Doce de Octubre", "slug": "doce-de-octubre", "tipo": "comuna", "aliases": ["12 de octubre", "comuna 6", "c6"], "center": [6.299, -75.579], "radius": 0.013 },
+    { "id": 7, "number": 7, "name": "Robledo", "slug": "robledo", "tipo": "comuna", "aliases": ["comuna 7", "c7"], "center": [6.278, -75.605], "radius": 0.015 },
+    { "id": 8, "number": 8, "name": "Villa Hermosa", "slug": "villa-hermosa", "tipo": "comuna", "aliases": ["comuna 8", "c8"], "center": [6.252, -75.545], "radius": 0.013 },
+    { "id": 9, "number": 9, "name": "Buenos Aires", "slug": "buenos-aires-comuna", "tipo": "comuna", "aliases": ["comuna 9", "c9"], "center": [6.232, -75.552], "radius": 0.014 },
+    { "id": 10, "number": 10, "name": "La Candelaria", "slug": "la-candelaria", "tipo": "comuna", "aliases": ["candelaria", "centro", "comuna 10", "c10"], "center": [6.251, -75.565], "radius": 0.012 },
+    { "id": 11, "number": 11, "name": "Laureles-Estadio", "slug": "laureles-estadio", "tipo": "comuna", "aliases": ["laureles", "estadio", "comuna 11", "c11"], "center": [6.248, -75.59], "radius": 0.013 },
+    { "id": 12, "number": 12, "name": "La América", "slug": "la-america", "tipo": "comuna", "aliases": ["america", "comuna 12", "c12"], "center": [6.255, -75.605], "radius": 0.013 },
+    { "id": 13, "number": 13, "name": "San Javier", "slug": "san-javier", "tipo": "comuna", "aliases": ["comuna 13", "c13", "sanjavier"], "center": [6.248, -75.618], "radius": 0.014 },
+    { "id": 14, "number": 14, "name": "El Poblado", "slug": "el-poblado", "tipo": "comuna", "aliases": ["poblado", "comuna 14", "c14"], "center": [6.208, -75.565], "radius": 0.015 },
+    { "id": 15, "number": 15, "name": "Guayabal", "slug": "guayabal-comuna", "tipo": "comuna", "aliases": ["comuna 15", "c15"], "center": [6.218, -75.585], "radius": 0.013 },
+    { "id": 16, "number": 16, "name": "Belén", "slug": "belen-comuna", "tipo": "comuna", "aliases": ["comuna 16", "c16", "belen medellin"], "center": [6.233, -75.598], "radius": 0.014 }
+  ],
+  "municipios": [
+    {
+      "id": "m-bello",
+      "name": "Bello",
+      "slug": "bello",
+      "tipo": "municipio",
+      "aliases": ["bello antioquia", "municipio bello"],
+      "center": [6.337, -75.558],
+      "radius": 0.024
+    },
+    {
+      "id": "m-itagui",
+      "name": "Itagüí",
+      "slug": "itagui",
+      "tipo": "municipio",
+      "aliases": ["itagui", "itagüi"],
+      "center": [6.171, -75.614],
+      "radius": 0.02
+    },
+    {
+      "id": "m-envigado",
+      "name": "Envigado",
+      "slug": "envigado",
+      "tipo": "municipio",
+      "aliases": ["envigado"],
+      "center": [6.169, -75.578],
+      "radius": 0.02
+    },
+    {
+      "id": "m-sabaneta",
+      "name": "Sabaneta",
+      "slug": "sabaneta",
+      "tipo": "municipio",
+      "aliases": ["sabaneta"],
+      "center": [6.151, -75.615],
+      "radius": 0.019
+    },
+    {
+      "id": "m-estrella",
+      "name": "La Estrella",
+      "slug": "la-estrella",
+      "tipo": "municipio",
+      "aliases": ["estrella", "la estrella"],
+      "center": [6.158, -75.643],
+      "radius": 0.019
+    },
+    {
+      "id": "m-caldas",
+      "name": "Caldas",
+      "slug": "caldas",
+      "tipo": "municipio",
+      "aliases": ["caldas antioquia"],
+      "center": [6.091, -75.635],
+      "radius": 0.02
+    },
+    {
+      "id": "m-copacabana",
+      "name": "Copacabana",
+      "slug": "copacabana",
+      "tipo": "municipio",
+      "aliases": ["copacabana"],
+      "center": [6.348, -75.508],
+      "radius": 0.018
+    },
+    {
+      "id": "m-girardota",
+      "name": "Girardota",
+      "slug": "girardota",
+      "tipo": "municipio",
+      "aliases": ["girardota"],
+      "center": [6.379, -75.448],
+      "radius": 0.018
+    },
+    {
+      "id": "m-barbosa",
+      "name": "Barbosa",
+      "slug": "barbosa",
+      "tipo": "municipio",
+      "aliases": ["barbosa antioquia"],
+      "center": [6.438, -75.331],
+      "radius": 0.02
+    }
+  ]
+}

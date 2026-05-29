@@ -1,0 +1,42 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "${PUERTO:-8000}:8000"
+    environment:
+      HOST: 0.0.0.0
+      URL_BASE_DATOS: postgresql+psycopg://movimed:movimed@db:5432/movimed
+      URL_REDIS: redis://redis:6379/0
+      ORIGENES_CORS: ${ORIGENES_CORS:-*}
+      VERIFICAR_BD: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: movimed
+      POSTGRES_PASSWORD: movimed
+      POSTGRES_DB: movimed
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U movimed -d movimed"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
