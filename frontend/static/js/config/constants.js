@@ -1,13 +1,15 @@
-/** Configuración global de tppmaps */
+// Configuración global de tppmaps (translated to English)
 export const CONFIG = {
   apiBase: window.TPPMAPS_API || "/api/v1",
   map: {
-    defaultCenter: [6.2442, -75.5812],
-    defaultZoom: 12,
+    // Central point of Valle del Aburrá region
+    defaultCenter: [6.25, -75.55],
+    defaultZoom: 11,
     maxZoom: 19,
-    tileUrl: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    // Use standard OSM tiles for a less neon appearance
+    tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     tileAttribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
   },
   dataUrl: "assets/data/medellin-comunas.json",
   breakpoints: {
@@ -17,20 +19,16 @@ export const CONFIG = {
 };
 
 export const COMUNA_COLORS = [
-  "#67e8f9",
-  "#4ade80",
-  "#fbbf24",
-  "#fb923c",
-  "#a78bfa",
-  "#f472b6",
-  "#38bdf8",
-  "#34d399",
-  "#fcd34d",
-  "#f87171",
-  "#2dd4bf",
-  "#818cf8",
-  "#e879f9",
-  "#22d3ee",
-  "#86efac",
-  "#fde047",
+  "#5e81ac",
+  "#81a1c1",
+  "#88c0d0",
+  "#8fbcbb",
+  "#a3be8c",
+  "#b48ead",
+  "#d08770",
+  "#bf616a",
+  "#ebcb8b",
+  "#e5e9f0",
+  "#4c566a",
+  "#2e3440",
 ];

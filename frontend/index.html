@@ -1,26 +1,31 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="tppmaps — Comando de inteligencia geoespacial para Medellín (MoviMed)" />
-  <title>TPPMAPS — Comando de Inteligencia Geoespacial</title>
+  <meta name="description" content="tppmaps — Geospatial intelligence command for Valle del Aburrá (MoviMed)" />
+  <title>TPPMAPS — Geospatial Intelligence Command</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="static/css/tppmaps.css" />
 </head>
+
 <body>
-  <div id="map" class="map-fullscreen" aria-label="Mapa de Medellín"></div>
+  <div id="map" class="map-fullscreen" aria-label="Map of Valle del Aburrá"></div>
   <div id="panelBackdrop" class="panel-backdrop" aria-hidden="true"></div>
 
   <div class="app-shell">
     <header class="top-bar">
       <div class="brand">
         <h1 class="brand-title">TPPMAPS</h1>
-        <p class="brand-sub">COMANDO DE INTELIGENCIA GEOESPACIAL</p>
-        <span class="badge-open">CÓDIGO ABIERTO</span>
+        <p class="brand-sub">GEOSPATIAL INTELLIGENCE COMMAND</p>
+        <span class="badge-open">OPEN SOURCE</span>
       </div>
 
       <div class="header-toolbar" aria-label="Menú móvil">
@@ -30,9 +35,9 @@
 
       <div class="status-cluster" id="statusCluster">
         <span class="status-item" id="zuluTime">ZULU --:--:--Z</span>
-        <span class="status-item status-ok" id="systemStatus">SISTEMA: CONECTADO</span>
+        <span class="status-item status-ok" id="systemStatus">SYSTEM: CONNECTED</span>
         <span class="status-item">SIATA: <span id="siataStatus">SYNC</span></span>
-        <span class="status-item"><span id="alertCount">7</span> ALERTAS</span>
+        <span class="status-item"><span id="alertCount">7</span> ALERTS</span>
         <span class="status-item">UPTIME: <span id="uptime">00:00:00</span></span>
       </div>
 
@@ -44,7 +49,7 @@
 
     <aside class="panel panel-left" id="panelLayers" aria-label="Capas de datos">
       <div class="panel-head">
-        <h2>CAPAS DE DATOS</h2>
+        <h2>DATA LAYERS</h2>
         <span class="layer-fraction" id="layerFraction">6/14</span>
         <button type="button" class="btn-mini" id="btnLayerPreset" title="Preset MoviMed">SET</button>
         <button type="button" class="panel-close" aria-label="Cerrar">×</button>
@@ -53,7 +58,7 @@
         <details class="layer-group" open>
           <summary>
             <span class="layer-icon">🏙</span>
-            <span>MEDELLÍN — 16 COMUNAS</span>
+            <span>VALLE DEL ABURRÁ — 16 COMUNAS</span>
             <span class="chevron"></span>
           </summary>
           <ul class="layer-items">
@@ -69,9 +74,15 @@
                 <input type="checkbox" class="toggle" data-layer="medellin-comunas" checked />
               </label>
             </li>
+            <li>
+              <label class="layer-row">
+                <span>Municipios Área Metro (9)</span>
+                <input type="checkbox" class="toggle" data-layer="metro-municipios" checked />
+              </label>
+            </li>
           </ul>
           <div class="comunas-section">
-            <h3>IR A COMUNA</h3>
+            <h3>GO TO COMUNA</h3>
             <ul class="comunas-list" id="comunasList"></ul>
           </div>
         </details>
@@ -182,13 +193,6 @@
           </ul>
         </details>
 
-        <div class="layer-group layer-group-flat">
-          <p class="layer-section-label">MOSTRAR</p>
-          <label class="layer-row">
-            <span>Ciclo día / noche</span>
-            <input type="checkbox" class="toggle" data-layer="day-night" checked id="toggleDayNight" />
-          </label>
-        </div>
       </div>
     </aside>
 
@@ -200,7 +204,7 @@
       <section class="tool-section">
         <div class="search-cmd">
           <span class="search-prefix">⌕</span>
-          <input type="search" id="cmdSearch" placeholder="Comuna, barrio o coordenadas…" autocomplete="off" />
+          <input type="search" id="cmdSearch" placeholder="Comuna, neighbourhood or coordinates…" autocomplete="off" />
         </div>
         <div class="tool-grid" id="toolGrid">
           <button type="button" class="tool-btn" data-cmd="ruta" title="Ruta segura">RUTA</button>
@@ -215,7 +219,7 @@
           <button type="button" class="tool-btn tool-btn-all" data-cmd="all">TODO</button>
         </div>
         <div class="scan-box">
-          <p class="scan-warn">BÚSQUEDA — 16 COMUNAS MEDELLÍN</p>
+          <p class="scan-warn">SEARCH — 16 COMUNAS VALLE</p>
           <div class="scan-row">
             <input type="text" id="geoQuery" placeholder="Ej: Belén, Poblado, Comuna 10" />
             <button type="button" class="btn-scan" id="btnScan">ESCANEAR</button>
@@ -225,12 +229,12 @@
 
       <section class="alerts-section">
         <div class="alerts-head">
-          <h2>ALERTAS EN VIVO</h2>
+          <h2>LIVE ALERTS</h2>
           <div class="alert-tabs" role="tablist">
-            <button type="button" class="tab active" data-filter="all">TODO</button>
+            <button type="button" class="tab active" data-filter="all">ALL</button>
             <button type="button" class="tab" data-filter="siata">SIATA</button>
-            <button type="button" class="tab" data-filter="reports">REPORTES</button>
-            <button type="button" class="tab" data-filter="traffic">TRÁFICO</button>
+            <button type="button" class="tab" data-filter="reports">REPORTS</button>
+            <button type="button" class="tab" data-filter="traffic">TRAFFIC</button>
           </div>
         </div>
         <ul class="alerts-feed" id="alertsFeed" aria-live="polite"></ul>
@@ -241,7 +245,7 @@
       <div class="bottom-left">
         <button type="button" class="icon-btn" id="btnProfile" title="Perfil">👤</button>
         <button type="button" class="icon-btn" id="btnVoice" title="Voz">🎤</button>
-        <span class="metro-label">Medellín</span>
+        <span class="metro-label">Valle del Aburrá</span>
       </div>
       <div class="bottom-center" id="mapStats">
         <span><strong id="statCoords">6.2445, -75.5827</strong></span>
@@ -277,7 +281,9 @@
     <a href="index.html" class="dock-item dock-active">Comando</a>
   </nav>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module" src="static/js/app.js"></script>
 </body>
+
 </html>
