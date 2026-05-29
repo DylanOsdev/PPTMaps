@@ -58,7 +58,7 @@
         <details class="layer-group" open>
           <summary>
             <span class="layer-icon">🏙</span>
-            <span>VALLE DEL ABURRÁ — 16 COMUNAS</span>
+            <span>VALLE DEL ABURRÁ — COMUNAS Y CORREGIMIENTOS</span>
             <span class="chevron"></span>
           </summary>
           <ul class="layer-items">
@@ -70,7 +70,7 @@
             </li>
             <li>
               <label class="layer-row">
-                <span>Polígonos y etiquetas comunas</span>
+                <span>Polígonos y etiquetas (Comunas/CG)</span>
                 <input type="checkbox" class="toggle" data-layer="medellin-comunas" checked />
               </label>
             </li>
@@ -82,7 +82,7 @@
             </li>
           </ul>
           <div class="comunas-section">
-            <h3>GO TO COMUNA</h3>
+            <h3>GO TO LOCATION</h3>
             <ul class="comunas-list" id="comunasList"></ul>
           </div>
         </details>
@@ -204,7 +204,7 @@
       <section class="tool-section">
         <div class="search-cmd">
           <span class="search-prefix">⌕</span>
-          <input type="search" id="cmdSearch" placeholder="Comuna, neighbourhood or coordinates…" autocomplete="off" />
+          <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autocomplete="off" />
         </div>
         <div class="tool-grid" id="toolGrid">
           <button type="button" class="tool-btn" data-cmd="ruta" title="Ruta segura">RUTA</button>
@@ -219,9 +219,9 @@
           <button type="button" class="tool-btn tool-btn-all" data-cmd="all">TODO</button>
         </div>
         <div class="scan-box">
-          <p class="scan-warn">SEARCH — 16 COMUNAS VALLE</p>
+          <p class="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
           <div class="scan-row">
-            <input type="text" id="geoQuery" placeholder="Ej: Belén, Poblado, Comuna 10" />
+            <input type="text" id="geoQuery" placeholder="Ej: Belén, San Cristóbal, Comuna 10" />
             <button type="button" class="btn-scan" id="btnScan">ESCANEAR</button>
           </div>
         </div>
