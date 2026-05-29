@@ -26,6 +26,21 @@ target_metadata = Base.metadata
 # Set the SQLAlchemy URL from our settings dynamically
 config.set_main_option("sqlalchemy.url", settings.ASYNC_DATABASE_URI)
 
+# Tables/schemas managed by PostGIS and its extensions (postgis_tiger_geocoder,
+# postgis_topology). Alembic must never try to create or drop these.
+_POSTGIS_TABLES = {"spatial_ref_sys", "topology", "layer"}
+
+
+def include_object(obj, name, type_, reflected, compare_to):
+    if type_ == "table":
+        # Ignore PostGIS core + tiger geocoder + topology managed tables.
+        if name in _POSTGIS_TABLES or getattr(obj, "schema", None) in {"tiger", "tiger_data", "topology"}:
+            return False
+        # Reflected tiger tables live in public; skip known DDL noise by FK/owner.
+        if reflected and name not in target_metadata.tables:
+            return False
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -47,7 +62,12 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+        compare_type=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
