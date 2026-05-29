@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>MoviMed — Inicio | tppmaps</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../estatico/css/movil.css" />
+</head>
+<body>
+  <a class="desktop-link" href="../../app.html">← Vista comando tppmaps</a>
+  <div class="status-bar">
+    <span>TPPMAPS</span>
+    <span id="clock">13:41</span>
+    <span>98%</span>
+  </div>
+  <main>
+    <div class="search-box">
+      <span>📍</span>
+      <input type="search" placeholder="¿A dónde vas hoy en Medellín?" id="destSearch" />
+    </div>
+    <div class="map-placeholder" id="miniMap">
+      <div class="route-line"></div>
+    </div>
+    <div class="badge-siata">🟢 Deprimidos despejados – SIATA</div>
+    <div class="card-ai">
+      <h3>⚡ RECOMENDACIÓN PREDICTIVA IA</h3>
+      <p>Se prevé fuerte lluvia en 45 min. Te sugerimos salir YA por la 80 para evitar inundación en Bulerías.</p>
+    </div>
+    <div class="quick-grid">
+      <a href="navegar.html" class="quick-card"><span>🏠</span><strong>Casa</strong><span>Belén</span></a>
+      <a href="navegar.html" class="quick-card"><span>💼</span><strong>Trabajo</strong><span>Centro</span></a>
+      <a href="navegar.html" class="quick-card"><span>⭐</span><strong>Favorito</strong><span>Poblado</span></a>
+    </div>
+  </main>
+  <nav class="nav-bottom">
+    <a href="inicio.html" class="active">📍 Inicio</a>
+    <a href="navegar.html">🧭 Navegar</a>
+    <a href="reportar.html">⚠ Reportar</a>
+  </nav>
+  <script>
+    setInterval(() => {
+      const n = new Date();
+      document.getElementById("clock").textContent =
+        n.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    }, 1000);
+    document.getElementById("destSearch").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") location.href = "navegar.html";
+    });
+  </script>
+</body>
+</html>
