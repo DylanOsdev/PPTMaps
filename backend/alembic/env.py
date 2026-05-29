@@ -7,7 +7,7 @@ from alembic import context
 
 # Importar los settings y el modelo Base de nuestra app
 from app.core.config import settings
-from app.models import Base
+from app.db.base import Base  # importa Base + todos los modelos para autogenerate
 import geoalchemy2
 
 # this is the Alembic Config object, which provides

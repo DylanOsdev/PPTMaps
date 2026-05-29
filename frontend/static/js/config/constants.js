@@ -1,6 +1,7 @@
 // Configuración global de tppmaps (translated to English)
 export const CONFIG = {
   apiBase: window.TPPMAPS_API || "/api/v1",
+  backendUrl: window.TPPMAPS_BACKEND || "",
   map: {
     // Central point of Valle del Aburrá region
     defaultCenter: [6.25, -75.55],
