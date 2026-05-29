@@ -1,0 +1,6 @@
+# Persistence + spatial modeling + migrations (Part 2).
+# Other stack deps (FastAPI, Celery, Redis, etc.) are added by Part 1.
+SQLAlchemy[asyncio]>=2.0
+GeoAlchemy2>=0.15
+alembic>=1.13
+psycopg[binary]>=3.1
