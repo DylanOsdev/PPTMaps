@@ -1,9 +1,0 @@
-"""Model registry: importing here populates ``Base.metadata`` for Alembic."""
-
-from app.models.base import Base
-from app.models.user import User
-from app.models.report import Report
-from app.models.accident_zone import AccidentZone
-from app.models.flood_hazard import FloodHazard
-
-__all__ = ["Base", "User", "Report", "AccidentZone", "FloodHazard"]
