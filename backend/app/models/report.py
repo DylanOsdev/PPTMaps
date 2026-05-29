@@ -1,48 +1,26 @@
-import uuid
+from datetime import datetime
 import enum
-from sqlalchemy import Column, String, Enum, DateTime, ForeignKey, Index, Float
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
-from app.db.base import Base
-
+from app.db.base_class import Base
 
 class ReportType(str, enum.Enum):
-    ACCIDENT = "ACCIDENT"
-    FLOOD = "FLOOD"
-    OBSTRUCTION = "OBSTRUCTION"
-    OTHER = "OTHER"
-
-
-class ReportStatus(str, enum.Enum):
-    PENDING = "PENDING"
-    VERIFIED = "VERIFIED"
-    RESOLVED = "RESOLVED"
-    REJECTED = "REJECTED"
-
+    accident = "accident"
+    flood = "flood"
+    obstruction = "obstruction"
+    other = "other"
 
 class Report(Base):
     __tablename__ = "reports"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    report_type = Column(Enum(ReportType, name="report_type"), nullable=False)
+    description = Column(Text, nullable=True)
+    geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    type = Column(Enum(ReportType), nullable=False)
-    status = Column(Enum(ReportStatus), default=ReportStatus.PENDING, nullable=False)
-    description = Column(String, nullable=True)
-
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
-
-    # PostGIS POINT (WGS84 / SRID 4326). spatial_index=False: the GIST index is
-    # declared explicitly below to avoid GeoAlchemy2 creating a duplicate.
-    location = Column(Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=False)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    reporter = relationship("User")
-
-
-Index("idx_reports_location", Report.location, postgresql_using="gist")
+    reporter = relationship("User", backref="reports")

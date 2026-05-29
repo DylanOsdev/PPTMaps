@@ -1,34 +1,28 @@
-from typing import Optional
-from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel
-from app.models.report import ReportType, ReportStatus
-
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from app.models.report import ReportType
 
 class ReportBase(BaseModel):
-    type: ReportType
+    reporter_id: Optional[int] = None
+    report_type: ReportType
     description: Optional[str] = None
     latitude: float
     longitude: float
 
-
 class ReportCreate(ReportBase):
     pass
 
-
 class ReportUpdate(BaseModel):
-    status: ReportStatus
-
+    report_type: Optional[ReportType] = None
+    description: Optional[str] = None
 
 class ReportInDBBase(ReportBase):
-    id: UUID
-    reporter_id: Optional[UUID] = None
-    status: ReportStatus
+    id: int
     created_at: datetime
+    updated_at: datetime
 
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)
 
 class Report(ReportInDBBase):
     pass
