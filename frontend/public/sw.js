@@ -1,7 +1,7 @@
 // Service worker mínimo de PPTMaps: app-shell offline + network-first para navegación.
 // Sin Workbox (Vite 8 aún no soporta vite-plugin-pwa: issue vite-pwa/vite-plugin-pwa#923).
-const CACHE = 'pptmaps-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+const CACHE = 'pptmaps-v2';
+const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -29,6 +29,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   // Nunca cachear rutas dinámicas: API, WebSocket, health, docs.
   if (/^\/(api|ws|health|docs|redoc)\b/.test(url.pathname)) return;
+  // No interceptar media (video/audio): deben servirse directo para streaming/seek.
+  if (/\.(mp4|webm|ogg|mov|m4v|mp3|wav)$/i.test(url.pathname)) return;
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) =>

@@ -21,3 +21,4 @@ async def test_unknown_api_route_still_404(client):
     """El fallback SPA NO debe tragarse las rutas /api inexistentes."""
     resp = await client.get("/api/v1/this-does-not-exist")
     assert resp.status_code == 404
+

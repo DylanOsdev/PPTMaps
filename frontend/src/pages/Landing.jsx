@@ -8,72 +8,60 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-[#f8f9f8] text-[#333333] font-['Inter',sans-serif] overflow-x-hidden">
       {/* NAV */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-[60px] flex items-center justify-between px-6 md:px-12 bg-white border-b border-[#e0e0e0] shadow-sm">
-        <div className="flex items-center gap-4">
-          <span className="text-xl font-bold text-[#1a5c3a] tracking-tight">TPPMAPS</span>
-          <span className="text-[#e0e0e0] hidden">/</span>
-          <span className="text-sm text-[#666666] hidden md:inline">COMANDO GEOESPACIAL</span>
-        </div>
-        <div className="flex gap-4 md:gap-8 items-center">
-          <a href="#" className="hidden md:inline text-[0.95rem] text-[#666666] font-medium hover:text-[#1a5c3a] transition-colors">PLATAFORMA</a>
-          <a href="#" className="hidden md:inline text-[0.95rem] text-[#666666] font-medium hover:text-[#1a5c3a] transition-colors">COMUNAS</a>
-          <a href="#" className="hidden md:inline text-[0.95rem] text-[#666666] font-medium hover:text-[#1a5c3a] transition-colors">SIATA</a>
-          <a href="#" className="hidden md:inline text-[0.95rem] text-[#666666] font-medium hover:text-[#1a5c3a] transition-colors">API</a>
-          <button onClick={() => navigate('/map')} className="text-[0.95rem] font-semibold bg-[#1a5c3a] text-white px-4 md:px-6 py-2 md:py-2.5 rounded hover:bg-[#2d9e5e] transition-colors">
-            ACCEDER →
-          </button>
+      <nav className="fixed top-0 left-0 right-0 z-50 h-[60px] flex items-center justify-between px-6 md:px-12 bg-transparent">
+        <div className="flex items-center gap-3">
+          <img src="/logo.jpg" alt="PPTMaps" className="h-9 w-9 rounded-full object-cover" />
+          <span className="text-xl font-bold text-white tracking-tight">PPTMaps</span>
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="min-h-screen pt-[60px] grid grid-cols-1 md:grid-cols-2 relative overflow-hidden bg-white">
-        <div className="flex flex-col justify-center px-8 md:px-16 py-16 z-10">
-          <span className="text-sm text-[#1a5c3a] border-l-3 border-[#1a5c3a] pl-3 mb-6 font-semibold tracking-wide animate-[fadeUp_0.5s_0.1s_forwards] opacity-0">
+      <section className="min-h-screen pt-[60px] flex items-center justify-center relative overflow-hidden bg-[#0d2a1a]">
+        {/* Imagen de fondo de Medellín */}
+        <img src="/medellin.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
+        {/* Overlay para legibilidad del texto */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d2a1a]/45 via-[#0d2a1a]/30 to-[#0d2a1a]/55"></div>
+
+        <div className="flex flex-col items-center text-center px-8 py-16 z-10 max-w-[820px]">
+          <span className="text-sm text-[#a7f3d0] mb-6 font-semibold tracking-wide animate-[fadeUp_0.5s_0.1s_forwards] opacity-0">
             // INTELIGENCIA URBANA · MEDELLÍN · ACTIVO
           </span>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#1a5c3a] mb-6 animate-[fadeUp_0.5s_0.25s_forwards] opacity-0">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white mb-6 animate-[fadeUp_0.5s_0.25s_forwards] opacity-0">
             MAPA<br />
-            <span className="text-[#1a5c3a]">GEOESPACIAL</span><br />
+            <span className="text-white">GEOESPACIAL</span><br />
             EN <span className="text-[#3db84f]">TIEMPO REAL</span>
           </h1>
-          <p className="text-base leading-relaxed text-[#666666] max-w-[480px] mb-10 animate-[fadeUp_0.5s_0.4s_forwards] opacity-0">
+          <p className="text-base leading-relaxed text-[#e0e0e0] max-w-[480px] mb-10 animate-[fadeUp_0.5s_0.4s_forwards] opacity-0">
             Plataforma de comando para monitoreo urbano de Medellín.
             Tráfico, alertas SIATA, telemetría vial y reportes ciudadanos
             en las 16 comunas — sincronizado en tiempo real.
           </p>
-          <div className="flex flex-wrap gap-8 md:gap-12 mb-10 animate-[fadeUp_0.5s_0.55s_forwards] opacity-0">
+          <div className="flex flex-wrap gap-8 md:gap-12 mb-10 justify-center animate-[fadeUp_0.5s_0.55s_forwards] opacity-0">
             <div>
-              <span className="text-3xl font-bold text-[#1a5c3a] block">16</span>
-              <span className="text-sm text-[#666666] font-medium">COMUNAS</span>
+              <span className="text-3xl font-bold text-white block">16</span>
+              <span className="text-sm text-[#cbd5cd] font-medium">COMUNAS</span>
             </div>
             <div>
-              <span className="text-3xl font-bold text-[#1a5c3a] block">847</span>
-              <span className="text-sm text-[#666666] font-medium">GPS ACTIVOS</span>
+              <span className="text-3xl font-bold text-white block">847</span>
+              <span className="text-sm text-[#cbd5cd] font-medium">GPS ACTIVOS</span>
             </div>
             <div>
-              <span className="text-3xl font-bold text-[#1a5c3a] block">0K</span>
-              <span className="text-sm text-[#666666] font-medium">DEPRIMIDOS</span>
+              <span className="text-3xl font-bold text-white block">0K</span>
+              <span className="text-sm text-[#cbd5cd] font-medium">DEPRIMIDOS</span>
             </div>
             <div>
-              <span className="text-3xl font-bold text-[#1a5c3a] block">7</span>
-              <span className="text-sm text-[#666666] font-medium">ALERTAS HOY</span>
+              <span className="text-3xl font-bold text-white block">7</span>
+              <span className="text-sm text-[#cbd5cd] font-medium">ALERTAS HOY</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-4 items-center animate-[fadeUp_0.5s_0.7s_forwards] opacity-0">
+          <div className="flex flex-wrap gap-4 items-center justify-center animate-[fadeUp_0.5s_0.7s_forwards] opacity-0">
             <button onClick={() => navigate('/map')} className="text-[0.95rem] font-semibold text-white bg-[#1a5c3a] px-8 py-3.5 rounded transition-colors hover:bg-[#2d9e5e]">
               ABRIR COMANDO
             </button>
-            <button onClick={() => navigate('/dashboard')} className="text-[0.95rem] font-semibold text-[#1a5c3a] bg-transparent border-2 border-[#1a5c3a] px-8 py-3 rounded transition-colors hover:bg-[#1a5c3a] hover:text-white">
+            <button onClick={() => navigate('/dashboard')} className="text-[0.95rem] font-semibold text-white bg-transparent border-2 border-white px-8 py-3 rounded transition-colors hover:bg-white hover:text-[#1a5c3a]">
               DASHBOARD
             </button>
-            <button className="text-[0.95rem] font-semibold text-[#333333] bg-transparent border-2 border-[#e0e0e0] px-8 py-3 rounded transition-colors hover:border-[#1a5c3a] hover:text-[#1a5c3a]">
-              DOCUMENTACIÓN
-            </button>
           </div>
-        </div>
-
-        <div className="hidden md:block relative overflow-hidden bg-gradient-to-br from-[#f0f8f5] to-[#e8f5f0] opacity-0 animate-[fadeIn_1s_0.3s_forwards]">
-          <div className="absolute inset-0 z-10 pointer-events-none bg-[linear-gradient(to_right,#ffffff_0%,transparent_25%),linear-gradient(to_top,#ffffff_0%,transparent_15%)]"></div>
         </div>
       </section>
 

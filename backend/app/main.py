@@ -122,23 +122,19 @@ def resolve_frontend_dir(root: Path):
 
 _frontend = resolve_frontend_dir(PROJECT_ROOT)
 if _frontend is not None:
+    from fastapi import HTTPException
     from fastapi.responses import FileResponse
-    from starlette.exceptions import HTTPException as StarletteHTTPException
 
     _index = _frontend / "index.html"
-    # Prefijos que NO son del SPA: deben resolver por sus routers o dar 404 real.
     _api_prefixes = ("api/", "ws/", "health", "docs", "redoc", "openapi.json")
 
-    # Sirve los assets compilados (JS/CSS/íconos/manifest) bajo /assets, /icons, etc.
     app.mount("/assets", StaticFiles(directory=str(_frontend / "assets")), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        """Fallback SPA: sirve archivos del dist si existen; si no, devuelve index.html
-        para que el router del cliente (React Router) resuelva la ruta. Excluye los
-        prefijos de API/infra para no enmascarar sus 404."""
+        """Sirve archivos del dist si existen; si no, index.html (deep-links SPA).
+        Excluye prefijos de API/infra para no enmascarar sus 404."""
         if full_path.startswith(_api_prefixes):
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Not Found")
         candidate = _frontend / full_path
         if full_path and candidate.is_file():
