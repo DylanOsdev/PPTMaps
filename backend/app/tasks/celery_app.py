@@ -1,10 +1,12 @@
 from celery import Celery
+from celery.schedules import crontab
 from app.core.config import settings
 
 celery_app = Celery(
     "movimed_worker",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
+    include=["app.tasks.cron_jobs", "app.tasks.worker"],
 )
 
 celery_app.conf.update(
@@ -13,4 +15,26 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="America/Bogota",
     enable_utc=True,
+    beat_schedule={
+        "siata-sync-every-15-min": {
+            "task": "siata.sync_flood_hazards",
+            "schedule": crontab(minute="*/15"),
+        },
+        "weather-sync-every-15-min": {
+            "task": "weather.sync",
+            "schedule": crontab(minute="*/15"),
+        },
+        "telemetry-flush-every-min": {
+            "task": "telemetry.flush",
+            "schedule": crontab(minute="*"),
+        },
+        "overspeed-check-every-min": {
+            "task": "overspeed.check",
+            "schedule": crontab(minute="*"),
+        },
+        "cluster-accidents-hourly": {
+            "task": "ml.cluster_accident_hotspots",
+            "schedule": crontab(minute="0"),
+        },
+    },
 )

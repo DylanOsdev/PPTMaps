@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-movimed}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-movimed}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      REDIS_URL: redis://redis:6379/0
+      ZONES_JSON_PATH: /data/medellin-comunas.json
+    volumes:
+      - ../frontend/public/assets/data/medellin-comunas.json:/data/medellin-comunas.json:ro
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    # Aplica migraciones y arranca la API.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - api
+    command: celery -A app.tasks.celery_app.celery_app worker --loglevel=info
+
+  beat:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - worker
+    command: celery -A app.tasks.celery_app.celery_app beat --loglevel=info
+
+volumes:
+  pgdata:

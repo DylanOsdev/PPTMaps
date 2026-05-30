@@ -50,11 +50,11 @@ FRONTEND                     BACKEND                        BASE DE DATOS
 
 ## Vistazo General
 
-**MoviMed** es una plataforma de inteligencia geoespacial que integra datos oficiales de movilidad de Medellin con reportes ciudadanos en tiempo real. Consume datos de APIs gubernamentales (SIATA, MEData), los optimiza y cachea en PostGIS, y los expone mediante una API REST + WebSockets para dashboards interactivos.
+**PPTMaps** es una plataforma de inteligencia geoespacial que integra datos oficiales de movilidad de Medellin con reportes ciudadanos en tiempo real. Consume datos de APIs gubernamentales (SIATA, MEData), los optimiza y cachea en PostGIS, y los expone mediante una API REST + WebSockets para dashboards interactivos.
 
 ### Que resuelve?
 
-| Problema | Solucion MoviMed |
+| Problema | Solucion PPTMaps |
 |---|---|
 | APIs oficiales lentas y sin filtros geoespaciales | Cache inteligente en PostGIS con queries espaciales optimizadas |
 | Datos de movilidad dispersos en multiples fuentes | Unificacion en un solo backend con una API coherente |
@@ -119,8 +119,7 @@ TTPMaps/
 │   │   └── main.py                 # Archivo de entrada de FastAPI
 │   ├── tests/                      # Pruebas unitarias y de integración (pytest)
 │   ├── .env.example                # Variables de entorno de muestra
-│   ├── requirements.txt            # Dependencias de Python
-│   └── schema.sql                  # Dump de respaldo del esquema SQL oficial
+│   └── requirements.txt            # Dependencias de Python
 │
 ├── frontend/                       # Dashboard Web (React + Vite)
 │   ├── public/                     # Assets estáticos globales
@@ -201,23 +200,26 @@ Documentacion interactiva: http://localhost:8000/docs (Swagger UI)
 git clone https://github.com/tu-usuario/tppmaps.git
 cd tppmaps
 
-# 2. Base de datos
+# 2. Crear la base de datos (la migración instala PostGIS y crea todas las tablas)
 sudo -u postgres psql -c "CREATE DATABASE movimed;"
-sudo -u postgres psql -d movimed -f backend/schema.sql
 
 # 3. Backend
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
 
-# 4. Frontend
+# 4. Aplicar las migraciones (crea la extensión PostGIS + el esquema completo)
+alembic upgrade head
+
+# 5. Frontend
 cd ../frontend
 npm install
 npm run build
 
-# 5. Listo!
+# 6. Correr el servidor (sirve la API + el frontend compilado)
+cd ../backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 echo "Abre http://localhost:8000"
 ```
 
@@ -275,7 +277,7 @@ Motor de Machine Learning (en desarrollo)
 
 ```env
 # Proyecto
-PROJECT_NAME="MoviMed API"
+PROJECT_NAME="PPTMaps API"
 API_V1_STR="/api/v1"
 
 # Base de Datos
@@ -335,194 +337,3 @@ pytest -v --cov=app --cov-report=term-missing
   <img src="https://capsule-render.vercel.app/api?type=waving&color=1a5c3a:2d9e5e:3db84f&height=120§ion=footer" width="100%">
 </p>
 
-# Wrote Documentos/TTPMaps/backend/README.md
-
-<p align="center">
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python&logoColor=white">
-  <img alt="PostGIS" src="https://img.shields.io/badge/PostGIS-3.5-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
-</p>
-
-<h1 align="center">MoviMed -- Backend API</h1>
-
-<p align="center">
-  <strong>FastAPI + PostgreSQL/PostGIS WebSockets Celery JWT</strong>
-  <br>
-  <sub>Hackaton HackData CTGI SENA 2026 Medellin Colombia</sub>
-</p>
-
----
-
-## Stack
-
-| Categoria | Tecnologias |
-|---|---|
-| Core | FastAPI Uvicorn Pydantic Python 3.14 |
-| Base de Datos | PostgreSQL 18 PostGIS 3.5 SQLAlchemy 2.0 AsyncPG Alembic |
-| Tiempo Real | WebSockets Redis Celery Flower |
-| Seguridad | JWT (python-jose) bcrypt OAuth2 password flow |
-| Testing | pytest pytest-asyncio httpx SQLite (tests) |
-| Geoespacial | GeoAlchemy2 Shapely PostGIS (geometry geography SRID 4326) |
-
----
-
-## Inicio Rapido
-
-```bash
-# Requisitos: PostgreSQL + PostGIS instalados
-
-# 1. Crear BD
-sudo -u postgres psql -c "CREATE DATABASE movimed;"
-
-# 2. Schema
-sudo -u postgres psql -d movimed -f schema.sql
-
-# 3. Entorno Python
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# 4. Servidor
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-```bash
-echo "Swagger UI:  http://localhost:8000/docs"
-echo "Redoc:       http://localhost:8000/redoc"
-echo "Health:      http://localhost:8000/health"
-```
-
----
-
-## Arquitectura
-
-```
-                     Cliente (Frontend)
-                    React + Vite + Leaflet
-               |                         |
-           HTTP REST                 WebSocket
-               v                         v
-+--------------------------+   +--------------------------+
-|      FastAPI/Uvicorn      |   |   WebSocket Manager      |
-|  +----------------------+ |   |   Conexiones persistentes|
-|  |  Middleware (CORS,   | |   |   Broadcast a clientes   |
-|  |  Auth, Logging)      | |   +--------------------------+
-|  +----------------------+ |
-|  |  Routers /api/v1/*   | |   +--------------------------+
-|  |  auth, users, repos, | |   |     Celery Workers       |
-|  |  public, vehicles    | |   |  +--------------------+  |
-|  +----------------------+ |   |  | sync_siata()       |  |
-|  |  Services            | |   |  | sync_soda()        |  |
-|  |  ingestion, siata,   | |   |  | check_alerts()     |  |
-|  |  notification        | |   |  | calc_stats()       |  |
-|  +----------------------+ |   |  +--------------------+  |
-|  |  SQLAlchemy 2.0     | |   +--------------------------+
-|  |  AsyncSession       | |
-|  +----------+-----------+ |
-+-------------|-------------+
-              |
-              v
-+------------------------------------------+
-|       PostgreSQL 18 + PostGIS 3.5         |
-|  +-------+ +-------+ +-------+ +-------+  |
-|  | users | |reports| |accident| | flood |  |
-|  |       | |       | | zones | |hazards|  |
-|  +-------+ +-------+ +-------+ +-------+  |
-|  PostGIS: geometry(Point, 4326)           |
-|  ST_DWithin, ST_AsGeoJSON, GIST indexes  |
-+------------------------------------------+
-```
-
----
-
-## Endpoints
-
-### Autenticacion
-| Metodo | Ruta | Descripcion |
-|---|---|---|
-| POST | /api/v1/auth/register | Registrar usuario |
-| POST | /api/v1/auth/login | Iniciar sesion -> JWT |
-
-### Usuarios (requiere auth)
-| Metodo | Ruta | Descripcion |
-|---|---|---|
-| GET | /api/v1/users/ | Listar todos |
-| GET | /api/v1/users/me | Perfil actual |
-| GET | /api/v1/users/{id} | Obtener por ID |
-| PUT | /api/v1/users/{id} | Actualizar |
-
-### Reportes (requiere auth)
-| Metodo | Ruta | Descripcion |
-|---|---|---|
-| POST | /api/v1/reports/ | Crear reporte |
-| GET | /api/v1/reports/ | Listar reportes |
-| GET | /api/v1/reports/{id} | Obtener por ID |
-| PUT | /api/v1/reports/{id} | Actualizar |
-
-### Publicos
-| Metodo | Ruta | Descripcion |
-|---|---|---|
-| GET | /api/v1/public/reports | Reportes geolocalizados |
-| GET | /api/v1/public/accidents | Incidentes viales |
-| GET | /api/v1/public/accident-zones | Zonas de accidentalidad |
-| GET | /api/v1/public/fatalities | Incidentes fatales |
-| GET | /api/v1/public/flood-zones | Zonas de inundacion |
-| GET | /api/v1/public/nearby | Busqueda por cercania |
-| GET | /api/v1/public/stats | Estadisticas |
-
-### Vehiculos (requiere auth)
-| Metodo | Ruta | Descripcion |
-|---|---|---|
-| GET | /api/v1/vehicles/ | Listar vehiculos |
-| POST | /api/v1/vehicles/ | Registrar |
-| GET | /api/v1/vehicles/{id} | Obtener |
-| PUT | /api/v1/vehicles/{id} | Actualizar |
-| DELETE | /api/v1/vehicles/{id} | Eliminar |
-
----
-
-## Tests
-
-```bash
-cd backend
-source .venv/bin/activate
-pytest -v
-```
-
----
-
-## Dependencias Principales
-
-```
-FastAPI          -> Framework web asincrono
-SQLAlchemy 2.0   -> ORM con soporte async
-GeoAlchemy2     -> Tipos PostGIS para SQLAlchemy
-AsyncPG          -> Driver PostgreSQL asincrono
-Celery           -> Cola de tareas en segundo plano
-Redis            -> Broker de Celery + cache
-python-jose      -> JWT
-passlib/bcrypt   -> Hashing de contrasenas
-Alembic          -> Migraciones de BD
-pytest/httpx     -> Testing
-```
-
----
-
-## Contribuir
-
-```bash
-git checkout -b feature/mi-idea
-# ... codigo ...
-pytest -v
-git commit -m "feat: descripcion clara"
-git push origin feature/mi-idea
-# Abre un PR
-```
-
----
-
-<p align="center">
-  <sub>Desarrollado para el Hackaton HackData CTGI SENA 2026</sub>
-  <br>
-  <strong>Medellin, Colombia</strong>
-</p>

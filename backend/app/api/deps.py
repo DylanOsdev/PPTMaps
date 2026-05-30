@@ -1,5 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security.api_key import APIKeyHeader
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,8 +9,23 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.crud import get_user_by_id
 from app.schemas.token import TokenPayload
+import secrets
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+
+# Header de API key para máquinas (ingesta de telemetría). auto_error=False para
+# devolver 401 explícito en vez del 403 por defecto cuando falta el header.
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def require_api_key(api_key: str = Depends(_api_key_header)) -> str:
+    """Valida la API key de telemetría con comparación de tiempo constante."""
+    if not api_key or not secrets.compare_digest(api_key, settings.TELEMETRY_API_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key inválida o ausente",
+        )
+    return api_key
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),

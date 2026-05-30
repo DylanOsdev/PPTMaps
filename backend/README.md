@@ -1,72 +1,190 @@
-# MoviMed — Backend API
+# PPTMaps — Backend API
 
-> **Plataforma unificada de movilidad inteligente para Medellín**  
-> Backend construido con FastAPI · PostgreSQL + PostGIS  
+> **Plataforma unificada de movilidad inteligente para el Valle de Aburrá (Medellín)**
+> FastAPI · PostgreSQL + PostGIS · Redis · Celery · WebSockets
 > Proyecto para el **Hackatón HackData CTGI SENA 2026**
 
----
-
-## 🌐 Origen de los Datos (Open Data Medellín)
-
-El backend de **MoviMed** está diseñado para ingestar y optimizar datos geoespaciales de entidades oficiales locales:
-
-1. **API SIATA (Sistema de Alerta Temprana de Medellín)**: Suministra los niveles en tiempo real del Río Medellín y quebradas (`flood_hazards`), permitiendo actualizar polígonos de riesgo de inundación.
-2. **MEData (Portal de Datos Abiertos de la Alcaldía de Medellín)**: Ingestamos los datasets oficiales de *Incidentes Viales* y *Geometría de la Malla Vial* para nuestro modelo de zonas de accidentalidad (`accident_zones`).
-3. **Reportes Ciudadanos**: Alimentados en tiempo real por los usuarios de la plataforma (`reports`).
-
-Nuestro sistema cachea y optimiza estos datos geográficos en **PostGIS** para entregar respuestas ultrarrápidas al frontend, evitando saturar las APIs oficiales con peticiones directas de los usuarios.
+PPTMaps ingiere telemetría vehicular en tiempo real, alerta sobre inundación de
+deprimidos viales (datos SIATA), detecta zonas de accidentalidad con clustering
+espacial y calcula rutas que **esquivan las zonas de riesgo activas**.
 
 ---
 
-## 🚀 Inicio Rápido Backend (Local)
+## 🏛️ Arquitectura
 
-El backend se ejecuta localmente (sin Docker). Requieres **PostgreSQL + PostGIS** instalado en tu sistema (Fedora/Linux).
+El backend sigue una **arquitectura hexagonal** (puertos y adaptadores) en los puntos
+donde importa el desacople, y **CQRS** para la ingesta de alta concurrencia.
+
+```
+app/
+├── api/            # Capa HTTP: routers v1 + dependencias de auth (deps.py)
+├── core/           # Configuración y seguridad (JWT, hashing)
+├── crud/           # Acceso a datos (consultas PostGIS: ST_DWithin, ST_AsGeoJSON)
+├── db/             # Motor async, sesión, base declarativa, cliente Redis
+├── models/         # Modelos SQLAlchemy 2.0 (PostGIS via GeoAlchemy2)
+├── schemas/        # Contratos Pydantic v2 (entrada/salida)
+├── services/       # Lógica de dominio (SIATA hexagonal, telemetría, ruteo, alertas)
+├── tasks/          # Celery: app + beat schedule + workers
+├── websocket/      # Gestor de conexiones + router de telemetría en vivo
+└── ml/             # Clustering espacial DBSCAN (zonas calientes)
+```
+
+### Decisiones de diseño destacadas
+
+- **CQRS en telemetría**: los dispositivos GPS emiten miles de pings; escribir directo
+  a Postgres no escala. El endpoint **encola en Redis** (respuesta inmediata `202`) y un
+  **worker Celery drena el buffer a Postgres en lotes**. Separa el camino de escritura
+  rápida del de persistencia.
+- **Ingesta SIATA hexagonal**: el servicio depende de la interfaz `SiataGaugeClient`, no
+  de una fuente concreta. Hoy un adaptador seed con estaciones reales; mañana un cliente
+  HTTP, sin tocar el dominio.
+- **Clustering en la base de datos**: `ST_ClusterDBSCAN` (PostGIS nativo) en vez de
+  traer los puntos a Python con scikit-learn. El cómputo espacial vive donde están los datos.
+
+---
+
+## 🧰 Stack
+
+| Capa | Tecnología |
+|------|-----------|
+| API | FastAPI 0.111 (async) |
+| Base de datos | PostgreSQL 16 + **PostGIS 3.4** |
+| ORM / geo | SQLAlchemy 2.0 + GeoAlchemy2 |
+| Migraciones | Alembic |
+| Cola / cache | Redis 7 |
+| Tareas async | Celery 5 (worker + beat) |
+| Tiempo real | WebSockets (Starlette) |
+| Auth | JWT (python-jose) + bcrypt (passlib) |
+| Tests | pytest + pytest-asyncio sobre PostGIS real |
+
+---
+
+## 🔌 API
+
+Base: `/api/v1`
+
+| Recurso | Endpoints |
+|---------|-----------|
+| **Auth** | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
+| **Vehículos** | CRUD `/vehicles` (roles: admin/authority) |
+| **Telemetría** | `POST /telemetry` (CQRS, protegido por API key) |
+| **Reportes** | `/reports` (incidentes ciudadanos) |
+| **Zonas de accidentalidad** | `/accident-zones` (+ búsqueda por proximidad `ST_DWithin`) |
+| **Riesgos de inundación** | `/flood-hazards` |
+| **Rutas** | `GET /routes?destination=lat,lng` (ruteo resiliente) |
+| **Público (mapa)** | `/public/comunas`, `/public/telemetry/latest`, `/public/alerts`, `/public/accidents/geojson`, `/public/fatalities`, `/public/flood-zones`, `/public/weather`, `/public/rain-risk` |
+| **Tiempo real** | `WS /ws/telemetry?channel=global` |
+
+Documentación interactiva: `http://localhost:8000/docs`
+
+### Capas del mapa (frontend → backend)
+
+Las **8 capas** del mapa se sirven desde el backend (PostGIS), ninguna depende ya de
+datos estáticos en el frontend:
+
+| Capa | Fuente backend |
+|------|----------------|
+| Comunas/Municipios | `GET /api/v1/public/comunas` (PostGIS · cruce espacial en `/comunas/stats`) |
+| Telemetría GPS | `WS /ws/telemetry` + `POST /api/v1/telemetry` (CQRS) |
+| Accidentes | `GET /api/v1/public/accidents/geojson` |
+| Zonas de inundación | SIATA → `GET /api/v1/public/flood-zones` |
+| Fatalidades | `GET /api/v1/public/fatalities` |
+| Alertas | `WS /ws/telemetry` + `GET /api/v1/public/alerts` |
+| Clima | Open-Meteo → `GET /api/v1/public/weather` |
+| Lluvias | Open-Meteo → `GET /api/v1/public/rain-risk` |
+
+### Tiempo real (WebSocket)
+
+`/ws/telemetry` emite la última posición de cada vehículo y las alertas activas:
+```json
+{ "type": "telemetry", "data": [{ "vehicle_id": "...", "lat": 6.25, "lng": -75.56, "speed": 42, "heading": 180 }] }
+{ "type": "alerts",     "data": [{ "type": "siata", "severity": "CRITICAL", "message": "..." }] }
+```
+
+### Ruteo resiliente
+
+`GET /routes` traza una ruta origen→destino y, si cruza una **zona de riesgo activa**
+(inundación `watch`/`flooded` o zona de accidentalidad severa), inserta un waypoint que
+la rodea. Devuelve `{ coordinates, distance_km, avoided_zones }`.
+
+### Inteligencia (DBSCAN)
+
+`ST_ClusterDBSCAN` agrupa los reportes de accidente por densidad espacial y genera
+**zonas calientes** (`accident_zones`) con su conteo de incidentes. Corre como tarea
+Celery periódica.
+
+---
+
+## 🔐 Seguridad
+
+- **Usuarios**: JWT (OAuth2 password flow) con roles `citizen` / `authority` / `admin`;
+  contraseñas con bcrypt. Dependencias `get_current_active_user` y `require_role`.
+- **Dispositivos GPS**: la ingesta de telemetría se protege con **API key** (`X-API-Key`),
+  no con JWT — los dispositivos son máquinas, no usuarios. Comparación de tiempo constante.
+
+---
+
+## ⚙️ Tareas en segundo plano (Celery beat)
+
+| Tarea | Frecuencia | Función |
+|-------|-----------|---------|
+| `telemetry.flush` | 1 min | drena el buffer Redis → Postgres (CQRS) |
+| `siata.sync_flood_hazards` | 15 min | sincroniza niveles SIATA → `flood_hazards` |
+| `overspeed.check` | 1 min | genera alertas por exceso de velocidad |
+| `ml.cluster_accident_hotspots` | 1 h | reclustriza accidentes (DBSCAN) |
+
+---
+
+## 🚀 Cómo correr
+
+### Con Docker (recomendado)
 
 ```bash
-# 1. Preparar la Base de Datos (PostGIS requerido)
-sudo -u postgres psql -c "CREATE DATABASE movimed;"
-sudo -u postgres psql -d movimed -f schema.sql
+cd backend
+docker compose up --build
+```
 
-# 2. Iniciar entorno virtual de Python
-python3 -m venv venv
-source venv/bin/activate
+Levanta PostGIS, Redis, la API (aplica migraciones automáticamente), el worker y el beat.
+API en `http://localhost:8000/docs`.
+
+### Local (desarrollo)
+
+```bash
+cd backend
+python3.11 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Correr el servidor FastAPI
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Requiere PostgreSQL+PostGIS y Redis accesibles (ver .env.example)
+cp .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
-La API estará disponible en `http://localhost:8000/docs`.
 
 ---
 
-## Estructura del Proyecto
+## 🧪 Tests
 
-```text
-backend/
-├── app/
-│   ├── api/          # Controladores (Rutas HTTP y REST)
-│   ├── core/         # Configuración y utilidades
-│   ├── db/           # Conexión a Base de Datos
-│   ├── models/       # Modelos SQLAlchemy (PostGIS)
-│   └── schemas/      # Validadores Pydantic
-├── schema.sql        # Esquema oficial de base de datos
-├── requirements.txt  # Dependencias Python
-└── .env.example      # Archivo de configuración base
+**79 pruebas** sobre **PostGIS real** (no SQLite): auth, telemetría CQRS, WebSocket,
+ruteo, clustering, endpoints públicos, siembra de zonas y CRUD geoespacial.
+
+```bash
+cd backend
+docker compose -f docker-compose.test.yml up -d   # PostGIS + Redis de prueba
+source venv/bin/activate
+export TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5433/movimed_test"
+pytest -q
 ```
-
-## 🚧 Trabajo Pendiente (Próximos Pasos)
-
-Actualmente la base de datos, el esquema y los modelos base están configurados. Lo que **falta implementar en el backend** es:
-
-- [ ] **Operaciones CRUD:** Construir la lógica de acceso a datos para insertar, leer, actualizar y borrar `users`, `reports`, `accident_zones` y `flood_hazards`.
-- [ ] **Rutas (Endpoints) de FastAPI:** Crear los controladores `/api/v1/...` para exponer estas operaciones al frontend, incluyendo consultas geográficas nativas con PostGIS (ej. *Buscar zonas de inundación a 5km de mi posición*).
-- [ ] **Ingesta Automática (Cron Jobs):** Programar scripts asíncronos que consuman las APIs reales del SIATA y MEData cada X minutos para mantener nuestra base de datos sincronizada.
-- [ ] **Limpieza de código obsoleto:** Remover referencias a los modelos antiguos (`vehicles`, `telemetry`) de las dependencias actuales del router.
 
 ---
 
-## 👥 Autores
-Proyecto desarrollado para el **Hackatón HackData CTGI SENA 2026**.
+## 🌐 Origen de los datos (Open Data Medellín)
 
-## 📄 Licencia
-MIT License — libre uso para fines académicos y de competencia.
+- **SIATA** — niveles del Río Medellín y quebradas → `flood_hazards`.
+- **MEData** — incidentes viales y malla vial → `accident_zones`.
+- **Reportes ciudadanos** — alimentados en tiempo real por los usuarios.
+
+PostGIS cachea y optimiza estos datos para responder rápido al frontend sin saturar las
+APIs oficiales.
+
+---
+*Desarrollado para el Hackatón HackData CTGI SENA 2026.*

@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -15,7 +15,7 @@ function setLayerStatus(ok) {
 }
 
 let _layersLoaded = 0;
-const _LAYERS_TOTAL = 3;
+const _LAYERS_TOTAL = 4;
 
 function trackLayer(ok) {
   _layersLoaded++;
@@ -24,8 +24,17 @@ function trackLayer(ok) {
 }
 
 export async function loadComunasData() {
-  const url = CONFIG.dataUrl + '?t=' + Date.now(); // Cache buster
-  const res = await fetch(url);
+  // Fuente primaria: backend PostGIS (/public/comunas). Fallback: JSON estático.
+  try {
+    const res = await fetch(`${CONFIG.apiBase}/public/comunas`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.comunas?.length) return data;
+    }
+  } catch (err) {
+    console.warn("[map] /public/comunas no disponible, usando JSON estático:", err);
+  }
+  const res = await fetch(CONFIG.dataUrl);
   if (!res.ok) throw new Error("No se pudo cargar medellin-comunas.json");
   return res.json();
 }
@@ -54,6 +63,17 @@ export async function loadFloodZonesData(map) {
     trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar zonas de inundación:", err);
+    trackLayer(false);
+  }
+}
+
+export async function loadWeatherData() {
+  try {
+    const [rainRisk, weather] = await Promise.all([fetchRainRisk(), fetchWeather()]);
+    updateWeather(rainRisk, weather);
+    trackLayer(true);
+  } catch (err) {
+    console.warn("[map] No se pudieron cargar datos de clima:", err);
     trackLayer(false);
   }
 }
@@ -172,6 +192,7 @@ export async function setupMapLayers() {
 
   loadAccidentsData();
   loadFloodZonesData(map);
+  loadWeatherData();
   startFatalitiesPolling();
 
   let statsTimer;
