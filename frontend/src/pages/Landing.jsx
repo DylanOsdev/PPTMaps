@@ -1,145 +1,337 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkedAlt, FaCloudSunRain, FaCarCrash, FaMobileAlt, FaRoute, FaDatabase } from 'react-icons/fa';
+
+const STATS = [
+  { value: '16',   label: 'Comunas monitoreadas' },
+  { value: '847',  label: 'Conductores GPS activos' },
+  { value: '9',    label: 'Capas de datos activas' },
+  { value: '<30s', label: 'Latencia de actualización' },
+];
+
+const FEATURES = [
+  {
+    icon: '⬡',
+    title: 'Capas Geoespaciales',
+    desc: 'Contorno de ciudad, polígonos de comunas y corregimientos del Valle de Aburrá con control granular de visibilidad.',
+  },
+  {
+    icon: '⬡',
+    title: 'Telemetría Vial',
+    desc: 'Rastreo GPS de conductores en tiempo real y clusters de accidentes calculados con DBSCAN.',
+  },
+  {
+    icon: '⬡',
+    title: 'SIATA & Clima',
+    desc: 'Alertas tempranas de inundación, riesgo de lluvia a 2 horas y estado de deprimidos viales críticos.',
+  },
+  {
+    icon: '⬡',
+    title: 'Reportes Ciudadanos',
+    desc: 'Canal georeferenciado para reportar colisiones, obstáculos y obras sin señalización en segundos.',
+  },
+  {
+    icon: '⬡',
+    title: 'Rutas Seguras',
+    desc: 'Rutas que evitan zonas de riesgo activo, lluvia inminente y vías bloqueadas, actualizadas cada 30 s.',
+  },
+  {
+    icon: '⬡',
+    title: 'API en Tiempo Real',
+    desc: 'Endpoints REST sobre PostGIS y Redis con soporte GeoJSON, alta disponibilidad y baja latencia.',
+  },
+];
 
 export default function Landing() {
   const navigate = useNavigate();
 
+  // Habilita scroll en la landing y lo restaura al salir
+  useEffect(() => {
+    document.documentElement.classList.add('page-landing');
+    return () => document.documentElement.classList.remove('page-landing');
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#f8f9f8] text-[#333333] font-['Inter',sans-serif] overflow-x-hidden">
-      {/* NAV */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-[60px] flex items-center justify-between px-6 md:px-12 bg-transparent">
-        <div className="flex items-center gap-3">
-          <img src="/logo.jpg" alt="PPTMaps" className="h-9 w-9 rounded-full object-cover" />
-          <span className="text-xl font-bold text-white tracking-tight">PPTMaps</span>
+    <div style={{
+      backgroundColor: '#0f172a',
+      minHeight: '100vh',
+      color: '#e2e8f0',
+      fontFamily: "'Inter', system-ui, sans-serif",
+      fontSize: '16px',
+      lineHeight: '1.6',
+    }}>
+
+      {/* ── NAV ── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(56,189,248,0.15)',
+        padding: '0 3rem',
+        height: '68px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.2rem', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.05em' }}>
+          <img src="/logo.jpg" alt="PPTMaps" style={{ height: '34px', width: '34px', borderRadius: '50%', objectFit: 'cover' }} />
+          PPTMaps
+        </span>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <a href="#funciones" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
+             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
+             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Funciones</a>
+          <a href="#stats" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
+             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
+             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Estadísticas</a>
+          <a href="#" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
+             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
+             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Documentación</a>
+          <button
+            onClick={() => navigate('/map')}
+            style={{
+              fontSize: '0.875rem', fontWeight: 600,
+              backgroundColor: '#22d3ee', color: '#0f172a',
+              border: 'none', borderRadius: '8px',
+              padding: '0.5rem 1.25rem', cursor: 'pointer',
+            }}
+          >
+            Abrir Mapa
+          </button>
+        </nav>
+      </header>
+
+      {/* ── HERO ── */}
+      {/* ── HERO ── */}
+      <section style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Imagen de fondo de Medellín + overlay oscuro */}
+        <img src="/medellin.jpg" alt="" style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', zIndex: 0,
+        }} />
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.7) 50%, rgba(15,23,42,0.9) 100%)',
+        }} />
+        <div style={{
+          position: 'relative', zIndex: 2,
+          maxWidth: '860px',
+          margin: '0 auto',
+          padding: '6rem 2rem 5rem',
+          textAlign: 'center',
+        }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.35rem 1rem', marginBottom: '2rem',
+          borderRadius: '999px',
+          border: '1px solid rgba(34,211,238,0.3)',
+          backgroundColor: 'rgba(34,211,238,0.07)',
+          fontSize: '0.8rem', color: '#67e8f9',
+        }}>
+          <span style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            backgroundColor: '#22d3ee',
+            display: 'inline-block',
+          }} />
+          Sistema activo · Medellín, Antioquia
         </div>
-      </nav>
 
-      {/* HERO */}
-      <section className="min-h-screen pt-[60px] flex items-center justify-center relative overflow-hidden bg-[#0d2a1a]">
-        {/* Imagen de fondo de Medellín */}
-        <img src="/medellin.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
-        {/* Overlay para legibilidad del texto */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d2a1a]/45 via-[#0d2a1a]/30 to-[#0d2a1a]/55"></div>
+        <h1 style={{
+          fontSize: 'clamp(2.5rem, 5.5vw, 4rem)',
+          fontWeight: 800,
+          lineHeight: 1.1,
+          color: '#ffffff',
+          marginBottom: '1.25rem',
+          letterSpacing: '-0.025em',
+        }}>
+          Inteligencia urbana{' '}
+          <span style={{ color: '#22d3ee' }}>en tiempo real</span>
+        </h1>
 
-        <div className="flex flex-col items-center text-center px-8 py-16 z-10 max-w-[820px]">
-          <span className="text-sm text-[#a7f3d0] mb-6 font-semibold tracking-wide animate-[fadeUp_0.5s_0.1s_forwards] opacity-0">
-            // INTELIGENCIA URBANA · MEDELLÍN · ACTIVO
-          </span>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white mb-6 animate-[fadeUp_0.5s_0.25s_forwards] opacity-0">
-            MAPA<br />
-            <span className="text-white">GEOESPACIAL</span><br />
-            EN <span className="text-[#3db84f]">TIEMPO REAL</span>
-          </h1>
-          <p className="text-base leading-relaxed text-[#e0e0e0] max-w-[480px] mb-10 animate-[fadeUp_0.5s_0.4s_forwards] opacity-0">
-            Plataforma de comando para monitoreo urbano de Medellín.
-            Tráfico, alertas SIATA, telemetría vial y reportes ciudadanos
-            en las 16 comunas — sincronizado en tiempo real.
+        <p style={{
+          fontSize: '1.1rem',
+          color: '#94a3b8',
+          lineHeight: 1.75,
+          maxWidth: '560px',
+          margin: '0 auto 2.5rem',
+        }}>
+          Plataforma de comando geoespacial para monitorear el tráfico, clima y
+          alertas de las 16 comunas del Valle de Aburrá, sincronizado con SIATA y GPS en vivo.
+        </p>
+
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate('/map')}
+            style={{
+              fontSize: '1rem', fontWeight: 700,
+              backgroundColor: '#22d3ee', color: '#0f172a',
+              border: 'none', borderRadius: '10px',
+              padding: '0.85rem 2.25rem', cursor: 'pointer',
+              boxShadow: '0 0 28px rgba(34,211,238,0.25)',
+            }}
+          >
+            Abrir Consola de Comando
+          </button>
+          <button
+            onClick={() => navigate('/report')}
+            style={{
+              fontSize: '1rem', fontWeight: 600,
+              backgroundColor: 'transparent', color: '#e2e8f0',
+              border: '1px solid rgba(148,163,184,0.35)',
+              borderRadius: '10px',
+              padding: '0.85rem 2.25rem', cursor: 'pointer',
+            }}
+          >
+            Reportar Incidente
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              fontSize: '1rem', fontWeight: 600,
+              backgroundColor: 'transparent', color: '#22d3ee',
+              border: '1px solid rgba(34,211,238,0.5)',
+              borderRadius: '10px',
+              padding: '0.85rem 2.25rem', cursor: 'pointer',
+            }}
+          >
+            Dashboard
+          </button>
+        </div>
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <section id="stats" style={{
+        borderTop: '1px solid rgba(56,189,248,0.12)',
+        borderBottom: '1px solid rgba(56,189,248,0.12)',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+      }}>
+        <div style={{
+          maxWidth: '1000px', margin: '0 auto',
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+        }}>
+          {STATS.map((s, i) => (
+            <div key={s.label} style={{
+              textAlign: 'center',
+              padding: '3rem 1.5rem',
+              borderRight: i < 3 ? '1px solid rgba(56,189,248,0.12)' : 'none',
+            }}>
+              <p style={{ fontSize: '2.75rem', fontWeight: 800, color: '#22d3ee', margin: 0, lineHeight: 1 }}>
+                {s.value}
+              </p>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.5rem', margin: '0.5rem 0 0' }}>
+                {s.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section id="funciones" style={{ maxWidth: '1100px', margin: '0 auto', padding: '6rem 2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem' }}>
+            Todo lo que necesitas
+          </h2>
+          <p style={{ fontSize: '1rem', color: '#64748b', maxWidth: '480px', margin: '0 auto' }}>
+            Un ecosistema completo de datos urbanos para tomar decisiones informadas en tiempo real.
           </p>
-          <div className="flex flex-wrap gap-8 md:gap-12 mb-10 justify-center animate-[fadeUp_0.5s_0.55s_forwards] opacity-0">
-            <div>
-              <span className="text-3xl font-bold text-white block">16</span>
-              <span className="text-sm text-[#cbd5cd] font-medium">COMUNAS</span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '1.25rem',
+        }}>
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              style={{
+                backgroundColor: '#1e293b',
+                border: '1px solid rgba(56,189,248,0.1)',
+                borderRadius: '12px',
+                padding: '1.75rem',
+                cursor: 'default',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(34,211,238,0.35)';
+                e.currentTarget.style.boxShadow = '0 4px 24px rgba(34,211,238,0.07)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(56,189,248,0.1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div style={{
+                width: '40px', height: '40px',
+                backgroundColor: 'rgba(34,211,238,0.1)',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                {f.title}
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.65, margin: 0 }}>
+                {f.desc}
+              </p>
             </div>
-            <div>
-              <span className="text-3xl font-bold text-white block">847</span>
-              <span className="text-sm text-[#cbd5cd] font-medium">GPS ACTIVOS</span>
-            </div>
-            <div>
-              <span className="text-3xl font-bold text-white block">0K</span>
-              <span className="text-sm text-[#cbd5cd] font-medium">DEPRIMIDOS</span>
-            </div>
-            <div>
-              <span className="text-3xl font-bold text-white block">7</span>
-              <span className="text-sm text-[#cbd5cd] font-medium">ALERTAS HOY</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-4 items-center justify-center animate-[fadeUp_0.5s_0.7s_forwards] opacity-0">
-            <button onClick={() => navigate('/map')} className="text-[0.95rem] font-semibold text-white bg-[#1a5c3a] px-8 py-3.5 rounded transition-colors hover:bg-[#2d9e5e]">
-              ABRIR COMANDO
-            </button>
-            <button onClick={() => navigate('/dashboard')} className="text-[0.95rem] font-semibold text-white bg-transparent border-2 border-white px-8 py-3 rounded transition-colors hover:bg-white hover:text-[#1a5c3a]">
-              DASHBOARD
-            </button>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section className="py-20 px-8 md:px-16 bg-white border-t border-[#e0e0e0]">
-        <div className="text-sm text-[#1a5c3a] mb-3 font-semibold tracking-wide">// CAPACIDADES DEL SISTEMA</div>
-        <div className="text-3xl font-bold text-[#1a5c3a] mb-12">INTELIGENCIA URBANA COMPLETA</div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaMapMarkedAlt size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">CAPAS DE DATOS</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">9 de 14 capas activas. Contorno ciudad, polígonos comunas, telemetría GPS y clusters de accidentes configurables en tiempo real.</div>
-          </div>
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaCloudSunRain size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">SIATA Y CLIMA</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">Integración directa con el Sistema de Alertas Tempranas. Deprimidos inundables, riesgo de lluvia a 2 horas y alertas meteorológicas.</div>
-          </div>
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaCarCrash size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">TELEMETRÍA VIAL</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">Rastreo GPS en tiempo real, mapas predictivos de congestión y clusters de accidentes via DBSCAN para las 16 comunas.</div>
-          </div>
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaMobileAlt size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">REPORTES CIUDADANOS</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">Canal georeferenciado de reportes. Obstáculos, obras sin señalización e incidentes procesados en segundos.</div>
-          </div>
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaRoute size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">RUTAS SEGURAS</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">Cálculo de rutas evitando zonas de riesgo activo, lluvia inminente y vías bloqueadas. Actualización cada 30 segundos.</div>
-          </div>
-          <div className="bg-[#f8f9f8] p-8 border border-[#e0e0e0] rounded transition-all hover:bg-white hover:border-[#1a5c3a] hover:shadow-[0_4px_12px_rgba(26,92,58,.08)]">
-            <div className="w-12 h-12 mb-4 flex items-center justify-center text-[#1a5c3a]"><FaDatabase size={32} /></div>
-            <div className="text-[0.95rem] font-bold text-[#1a5c3a] mb-2.5">API PÚBLICA</div>
-            <div className="text-[0.95rem] leading-relaxed text-[#666666]">REST endpoints para todos los datos geoespaciales. PostGIS, Redis y soporte GeoJSON de alta velocidad.</div>
-          </div>
+      {/* ── CTA ── */}
+      <section style={{
+        borderTop: '1px solid rgba(56,189,248,0.12)',
+        backgroundColor: 'rgba(34,211,238,0.02)',
+        padding: '6rem 2rem',
+        textAlign: 'center',
+      }}>
+        <div style={{ maxWidth: '560px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem' }}>
+            Explora el mapa ahora
+          </h2>
+          <p style={{ fontSize: '1rem', color: '#64748b', marginBottom: '2rem' }}>
+            Accede a todas las capas, alertas y telemetría del Valle de Aburrá.
+          </p>
+          <button
+            onClick={() => navigate('/map')}
+            style={{
+              fontSize: '1rem', fontWeight: 700,
+              backgroundColor: '#22d3ee', color: '#0f172a',
+              border: 'none', borderRadius: '10px',
+              padding: '0.9rem 2.75rem', cursor: 'pointer',
+              boxShadow: '0 0 24px rgba(34,211,238,0.28)',
+            }}
+          >
+            Abrir TPPMAPS
+          </button>
         </div>
       </section>
 
-      {/* METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 border-y border-[#e0e0e0] bg-[#f8f9f8]">
-        <div className="p-8 md:p-12 text-center border-b md:border-b-0 md:border-r border-[#e0e0e0]">
-          <span className="text-4xl font-bold block mb-2 text-[#1a5c3a]">16</span>
-          <span className="text-sm text-[#666666] font-medium">COMUNAS ACTIVAS</span>
-        </div>
-        <div className="p-8 md:p-12 text-center border-b md:border-b-0 md:border-r border-[#e0e0e0]">
-          <span className="text-4xl font-bold block mb-2 text-[#3db84f]">847</span>
-          <span className="text-sm text-[#666666] font-medium">CONDUCTORES GPS</span>
-        </div>
-        <div className="p-8 md:p-12 text-center border-b md:border-b-0 md:border-r border-[#e0e0e0]">
-          <span className="text-4xl font-bold block mb-2 text-[#3db84f]">0K</span>
-          <span className="text-sm text-[#666666] font-medium">DEPRIMIDOS HOY</span>
-        </div>
-        <div className="p-8 md:p-12 text-center">
-          <span className="text-4xl font-bold block mb-2 text-[#d32f2f]">7</span>
-          <span className="text-sm text-[#666666] font-medium">ALERTAS EN CURSO</span>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <section className="py-24 px-8 md:px-20 text-center bg-white border-t border-[#e0e0e0] relative overflow-hidden">
-        <div className="text-sm text-[#1a5c3a] mb-3 font-semibold tracking-wide">// ACCESO AL SISTEMA</div>
-        <h2 className="text-3xl font-bold text-[#1a5c3a] mb-3">ENTRA AL COMANDO GEOESPACIAL</h2>
-        <p className="text-base text-[#666666] mb-10">Mapa satelital real de Medellín. Todas las capas. Todas las alertas. Tiempo real.</p>
-        <button onClick={() => navigate('/map')} className="text-sm font-semibold bg-[#1a5c3a] text-white px-11 py-4 rounded hover:bg-[#2d9e5e] transition-colors">
-          ABRIR TPPMAPS →
-        </button>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="bg-[#f8f9f8] border-t border-[#e0e0e0] py-8 px-8 md:px-16 flex flex-col md:flex-row items-center justify-between text-center gap-4">
-        <span className="text-[0.95rem] font-bold text-[#1a5c3a]">TPPMAPS</span>
-        <p className="text-[0.85rem] text-[#666666]">SISTEMA DEMO · MEDELLÍN, ANTIOQUIA · COLOMBIA</p>
-        <p className="text-[0.85rem] text-[#666666]">PostGIS + Redis: CONECTADO · API v2.1</p>
+      {/* ── FOOTER ── */}
+      <footer style={{
+        borderTop: '1px solid rgba(56,189,248,0.1)',
+        backgroundColor: '#0a1120',
+        padding: '1.5rem 3rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+      }}>
+        <span style={{ fontWeight: 700, color: '#22d3ee', fontSize: '1rem' }}>TPPMAPS</span>
+        <p style={{ fontSize: '0.8rem', color: '#475569', margin: 0 }}>
+          Sistema demo · Medellín, Antioquia · Colombia
+        </p>
+        <p style={{ fontSize: '0.8rem', color: '#334155', margin: 0 }}>
+          PostGIS + Redis conectado · API v2.1
+        </p>
       </footer>
+
     </div>
   );
 }

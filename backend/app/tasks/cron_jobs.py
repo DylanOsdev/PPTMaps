@@ -2,14 +2,15 @@ import asyncio
 
 from app.db.database import async_session_maker
 from app.db.redis import get_redis
-from app.services.siata_sync import SiataSyncService, StaticSeedSiataClient
+from app.services.siata_sync import SiataSyncService, _create_siata_client
 from app.services.telemetry import flush_telemetry
 from app.tasks.celery_app import celery_app
 
 
 async def _run_sync() -> int:
     async with async_session_maker() as db:
-        return await SiataSyncService(StaticSeedSiataClient()).sync(db)
+        client = await _create_siata_client()
+        return await SiataSyncService(client).sync(db)
 
 
 @celery_app.task(name="siata.sync_flood_hazards")
