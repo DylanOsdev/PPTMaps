@@ -72,10 +72,26 @@ Base: `/api/v1`
 | **Zonas de accidentalidad** | `/accident-zones` (+ búsqueda por proximidad `ST_DWithin`) |
 | **Riesgos de inundación** | `/flood-hazards` |
 | **Rutas** | `GET /routes?destination=lat,lng` (ruteo resiliente) |
-| **Público (mapa)** | `/public/telemetry/latest`, `/public/alerts`, `/public/accidents/geojson`, `/public/fatalities`, `/public/flood-zones` |
+| **Público (mapa)** | `/public/comunas`, `/public/telemetry/latest`, `/public/alerts`, `/public/accidents/geojson`, `/public/fatalities`, `/public/flood-zones`, `/public/weather`, `/public/rain-risk` |
 | **Tiempo real** | `WS /ws/telemetry?channel=global` |
 
 Documentación interactiva: `http://localhost:8000/docs`
+
+### Capas del mapa (frontend → backend)
+
+Las **8 capas** del mapa se sirven desde el backend (PostGIS), ninguna depende ya de
+datos estáticos en el frontend:
+
+| Capa | Fuente backend |
+|------|----------------|
+| Comunas/Municipios | `GET /api/v1/public/comunas` (PostGIS · cruce espacial en `/comunas/stats`) |
+| Telemetría GPS | `WS /ws/telemetry` + `POST /api/v1/telemetry` (CQRS) |
+| Accidentes | `GET /api/v1/public/accidents/geojson` |
+| Zonas de inundación | SIATA → `GET /api/v1/public/flood-zones` |
+| Fatalidades | `GET /api/v1/public/fatalities` |
+| Alertas | `WS /ws/telemetry` + `GET /api/v1/public/alerts` |
+| Clima | Open-Meteo → `GET /api/v1/public/weather` |
+| Lluvias | Open-Meteo → `GET /api/v1/public/rain-risk` |
 
 ### Tiempo real (WebSocket)
 
@@ -148,8 +164,8 @@ uvicorn app.main:app --reload
 
 ## 🧪 Tests
 
-**63 pruebas** sobre **PostGIS real** (no SQLite): auth, telemetría CQRS, WebSocket,
-ruteo, clustering, endpoints públicos y CRUD geoespacial.
+**79 pruebas** sobre **PostGIS real** (no SQLite): auth, telemetría CQRS, WebSocket,
+ruteo, clustering, endpoints públicos, siembra de zonas y CRUD geoespacial.
 
 ```bash
 cd backend
