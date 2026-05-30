@@ -1,6 +1,6 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Union
-from pydantic import AnyHttpUrl, validator
+from pydantic import AnyHttpUrl, field_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "PPTMaps"
@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
@@ -42,8 +43,6 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 settings = Settings()
