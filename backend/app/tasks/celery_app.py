@@ -28,5 +28,9 @@ celery_app.conf.update(
             "task": "overspeed.check",
             "schedule": crontab(minute="*"),
         },
+        "cluster-accidents-hourly": {
+            "task": "ml.cluster_accident_hotspots",
+            "schedule": crontab(minute="0"),
+        },
     },
 )

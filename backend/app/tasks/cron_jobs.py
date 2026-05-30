@@ -27,3 +27,16 @@ async def _run_flush() -> int:
 def flush_telemetry_task() -> int:
     """Drena el buffer de telemetría de Redis hacia Postgres en lotes."""
     return asyncio.run(_run_flush())
+
+
+async def _run_clustering() -> int:
+    from app.ml.dbscan_clustering import cluster_accident_hotspots
+
+    async with async_session_maker() as db:
+        return await cluster_accident_hotspots(db)
+
+
+@celery_app.task(name="ml.cluster_accident_hotspots")
+def cluster_accident_hotspots_task() -> int:
+    """Reclustriza los accidentes (DBSCAN) y refresca las zonas calientes."""
+    return asyncio.run(_run_clustering())
