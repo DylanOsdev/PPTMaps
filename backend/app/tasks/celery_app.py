@@ -20,5 +20,9 @@ celery_app.conf.update(
             "task": "siata.sync_flood_hazards",
             "schedule": crontab(minute="*/15"),
         },
+        "telemetry-flush-every-min": {
+            "task": "telemetry.flush",
+            "schedule": crontab(minute="*"),
+        },
     },
 )

@@ -8,5 +8,6 @@ from app.models.user import User  # noqa: F401
 from app.models.report import Report  # noqa: F401
 from app.models.accident_zone import AccidentZone  # noqa: F401
 from app.models.flood_hazard import FloodHazard  # noqa: F401
+from app.models.telemetry import TelemetryPing  # noqa: F401
 
-__all__ = ["Base", "User", "Report", "AccidentZone", "FloodHazard"]
+__all__ = ["Base", "User", "Report", "AccidentZone", "FloodHazard", "TelemetryPing"]

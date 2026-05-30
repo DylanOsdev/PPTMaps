@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from app.main import app
 from app.db.base import Base
 from app.db.database import get_db
+from app.db.redis import get_redis
 
 # ── Base de datos PostGIS real para tests ──────────────────────────────────────
 # SQLite no implementa funciones PostGIS (ST_DWithin, ST_MakePoint), por lo que
@@ -35,6 +36,30 @@ async def override_get_db():
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+# ── Redis falso en memoria para tests (telemetría CQRS) ────────────────────────
+import fakeredis.aioredis
+
+# Se recrea por test (fixture redis_client) para quedar atado al event loop activo;
+# crearlo a nivel de módulo lo ata al primer loop y rompe los demás tests.
+_fake_redis: fakeredis.aioredis.FakeRedis | None = None
+
+
+def override_get_redis():
+    return _fake_redis
+
+
+app.dependency_overrides[get_redis] = override_get_redis
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def redis_client():
+    """Cliente fakeredis fresco por test, compartido entre endpoint y task."""
+    global _fake_redis
+    _fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    yield _fake_redis
+    await _fake_redis.aclose()
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
