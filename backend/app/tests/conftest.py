@@ -59,6 +59,13 @@ async def clean_tables():
 
 
 @pytest_asyncio.fixture
+async def db_session():
+    """Sesión de BD directa para tests de servicios (no vía HTTP)."""
+    async with TestSessionLocal() as session:
+        yield session
+
+
+@pytest_asyncio.fixture
 async def client():
     """Cliente HTTP asíncrono para hacer peticiones a la API en tests."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

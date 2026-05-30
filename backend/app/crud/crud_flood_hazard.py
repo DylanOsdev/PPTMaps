@@ -63,3 +63,26 @@ async def get_flood_hazards_nearby(
         )
     )
     return result.scalars().all()
+
+
+async def upsert_flood_hazard_by_station(
+    db: AsyncSession,
+    siata_station_id: str,
+    name: str,
+    status,
+    water_level_m: float,
+    geom,
+) -> FloodHazard:
+    """Crea o actualiza un hazard identificado por su estación SIATA (idempotente)."""
+    result = await db.execute(
+        select(FloodHazard).where(FloodHazard.siata_station_id == siata_station_id)
+    )
+    hazard = result.scalar_one_or_none()
+    if hazard is None:
+        hazard = FloodHazard(siata_station_id=siata_station_id, name=name, geom=geom)
+        db.add(hazard)
+    hazard.status = status
+    hazard.water_level_m = water_level_m
+    await db.commit()
+    await db.refresh(hazard)
+    return hazard
