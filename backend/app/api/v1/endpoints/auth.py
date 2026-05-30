@@ -9,7 +9,8 @@ from app.core.security import create_access_token
 from app.crud import authenticate_user, create_user, get_user_by_email
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, User as UserSchema
+from app.schemas.token import Token
+from app.schemas.user import UserCreate, User as UserSchema
 
 router = APIRouter()
 

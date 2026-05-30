@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Integer, String, Index
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
 from app.db.base_class import Base
@@ -11,6 +11,9 @@ class AccidentZone(Base):
     name = Column(String(255), nullable=True)
     severity = Column(Integer, nullable=False)
     incident_count = Column(Integer, nullable=False, default=0)
-    geom = Column(Geometry(geometry_type="MULTIPOLYGON", srid=4326), nullable=False)
+    geom = Column(Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+Index("idx_accident_zones_geom", AccidentZone.geom, postgresql_using="gist")

@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
-from app.websocket.ws_router import router as ws_router
 from app.core.config import settings
 from app.db.database import engine
 
@@ -39,7 +38,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description=(
         "**MoviMed API** — Plataforma unificada de movilidad inteligente para Medellín.\n\n"
-        "Gestiona telemetría geoespacial en tiempo real, vehículos, alertas y analítica de tráfico."
+        "Gestiona reportes ciudadanos, zonas de accidentalidad y riesgos de inundación."
     ),
     version="1.0.0",
     docs_url="/docs",
@@ -48,11 +47,8 @@ app = FastAPI(
     openapi_tags=[
         {"name": "🔐 Autenticación", "description": "Registro, login y gestión de sesión JWT."},
         {"name": "👤 Usuarios", "description": "CRUD de usuarios y gestión de roles."},
-        {"name": "🚗 Vehículos", "description": "Registro y estado de la flota."},
-        {"name": "📡 Telemetría", "description": "Ingesta y consulta de datos GPS + PostGIS."},
-        {"name": "🔔 Alertas", "description": "Alertas automáticas y manuales del sistema."},
-        {"name": "📊 Analítica", "description": "Métricas, heatmaps y estadísticas de flota."},
-        {"name": "🔴 Tiempo Real", "description": "WebSockets para telemetría en vivo."},
+        {"name": "📍 Reportes", "description": "Reportes ciudadanos de incidentes viales."},
+        {"name": "🗺️ Rutas", "description": "Consulta de rutas optimizadas."},
     ],
 )
 
@@ -67,9 +63,6 @@ app.add_middleware(
 
 # Routers REST
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
-# Router WebSocket (sin prefijo /api/v1)
-app.include_router(ws_router, prefix="/ws", tags=["🔴 Tiempo Real"])
 
 @app.get("/health", tags=["Health"], summary="Health check básico")
 async def health():
