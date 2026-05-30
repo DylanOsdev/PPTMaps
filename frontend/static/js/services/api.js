@@ -153,3 +153,19 @@ export async function fetchRoute(destination) {
   if (!res.ok) throw new Error("Route fetch failed");
   return res.json();
 }
+
+export async function fetchWeather() {
+  const res = await fetch(`${CONFIG.apiBase}/public/weather`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching weather");
+  return res.json();
+}
+
+export async function fetchRainRisk() {
+  const res = await fetch(`${CONFIG.apiBase}/public/rain-risk`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching rain risk");
+  return res.json();
+}

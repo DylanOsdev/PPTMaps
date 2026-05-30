@@ -335,3 +335,63 @@ export function updateFloodZones(map, data) {
     }
   });
 }
+
+// Etiqueta legible del código WMO de Open-Meteo (resumen).
+function weatherCodeLabel(code) {
+  if (code == null) return "—";
+  if (code === 0) return "Despejado";
+  if (code <= 3) return "Nublado";
+  if (code <= 48) return "Niebla";
+  if (code <= 67) return "Lluvia";
+  if (code <= 77) return "Nieve";
+  if (code <= 82) return "Chubascos";
+  return "Tormenta";
+}
+
+export function updateWeather(rainRisk, weather) {
+  const groups = AppState.layerGroups;
+  const rainGroup = groups["rain-risk"];
+  const weatherGroup = groups["weather-alerts"];
+  if (rainGroup?.clearLayers) rainGroup.clearLayers();
+  if (weatherGroup?.clearLayers) weatherGroup.clearLayers();
+
+  // Capa rain-risk: círculo por punto, color/tamaño según probabilidad de lluvia 2h.
+  if (Array.isArray(rainRisk) && rainGroup) {
+    rainRisk.forEach((p) => {
+      if (p.lat == null || p.lng == null) return;
+      const prob = p.precipitation_prob_2h ?? 0;
+      const color = prob >= 80 ? "#ef4444" : prob >= 65 ? "#f59e0b" : "#38bdf8";
+      const circle = L.circle([p.lat, p.lng], {
+        radius: 1500,
+        color,
+        fillColor: color,
+        fillOpacity: 0.25,
+        weight: 1.5,
+      });
+      circle.bindPopup(`
+        <div class="popup-accident">
+          <div class="popup-accident-title">🌧️ ${escapeHtml(String(p.location_name))}</div>
+          <div class="popup-accident-sev">Riesgo de lluvia (2h): <strong>${prob}%</strong></div>
+          <div class="popup-accident-coords">Lluvia actual: ${p.rain_mm ?? 0} mm</div>
+        </div>
+      `, { className: "popup-dark" });
+      rainGroup.addLayer(circle);
+    });
+  }
+
+  // Capa weather-alerts: marcador con el clima actual de cada punto.
+  if (Array.isArray(weather) && weatherGroup) {
+    weather.forEach((w) => {
+      if (w.lat == null || w.lng == null) return;
+      const marker = L.marker([w.lat, w.lng]);
+      marker.bindPopup(`
+        <div class="popup-accident">
+          <div class="popup-accident-title">🌡️ ${escapeHtml(String(w.location_name))}</div>
+          <div class="popup-accident-sev">${w.temperature_c ?? "—"}°C · ${escapeHtml(weatherCodeLabel(w.weather_code))}</div>
+          <div class="popup-accident-coords">Humedad: ${w.humidity ?? "—"}% · Lluvia: ${w.rain_mm ?? 0} mm</div>
+        </div>
+      `, { className: "popup-dark" });
+      weatherGroup.addLayer(marker);
+    });
+  }
+}

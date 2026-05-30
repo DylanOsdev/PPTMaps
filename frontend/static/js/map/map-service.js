@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -33,6 +33,15 @@ export async function loadFloodZonesData(map) {
     }
   } catch (err) {
     console.warn("[map] No se pudieron cargar zonas de inundación:", err);
+  }
+}
+
+export async function loadWeatherData() {
+  try {
+    const [rainRisk, weather] = await Promise.all([fetchRainRisk(), fetchWeather()]);
+    updateWeather(rainRisk, weather);
+  } catch (err) {
+    console.warn("[map] No se pudieron cargar datos de clima:", err);
   }
 }
 
@@ -132,6 +141,7 @@ export async function setupMapLayers() {
 
   loadAccidentsData();
   loadFloodZonesData(map);
+  loadWeatherData();
   startFatalitiesPolling();
 
   let statsTimer;
