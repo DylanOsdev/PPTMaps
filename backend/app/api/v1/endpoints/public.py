@@ -17,6 +17,7 @@ from app.models.flood_hazard import FloodHazard
 from app.models.report import Report, ReportType
 from app.models.weather import WeatherSnapshot
 from app.models.zone import Zone
+from app.services.weather import ForecastClient, OpenMeteoForecastClient
 from app.websocket.ws_router import _latest_telemetry
 
 router = APIRouter()
@@ -155,6 +156,19 @@ async def _weather_rows(db: AsyncSession, min_prob: int | None = None):
 @router.get("/weather", summary="Clima actual por punto del Valle de Aburrá")
 async def public_weather(db: AsyncSession = Depends(get_db)):
     return await _weather_rows(db)
+
+
+# Centro de Medellín (Parque Berrío): punto de referencia del pronóstico del widget.
+FORECAST_LAT, FORECAST_LNG = 6.2518, -75.5636
+
+
+def get_forecast_client() -> ForecastClient:
+    return OpenMeteoForecastClient()
+
+
+@router.get("/weather/forecast", summary="Pronóstico detallado (actual + horario + diario) de Medellín")
+async def public_weather_forecast(client: ForecastClient = Depends(get_forecast_client)):
+    return await client.fetch_forecast(FORECAST_LAT, FORECAST_LNG)
 
 
 @router.get("/rain-risk", summary="Puntos con riesgo de lluvia en las próximas 2h")

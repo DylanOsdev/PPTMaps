@@ -18,7 +18,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({ weather, loadin
   if (loading) return (
     <div style={{ ...panelStyle, padding: '16px', textAlign: 'center' }}>
       <div style={{ color: '#67e8f9', marginBottom: '6px', letterSpacing: '0.1em' }}>CARGANDO CLIMA...</div>
-      <div style={{ opacity: 0.4 }}>Conectando Open-Meteo API</div>
+      <div style={{ opacity: 0.4 }}>Conectando al backend</div>
     </div>
   );
 

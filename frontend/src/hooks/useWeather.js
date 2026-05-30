@@ -5,8 +5,6 @@
  */
 import { useState, useEffect, useRef } from 'react';
 
-const MED_LAT = 6.2518;
-const MED_LON = -75.5636;
 const REFRESH_MS = 10 * 60 * 1000; // refrescar cada 10 min
 
 const WMO_CODES = {
@@ -41,35 +39,8 @@ export function useWeather() {
 
   async function fetchWeather() {
     try {
-      const url = new URL('https://api.open-meteo.com/v1/forecast');
-      url.searchParams.set('latitude',  MED_LAT);
-      url.searchParams.set('longitude', MED_LON);
-      url.searchParams.set('current', [
-        'temperature_2m',
-        'apparent_temperature',
-        'relative_humidity_2m',
-        'weather_code',
-        'wind_speed_10m',
-        'precipitation',
-        'cloud_cover',
-        'surface_pressure',
-      ].join(','));
-      url.searchParams.set('hourly', [
-        'temperature_2m',
-        'precipitation_probability',
-        'weather_code',
-      ].join(','));
-      url.searchParams.set('daily', [
-        'temperature_2m_max',
-        'temperature_2m_min',
-        'precipitation_sum',
-        'weather_code',
-      ].join(','));
-      url.searchParams.set('timezone',       'America/Bogota');
-      url.searchParams.set('forecast_days',  '5');
-      url.searchParams.set('wind_speed_unit','kmh');
-
-      const res  = await fetch(url.toString());
+      // Coherencia: el clima sale del backend (proxy a Open-Meteo), no del cliente.
+      const res  = await fetch('/api/v1/public/weather/forecast');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
