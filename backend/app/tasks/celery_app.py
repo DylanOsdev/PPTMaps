@@ -24,5 +24,9 @@ celery_app.conf.update(
             "task": "telemetry.flush",
             "schedule": crontab(minute="*"),
         },
+        "overspeed-check-every-min": {
+            "task": "overspeed.check",
+            "schedule": crontab(minute="*"),
+        },
     },
 )
