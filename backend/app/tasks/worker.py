@@ -21,9 +21,12 @@ OVERSPEED_THRESHOLD_KMH = 80.0
 WINDOW_MINUTES = 2
 
 
-async def detect_overspeed(db: AsyncSession) -> int:
+async def detect_overspeed(db: AsyncSession) -> list[dict]:
     """Detecta vehículos por encima del umbral en la ventana reciente y crea una
-    alerta OVERSPEED por vehículo si no hay ya una activa. Devuelve cuántas creó.
+    alerta OVERSPEED por vehículo si no hay ya una activa.
+
+    Devuelve una lista con los datos de las alertas creadas (ya serializadas)
+    para que el caller pueda retransmitirlas vía Redis pub/sub.
     """
     since = datetime.now(timezone.utc) - timedelta(minutes=WINDOW_MINUTES)
     rows = (
@@ -35,7 +38,7 @@ async def detect_overspeed(db: AsyncSession) -> int:
         )
     ).all()
 
-    created = 0
+    created_alerts: list[dict] = []
     for row in rows:
         active = (
             await db.execute(
@@ -48,18 +51,38 @@ async def detect_overspeed(db: AsyncSession) -> int:
         ).scalar_one_or_none()
         if active:
             continue
-        db.add(
-            Alert(
-                vehicle_id=row.vehicle_id,
-                type="OVERSPEED",
-                severity=AlertSeverity.WARNING,
-                message=f"Exceso de velocidad: {round(row.max_speed, 1)} km/h (límite {OVERSPEED_THRESHOLD_KMH})",
-            )
+        alert = Alert(
+            vehicle_id=row.vehicle_id,
+            type="OVERSPEED",
+            severity=AlertSeverity.WARNING,
+            message=f"Exceso de velocidad: {round(row.max_speed, 1)} km/h (límite {OVERSPEED_THRESHOLD_KMH})",
         )
-        created += 1
+        db.add(alert)
+        created_alerts.append({
+            "id": str(alert.id),
+            "type": "overspeed",
+            "severity": "WARNING",
+            "message": alert.message,
+            "vehicle_id": str(row.vehicle_id) if row.vehicle_id else None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
 
     await db.commit()
-    return created
+
+    if created_alerts:
+        logger.info("Alertas OVERSPEED creadas: %d", len(created_alerts))
+        # Publica las alertas en Redis para que el servidor las reenvíe vía WS
+        try:
+            from app.db.redis import get_redis
+            from app.services.alert_broadcaster import publish_alert
+
+            redis = get_redis()
+            for alert_data in created_alerts:
+                await publish_alert(redis, alert_data)
+        except Exception as e:
+            logger.warning("No se pudieron publicar alertas en Redis: %s", e)
+
+    return created_alerts
 
 
 @celery_app.task(name="overspeed.check")
@@ -68,6 +91,7 @@ def check_overspeed_alerts() -> int:
 
     async def _run():
         async with async_session_maker() as db:
-            return await detect_overspeed(db)
+            alerts = await detect_overspeed(db)
+            return len(alerts)
 
     return asyncio.run(_run())

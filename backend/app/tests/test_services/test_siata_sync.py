@@ -6,7 +6,7 @@ from app.services.siata_sync import (
     GaugeReading,
     SiataGaugeClient,
     SiataSyncService,
-    StaticSeedSiataClient,
+    SiataSeedClient,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -26,7 +26,7 @@ async def _count(db):
 
 
 async def test_sync_creates_hazards_from_seed(db_session):
-    service = SiataSyncService(StaticSeedSiataClient())
+    service = SiataSyncService(SiataSeedClient())
     processed = await service.sync(db_session)
     assert processed > 0
     assert await _count(db_session) == processed

@@ -18,7 +18,7 @@ from app.models.alert import AlertSeverity
 from app.models.report import ReportType
 from app.services.telemetry import enqueue_telemetry, flush_telemetry
 from app.schemas.telemetry import TelemetryCreate
-from app.services.siata_sync import SiataSyncService, StaticSeedSiataClient
+from app.services.siata_sync import SiataSyncService, SiataSeedClient
 
 # Vehículos demo con posiciones por el Valle de Aburrá.
 VEHICLES = [
@@ -51,7 +51,7 @@ async def main():
         await crud_alert.create_alert(db, AlertCreate(type="siata", severity=AlertSeverity.CRITICAL, message="Nivel del río Medellín en aumento - La Mota"))
 
         # 4) Zonas de inundación (ingesta SIATA hexagonal)
-        hazards = await SiataSyncService(StaticSeedSiataClient()).sync(db)
+        hazards = await SiataSyncService(SiataSeedClient()).sync(db)
 
         # 5) Reporte de accidente (para /public/accidents/geojson)
         await create_report(db, ReportCreate(report_type=ReportType.accident, description="Choque múltiple Autopista Sur", latitude=6.2380, longitude=-75.5750))

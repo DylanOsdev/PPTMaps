@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && cp -r pages dist/pages",
+    "build": "vite build && (cp -r pages dist/pages 2>/dev/null || true)",
     "preview": "vite preview"
   },
   "keywords": [],
