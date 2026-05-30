@@ -25,9 +25,8 @@ Nuestro sistema cachea y optimiza estos datos geográficos en **PostGIS** para e
 El backend se ejecuta localmente (sin Docker). Requieres **PostgreSQL + PostGIS** instalado en tu sistema.
 
 ```bash
-# 1. Preparar la Base de Datos
+# 1. Crear la base de datos (la migración instala PostGIS y crea todas las tablas)
 sudo -u postgres psql -c "CREATE DATABASE movimed;"
-sudo -u postgres psql -d movimed -f backend/schema.sql
 
 # 2. Iniciar entorno de Python
 cd backend
@@ -35,7 +34,10 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Correr el servidor
+# 3. Aplicar las migraciones (crea la extensión PostGIS + el esquema completo)
+alembic upgrade head
+
+# 4. Correr el servidor
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 La API estará disponible en `http://localhost:8000/docs`.
