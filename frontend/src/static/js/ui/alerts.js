@@ -100,15 +100,4 @@ export function initAlerts() {
     }
   };
   onWsEvent("alerts", AppState._alertsWsHandler);
-
-  // Poll REST as fallback every 60s
-  if (AppState._alertPollTimer) clearInterval(AppState._alertPollTimer);
-  AppState._alertPollTimer = setInterval(async () => {
-    try {
-      const data = await fetchAlerts();
-      if (Array.isArray(data)) replaceAlerts(data);
-    } catch {
-      // silent
-    }
-  }, 60000);
 }

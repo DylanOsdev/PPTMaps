@@ -6,6 +6,23 @@ import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities } from "../serv
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
+function setLayerStatus(ok) {
+  const dot = document.getElementById("layerStatusDot");
+  if (!dot) return;
+  dot.style.background = ok ? "#4ade80" : "#f87171";
+  dot.style.boxShadow = ok ? "0 0 6px #4ade80" : "0 0 6px #f87171";
+  dot.title = ok ? "Capas cargadas" : "Error en algunas capas";
+}
+
+let _layersLoaded = 0;
+const _LAYERS_TOTAL = 3;
+
+function trackLayer(ok) {
+  _layersLoaded++;
+  if (!ok) setLayerStatus(false);
+  else if (_layersLoaded >= _LAYERS_TOTAL) setLayerStatus(true);
+}
+
 export async function loadComunasData() {
   const url = CONFIG.dataUrl + '?t=' + Date.now(); // Cache buster
   const res = await fetch(url);
@@ -21,8 +38,10 @@ export async function loadAccidentsData() {
     } else if (Array.isArray(data)) {
       updateAccidents(data);
     }
+    trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar datos de accidentes:", err);
+    trackLayer(false);
   }
 }
 
@@ -32,8 +51,10 @@ export async function loadFloodZonesData(map) {
     if (Array.isArray(data)) {
       updateFloodZones(map, data);
     }
+    trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar zonas de inundación:", err);
+    trackLayer(false);
   }
 }
 
@@ -52,8 +73,10 @@ export async function loadFatalitiesData() {
         console.log("[fatalities] API en tiempo real activa — datos con deriba por solicitud");
       }
     }
+    trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar datos de fallecidos:", err);
+    trackLayer(false);
   }
 }
 
@@ -72,8 +95,27 @@ export function stopFatalitiesPolling() {
   }
 }
 
-const SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_URLS = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+];
 const SATELLITE_ATTR = '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+
+function createSatelliteLayer() {
+  let currentIdx = 0;
+  const layer = L.tileLayer(SATELLITE_URLS[0], {
+    attribution: SATELLITE_ATTR,
+    maxZoom: CONFIG.map.maxZoom,
+  });
+  layer.on("tileerror", () => {
+    if (currentIdx >= SATELLITE_URLS.length - 1) return;
+    currentIdx++;
+    const newUrl = SATELLITE_URLS[currentIdx];
+    layer.setUrl(newUrl);
+    console.warn(`[satellite] Fallback a: ${newUrl.split("/")[2]}`);
+  });
+  return layer;
+}
 
 export function initMap() {
   const map = L.map("map", {
@@ -92,10 +134,7 @@ export function initMap() {
     maxZoom: CONFIG.map.maxZoom,
   }).addTo(map);
 
-  const satelliteLayer = L.tileLayer(SATELLITE_URL, {
-    attribution: SATELLITE_ATTR,
-    maxZoom: CONFIG.map.maxZoom,
-  });
+  const satelliteLayer = createSatelliteLayer();
 
   AppState._osmLayer = osmLayer;
   AppState._satelliteLayer = satelliteLayer;

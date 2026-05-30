@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && node -e \"const fs = require('fs'); fs.cpSync('pages', 'dist/pages', { recursive: true }); fs.cpSync('assets', 'dist/assets', { recursive: true });\"",
+<<<<<<< HEAD
+    "build": "vite build && cp -r pages dist/pages && cp ../tppmaps.html dist/landing.html",
+>>>>>>> cd57734 (fix(frontend): eliminar fetch duplicado clima, mover static a src/, fallback satelite, limpiar tailwind v4)
     "preview": "vite preview"
   },
   "keywords": [],
@@ -22,8 +24,10 @@
     "vite": "^8.0.14"
   },
   "dependencies": {
+    "gsap": "^3.15.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-icons": "^5.6.0"
+    "react-icons": "^5.6.0",
+    "react-router-dom": "^7.16.0"
   }
 }

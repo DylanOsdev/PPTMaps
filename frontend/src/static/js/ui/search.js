@@ -42,7 +42,12 @@ export function initSearch() {
         }
       })
       .catch(() => {
-        alert("No encontrado. Prueba: Belén, Poblado, Laureles, Comuna 13 o lat,lng");
+        const fb = document.getElementById("scanFeedback");
+        if (fb) {
+          fb.textContent = "No encontrado. Prueba: Belén, Poblado, Laureles, Comuna 13 o lat,lng";
+          fb.style.display = "block";
+          setTimeout(() => { fb.style.display = "none"; }, 4000);
+        }
       });
   };
 
