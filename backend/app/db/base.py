@@ -11,6 +11,7 @@ from app.models.flood_hazard import FloodHazard  # noqa: F401
 from app.models.vehicle import Vehicle  # noqa: F401
 from app.models.telemetry import Telemetry  # noqa: F401
 from app.models.alert import Alert  # noqa: F401
+from app.models.weather import WeatherSnapshot  # noqa: F401
 
 __all__ = [
     "Base",
@@ -21,4 +22,5 @@ __all__ = [
     "Vehicle",
     "Telemetry",
     "Alert",
+    "WeatherSnapshot",
 ]

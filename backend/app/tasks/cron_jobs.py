@@ -18,6 +18,19 @@ def sync_siata_flood_hazards() -> int:
     return asyncio.run(_run_sync())
 
 
+async def _run_weather_sync() -> int:
+    from app.services.weather import OpenMeteoClient, WeatherSyncService
+
+    async with async_session_maker() as db:
+        return await WeatherSyncService(OpenMeteoClient()).sync(db)
+
+
+@celery_app.task(name="weather.sync")
+def sync_weather() -> int:
+    """Sincroniza el clima/lluvia del Valle de Aburrá (Open-Meteo) con weather_snapshots."""
+    return asyncio.run(_run_weather_sync())
+
+
 async def _run_flush() -> int:
     async with async_session_maker() as db:
         return await flush_telemetry(db, get_redis())

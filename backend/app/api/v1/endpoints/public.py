@@ -7,7 +7,7 @@ import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from geoalchemy2.functions import ST_AsGeoJSON
+from geoalchemy2.functions import ST_AsGeoJSON, ST_X, ST_Y
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +15,13 @@ from app.crud import crud_alert
 from app.db.database import get_db
 from app.models.flood_hazard import FloodHazard
 from app.models.report import Report, ReportType
+from app.models.weather import WeatherSnapshot
 from app.websocket.ws_router import _latest_telemetry
 
 router = APIRouter()
+
+# Umbral de probabilidad de lluvia (%) para considerar "riesgo de lluvia".
+RAIN_RISK_THRESHOLD = 50
 
 
 @router.get("/telemetry/latest", summary="Última posición conocida de cada vehículo")
@@ -114,3 +118,44 @@ async def public_flood_zones(db: AsyncSession = Depends(get_db)):
         for r in rows
         if r.geom_json
     ]
+
+
+async def _weather_rows(db: AsyncSession, min_prob: int | None = None):
+    query = select(
+        WeatherSnapshot.location_name,
+        ST_Y(WeatherSnapshot.geom).label("lat"),
+        ST_X(WeatherSnapshot.geom).label("lng"),
+        WeatherSnapshot.temperature_c,
+        WeatherSnapshot.humidity,
+        WeatherSnapshot.rain_mm,
+        WeatherSnapshot.precipitation_prob_2h,
+        WeatherSnapshot.weather_code,
+        WeatherSnapshot.recorded_at,
+    )
+    if min_prob is not None:
+        query = query.where(WeatherSnapshot.precipitation_prob_2h >= min_prob)
+    rows = (await db.execute(query)).all()
+    return [
+        {
+            "location_name": r.location_name,
+            "lat": r.lat,
+            "lng": r.lng,
+            "temperature_c": r.temperature_c,
+            "humidity": r.humidity,
+            "rain_mm": r.rain_mm,
+            "precipitation_prob_2h": r.precipitation_prob_2h,
+            "weather_code": r.weather_code,
+            "recorded_at": r.recorded_at.isoformat() if r.recorded_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/weather", summary="Clima actual por punto del Valle de Aburrá")
+async def public_weather(db: AsyncSession = Depends(get_db)):
+    return await _weather_rows(db)
+
+
+@router.get("/rain-risk", summary="Puntos con riesgo de lluvia en las próximas 2h")
+async def public_rain_risk(db: AsyncSession = Depends(get_db)):
+    return await _weather_rows(db, min_prob=RAIN_RISK_THRESHOLD)
