@@ -37,6 +37,12 @@ async def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+# El ws_router usa app.db.database.async_session_maker directamente (no vía Depends),
+# así que lo reapuntamos a la BD de test para que el WebSocket lea de PostGIS de test.
+import app.db.database as _database
+
+_database.async_session_maker = TestSessionLocal
+
 
 # ── Redis falso en memoria para tests (telemetría CQRS) ────────────────────────
 import fakeredis.aioredis

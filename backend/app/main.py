@@ -64,6 +64,10 @@ app.add_middleware(
 # Routers REST
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# WebSocket de telemetría en tiempo real (fuera de /api/v1, contrato frontend /ws/telemetry)
+from app.websocket.ws_router import router as ws_router
+app.include_router(ws_router, prefix="/ws", tags=["📡 WebSocket"])
+
 @app.get("/health", tags=["Health"], summary="Health check básico")
 async def health():
     return {"status": "ok"}
