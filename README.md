@@ -285,13 +285,13 @@ npm run dev
 
 ## Funcionalidades Destacadas
 
-- 🗺️ **Mapa interactivo en vivo** con Leaflet — capas de accidentes, zonas de inundación y reportes
-- ⚡ **Alertas en tiempo real** via WebSockets con broadcast automático (`alert_broadcaster.py`)
-- 🌤️ **Widget de clima** integrado con datos de Open-Meteo (proxy backend + caché Redis)
-- 📍 **Reportes ciudadanos** geolocalizados con formulario público
-- 📊 **Dashboard de comando** con estadísticas y telemetría en tiempo real
-- 🔐 **Autenticación JWT** con roles y permisos
-- 🤖 **ML en desarrollo**: clustering DBSCAN de zonas de accidentalidad + predicción de tráfico XGBoost
+-  **Mapa interactivo en vivo** con Leaflet — capas de accidentes, zonas de inundación y reportes
+-  **Alertas en tiempo real** via WebSockets con broadcast automático (`alert_broadcaster.py`)
+-  **Widget de clima** integrado con datos de Open-Meteo (proxy backend + caché Redis)
+-  **Reportes ciudadanos** geolocalizados con formulario público
+-  **Dashboard de comando** con estadísticas y telemetría en tiempo real
+-  **Autenticación JWT** con roles y permisos
+-  **ML en desarrollo**: clustering DBSCAN de zonas de accidentalidad + predicción de tráfico XGBoost
 
 ---
 
