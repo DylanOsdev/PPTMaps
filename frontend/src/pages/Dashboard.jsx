@@ -10,10 +10,10 @@ import { useAccidentStats } from '../hooks/useAccidentStats.js';
 
 ChartJS.register(ArcElement, BarElement, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-const CYAN = '#67e8f9';
-const PALETTE = ['#67e8f9', '#fbbf24', '#f87171', '#4ade80', '#a78bfa', '#fb923c'];
-const GRID = 'rgba(148,163,184,0.12)';
-const TICK = '#94a3b8';
+const GREEN = '#1a5c3a';
+const PALETTE = ['#1a5c3a', '#3db84f', '#fbbf24', '#d32f2f', '#2d9e5e', '#8fbcbb'];
+const GRID = 'rgba(0,0,0,0.08)';
+const TICK = '#666666';
 
 const fmt = (n) => new Intl.NumberFormat('es-CO').format(n);
 const labels = (arr) => arr.map((d) => d.key);
@@ -32,11 +32,11 @@ const baseOpts = (legend = false) => ({
 function Panel({ title, children }) {
   return (
     <div style={{
-      background: 'rgba(13,17,23,0.6)', border: '1px solid rgba(56,189,248,0.12)',
+      background: '#ffffff', border: '1px solid #e0e0e0',
       borderRadius: 10, padding: 16,
     }}>
       <h3 style={{
-        fontSize: 11, letterSpacing: '0.12em', color: '#67e8f9',
+        fontSize: 11, letterSpacing: '0.12em', color: GREEN,
         margin: '0 0 12px', fontWeight: 600, fontFamily: '"JetBrains Mono", monospace',
       }}>{title}</h3>
       <div style={{ height: 240 }}>{children}</div>
@@ -47,7 +47,7 @@ function Panel({ title, children }) {
 function KPI({ value, label, color }) {
   return (
     <div style={{
-      background: 'rgba(13,17,23,0.6)', border: '1px solid rgba(56,189,248,0.12)',
+      background: '#ffffff', border: '1px solid #e0e0e0',
       borderRadius: 10, padding: '16px 20px', textAlign: 'center', minWidth: 140,
     }}>
       <div style={{ fontFamily: '"Orbitron", sans-serif', fontSize: 28, fontWeight: 700, color }}>{value}</div>
@@ -60,15 +60,15 @@ export default function Dashboard() {
   const { stats, loading, error } = useAccidentStats();
 
   const wrap = {
-    minHeight: '100vh', background: '#0d1117', color: '#e2e8f0',
+    minHeight: '100vh', background: '#f8f9f8', color: '#333333',
     fontFamily: '"JetBrains Mono", monospace', padding: '20px 24px 48px',
   };
 
-  if (loading) return <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: '#67e8f9' }}>CARGANDO ANALÍTICA…</div>;
+  if (loading) return <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: GREEN }}>CARGANDO ANALÍTICA…</div>;
   if (error || !stats) return (
-    <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: '#f87171' }}>
+    <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: '#d32f2f' }}>
       ⚠ SIN DATOS ANALÍTICOS<div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>{error}</div>
-      <div style={{ marginTop: 20 }}><Link to="/" style={{ color: '#67e8f9' }}>← Inicio</Link></div>
+      <div style={{ marginTop: 20 }}><Link to="/" style={{ color: GREEN }}>← Inicio</Link></div>
     </div>
   );
 
@@ -79,7 +79,7 @@ export default function Dashboard() {
     <div style={wrap}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <h1 style={{ fontFamily: '"Orbitron", sans-serif', fontSize: 22, margin: 0, color: '#e2e8f0' }}>
+          <h1 style={{ fontFamily: '"Orbitron", sans-serif', fontSize: 22, margin: 0, color: GREEN }}>
             DASHBOARD ANALÍTICO
           </h1>
           <p style={{ fontSize: 10, color: TICK, margin: '4px 0 0' }}>
@@ -87,17 +87,17 @@ export default function Dashboard() {
           </p>
         </div>
         <nav style={{ display: 'flex', gap: 14, fontSize: 11 }}>
-          <Link to="/" style={{ color: '#67e8f9' }}>← Inicio</Link>
-          <Link to="/map" style={{ color: '#67e8f9' }}>🗺 Mapa</Link>
+          <Link to="/" style={{ color: GREEN }}>← Inicio</Link>
+          <Link to="/map" style={{ color: GREEN }}>🗺 Mapa</Link>
         </nav>
       </header>
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        <KPI value={fmt(stats.total)} label="INCIDENTES TOTALES" color={CYAN} />
-        <KPI value={fmt(muertos)} label="VÍCTIMAS FATALES" color="#f87171" />
-        <KPI value={stats.by_comuna.length ? stats.by_comuna[0].key : '—'} label="COMUNA MÁS CRÍTICA" color="#fbbf24" />
-        <KPI value={stats.by_class.length ? stats.by_class[0].key : '—'} label="CLASE MÁS FRECUENTE" color="#67e8f9" />
+        <KPI value={fmt(stats.total)} label="INCIDENTES TOTALES" color={GREEN} />
+        <KPI value={fmt(muertos)} label="VÍCTIMAS FATALES" color="#d32f2f" />
+        <KPI value={stats.by_comuna.length ? stats.by_comuna[0].key : '—'} label="COMUNA MÁS CRÍTICA" color="#3db84f" />
+        <KPI value={stats.by_class.length ? stats.by_class[0].key : '—'} label="CLASE MÁS FRECUENTE" color={GREEN} />
       </div>
 
       {/* Gráficos */}
@@ -116,7 +116,7 @@ export default function Dashboard() {
           <Bar
             data={{
               labels: labels(stats.by_class),
-              datasets: [{ label: 'Accidentes', data: counts(stats.by_class), backgroundColor: CYAN }],
+              datasets: [{ label: 'Accidentes', data: counts(stats.by_class), backgroundColor: GREEN }],
             }}
             options={baseOpts()}
           />
@@ -126,7 +126,7 @@ export default function Dashboard() {
           <Bar
             data={{
               labels: labels(stats.by_comuna),
-              datasets: [{ label: 'Accidentes', data: counts(stats.by_comuna), backgroundColor: '#67e8f9' }],
+              datasets: [{ label: 'Accidentes', data: counts(stats.by_comuna), backgroundColor: '#3db84f' }],
             }}
             options={{ ...baseOpts(), indexAxis: 'y' }}
           />
@@ -138,7 +138,7 @@ export default function Dashboard() {
               labels: labels(years),
               datasets: [{
                 label: 'Accidentes por año', data: counts(years),
-                borderColor: CYAN, backgroundColor: 'rgba(103,232,249,0.15)',
+                borderColor: GREEN, backgroundColor: 'rgba(26,92,58,0.12)',
                 fill: true, tension: 0.3, pointRadius: 2,
               }],
             }}
