@@ -31,6 +31,7 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       ZONES_JSON_PATH: /data/medellin-comunas.json
     volumes:
@@ -54,6 +55,7 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
     env_file:
       - path: .env
@@ -68,6 +70,7 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
     env_file:
       - path: .env
