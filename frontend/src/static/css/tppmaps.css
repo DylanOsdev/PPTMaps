@@ -435,37 +435,6 @@ body {
   font-size: 10px;
 }
 
-.tool-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-bottom: 10px;
-}
-
-.tool-btn {
-  padding: 8px 2px;
-  font-family: inherit;
-  font-size: 7px;
-  letter-spacing: 0.04em;
-  color: var(--text-dim);
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
-}
-
-.tool-btn:hover,
-.tool-btn.active {
-  color: var(--text-cyan);
-  border-color: var(--text-cyan);
-  background: rgba(56, 189, 248, 0.1);
-}
-
-.tool-btn-all {
-  color: var(--accent-gold);
-  border-color: rgba(251, 191, 36, 0.4);
-}
 
 .scan-warn {
   font-size: 8px;
@@ -1429,14 +1398,6 @@ body.night-mode .toggle:checked {
   background: rgba(251,191,36,0.3);
   border-color: var(--accent-gold);
   box-shadow: 0 0 10px rgba(251,191,36,0.5);
-}
-
-/* Tool buttons */
-body.night-mode .tool-btn:hover,
-body.night-mode .tool-btn.active {
-  border-color: #38bdf8;
-  background: rgba(56,189,248,0.14);
-  box-shadow: 0 0 12px rgba(56,189,248,0.2);
 }
 
 /* Alert cards */

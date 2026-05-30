@@ -3,7 +3,7 @@
 @import './static/css/movil.css';
 @import "tailwindcss";
 
-@theme {
+@theme { 
   --color-bg-deep: #050608;
   --color-bg-panel: rgba(8, 12, 18, 0.88);
   --color-text-cyan: #67e8f9;

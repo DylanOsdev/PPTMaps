@@ -334,6 +334,6 @@ pytest -v --cov=app --cov-report=term-missing
 </p>
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=1a5c3a:2d9e5e:3db84f&height=120§ion=footer" width="100%">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=1a5c3a:2d9e5e:3db84f&height=120&section=footer" width="100%">
 </p>
 
