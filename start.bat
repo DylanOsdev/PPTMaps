@@ -3,13 +3,17 @@ REM Iniciar Backend
 echo Iniciando Backend...
 cd backend
 if not exist "..\venv" (
-    echo Creando entorno virtual...
+    echo Creando entorno virtual con 'py'...
+    py -m venv ..\venv
+)
+if not exist "..\venv" (
+    echo Creando entorno virtual con 'python'...
     python -m venv ..\venv
 )
 call ..\venv\Scripts\activate.bat
 echo Instalando dependencias del backend si es necesario...
 pip install -r requirements.txt
-start "FastAPI Backend" cmd /c "uvicorn app.main:app --reload --port 8000"
+start "FastAPI Backend" cmd /k "call ..\venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
 cd ..
 
 REM Construir Frontend

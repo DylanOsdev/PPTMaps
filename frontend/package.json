@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && cp -r pages dist/pages",
+    "build": "vite build && node -e \"const fs = require('fs'); fs.cpSync('pages', 'dist/pages', { recursive: true }); fs.cpSync('assets', 'dist/assets', { recursive: true });\"",
     "preview": "vite preview"
   },
   "keywords": [],

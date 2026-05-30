@@ -7,7 +7,8 @@ export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
 export async function loadComunasData() {
-  const res = await fetch(CONFIG.dataUrl);
+  const url = CONFIG.dataUrl + '?t=' + Date.now(); // Cache buster
+  const res = await fetch(url);
   if (!res.ok) throw new Error("No se pudo cargar medellin-comunas.json");
   return res.json();
 }

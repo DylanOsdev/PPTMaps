@@ -2,6 +2,8 @@ import { COMUNA_COLORS, CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { escapeHtml, hexagonAround, pointInPolygon } from "../core/utils.js";
 
+// El mapa ahora dibuja estrictamente los polígonos reales obtenidos del GeoJSON.
+
 function ensurePane(map, name, zIndex) {
   if (!map.getPane(name)) {
     map.createPane(name);
@@ -39,16 +41,18 @@ export function createMedellinLayers(map, data) {
       className: `metro-polygon metro-${mun.slug}`,
       color: mun.color,
       weight: 1.2,
-      opacity: 0.6,
+      opacity: 0.7,
       fillColor: mun.color,
-      fillOpacity: 0.03,
-      dashArray: "6 4",
+      fillOpacity: 0.04,
     };
 
-    if (mun.geojson) {
+    const hasPolygon = mun.geojson && mun.geojson.geometry && mun.geojson.geometry.type !== 'Point';
+
+    if (hasPolygon) {
       poly = L.geoJSON(mun.geojson, { pane: paneMetro, style: styleObj });
     } else {
-      poly = L.polygon(hexagonAround(mun.center, 0.012), { pane: paneMetro, ...styleObj });
+      // Fallback a un círculo si por alguna razón falla la carga del GeoJSON
+      poly = L.circle(mun.center, { radius: 2000, pane: paneMetro, ...styleObj });
     }
 
     const bindMetroEvents = (layer) => {
@@ -56,7 +60,7 @@ export function createMedellinLayers(map, data) {
         this.setStyle({ fillOpacity: 0.15, weight: 2.0 });
       });
       layer.on("mouseout", function () {
-        this.setStyle({ fillOpacity: 0.03, weight: 1.2 });
+        this.setStyle({ fillOpacity: 0.04, weight: 1.2 });
       });
       layer.on("click", () => {
         map.flyTo(mun.center, 13, { duration: 0.9 });
@@ -72,7 +76,7 @@ export function createMedellinLayers(map, data) {
       });
     };
 
-    if (mun.geojson) {
+    if (hasPolygon) {
       poly.eachLayer(bindMetroEvents);
     } else {
       bindMetroEvents(poly);
@@ -98,36 +102,7 @@ export function createMedellinLayers(map, data) {
   const metroGroup = L.layerGroup([...metroLayers, ...metroLabels]);
 
   // ── Ciudad de Medellín (contorno) ────────────────────────────────────────────
-  const areaGlow = L.polygon(outline, {
-    pane: paneCity,
-    className: "medellin-area-glow",
-    color: "#67e8f9",
-    weight: 8,
-    opacity: 0.35,
-    fillOpacity: 0,
-  });
-
-  const areaFill = L.polygon(outline, {
-    pane: paneCity,
-    className: "medellin-area-fill",
-    color: "#fbbf24",
-    weight: 3,
-    opacity: 0.95,
-    fillColor: "#38bdf8",
-    fillOpacity: 0.08,
-    dashArray: "10, 6",
-  });
-
-  const corePulse = L.circle(center, {
-    pane: paneCity,
-    className: "medellin-pulse",
-    radius: 2200,
-    color: "#fbbf24",
-    weight: 2,
-    opacity: 0.6,
-    fillColor: "#fbbf24",
-    fillOpacity: 0.06,
-  });
+  // Contorno amarillo, brillo y pulso removidos a petición del usuario.
 
   const cityLabel = L.marker(center, {
     pane: paneCity,
@@ -157,20 +132,11 @@ export function createMedellinLayers(map, data) {
       fillOpacity: 0.04,
     };
 
-    if (comuna.geojson) {
-      let simpleCoords = null;
-      if (comuna.geojson.geometry.type === 'Polygon') {
-          simpleCoords = comuna.geojson.geometry.coordinates[0];
-      } else if (comuna.geojson.geometry.type === 'MultiPolygon') {
-          simpleCoords = comuna.geojson.geometry.coordinates[0][0];
-      }
-      comuna._polygon = simpleCoords ? simpleCoords.map(c => [c[1], c[0]]) : null;
-
+    if (comuna.geojson && comuna.geojson.geometry && comuna.geojson.geometry.type !== 'Point') {
       poly = L.geoJSON(comuna.geojson, { pane: paneComunas, style: styleObj });
     } else {
-      const coords = hexagonAround(comuna.center, comuna.radius || 0.012);
-      comuna._polygon = coords;
-      poly = L.polygon(coords, { pane: paneComunas, ...styleObj });
+      // Fallback a un círculo si falla la carga
+      poly = L.circle(comuna.center, { radius: 1500, pane: paneComunas, ...styleObj });
     }
 
     const bindPolyEvents = (layer) => {
@@ -197,7 +163,7 @@ export function createMedellinLayers(map, data) {
       });
     };
 
-    if (comuna.geojson) {
+    if (comuna.geojson && comuna.geojson.geometry && comuna.geojson.geometry.type !== 'Point') {
       poly.eachLayer(bindPolyEvents);
     } else {
       bindPolyEvents(poly);
@@ -221,7 +187,7 @@ export function createMedellinLayers(map, data) {
     comunaLabels.push(label);
   });
 
-  const cityGroup    = L.layerGroup([areaGlow, areaFill, corePulse, cityLabel]);
+  const cityGroup    = L.layerGroup([cityLabel]);
   const comunasGroup = L.layerGroup([...comunaLayers, ...comunaLabels]);
 
   AppState.layerGroups["medellin-city"]    = cityGroup;

@@ -19,14 +19,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ciclo de vida de la aplicación: verifica la BD al arrancar."""
-    logger.info("🚀 Iniciando MoviMed API...")
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         logger.info("✅ Conexión a PostgreSQL/PostGIS establecida correctamente.")
     except Exception as e:
         logger.error(f"❌ No se pudo conectar a la base de datos: {e}")
-        raise
+        logger.warning("⚠️ El servidor continuará ejecutándose sin base de datos (modo local/demo).")
 
     yield  # La app corre aquí
 
@@ -84,6 +83,9 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+FRONTEND_DIST = FRONTEND_DIR / "dist"
 
-if FRONTEND_DIR.exists():
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+elif FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
