@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/TPPMAPS-Inteligencia%20Geoespacial-1a5c3a?style=for-the-badge&logo=matrix&logoColor=white&labelColor=0d1117">
+    <source media="(prefers-color-scheme: green)" srcset="https://img.shields.io/badge/TPPMAPS-Inteligencia%20Geoespacial-1a5c3a?style=for-the-badge&logo=matrix&logoColor=white&labelColor=0d1117">
     <img alt="TPPMAPS" src="https://img.shields.io/badge/TPPMAPS-Inteligencia%20Geoespacial-1a5c3a?style=for-the-badge&logo=matrix&logoColor=white&labelColor=ffffff">
   </picture>
 </p>
@@ -24,9 +24,6 @@
 
 <br>
 
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=1a5c3a:2d9e5e:3db84f&height=200§ion=header&text=MoviMed&fontSize=80&fontAlignY=35&desc=Plataforma%20Unificada%20de%20Movilidad%20Inteligente&descAlignY=55&animation=fadeIn&fontColor=white" width="100%">
-</p>
 
 ---
 
