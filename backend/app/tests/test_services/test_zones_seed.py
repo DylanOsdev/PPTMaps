@@ -64,3 +64,32 @@ async def test_import_zones_is_idempotent(db_session):
     await import_zones(db_session, SAMPLE)  # segunda corrida no duplica
     count = (await db_session.execute(select(func.count()).select_from(Zone))).scalar_one()
     assert count == 2
+
+
+import json
+from app.services.zones_seed import seed_zones_on_startup
+
+
+@pytest.mark.asyncio
+async def test_seed_on_startup_loads_from_file(db_session, tmp_path):
+    f = tmp_path / "zones.json"
+    f.write_text(json.dumps(SAMPLE))
+    n = await seed_zones_on_startup(db_session, str(f))
+    assert n == 2
+    count = (await db_session.execute(select(func.count()).select_from(Zone))).scalar_one()
+    assert count == 2
+
+
+@pytest.mark.asyncio
+async def test_seed_on_startup_skips_when_zones_exist(db_session, tmp_path):
+    await import_zones(db_session, SAMPLE)
+    f = tmp_path / "zones.json"
+    f.write_text(json.dumps(SAMPLE))
+    n = await seed_zones_on_startup(db_session, str(f))  # ya hay zonas → no relee
+    assert n == 0
+
+
+@pytest.mark.asyncio
+async def test_seed_on_startup_resilient_when_file_missing(db_session):
+    n = await seed_zones_on_startup(db_session, "/no/existe/zones.json")
+    assert n == 0  # no rompe el arranque

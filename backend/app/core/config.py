@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # API key para ingesta de telemetría (dispositivos GPS = máquinas, no users)
     TELEMETRY_API_KEY: str = "dev-telemetry-key-change-me"
 
+    # Ruta del JSON de comunas/municipios que se siembra en PostGIS al arrancar.
+    ZONES_JSON_PATH: str = "../frontend/public/assets/data/medellin-comunas.json"
+
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 

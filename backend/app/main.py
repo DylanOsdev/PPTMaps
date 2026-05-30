@@ -7,7 +7,8 @@ from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.db.database import engine
+from app.db.database import engine, async_session_maker
+from app.services.zones_seed import seed_zones_on_startup
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +28,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ No se pudo conectar a la base de datos: {e}")
         raise
+
+    # Siembra de zonas (comunas/municipios) en PostGIS: idempotente y resiliente.
+    async with async_session_maker() as db:
+        seeded = await seed_zones_on_startup(db, settings.ZONES_JSON_PATH)
+    if seeded:
+        logger.info("🗺️  Zonas sembradas en PostGIS: %d", seeded)
 
     yield  # La app corre aquí
 

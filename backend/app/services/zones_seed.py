@@ -5,13 +5,16 @@ persiste cada zona con upsert por (kind, slug), convirtiendo la geometría GeoJS
 geom PostGIS con ST_GeomFromGeoJSON.
 """
 import json
+import logging
 from typing import List
 
 from geoalchemy2.functions import ST_GeomFromGeoJSON, ST_SetSRID
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.zone import Zone
+
+logger = logging.getLogger(__name__)
 
 # Ruta del JSON fuente (lo mantiene el frontend; el backend lo importa una vez).
 DEFAULT_JSON_PATH = "../frontend/public/assets/data/medellin-comunas.json"
@@ -74,3 +77,17 @@ async def import_zones(db: AsyncSession, data: dict) -> int:
         await db.flush()
     await db.commit()
     return len(records)
+
+
+async def seed_zones_on_startup(db: AsyncSession, path: str = DEFAULT_JSON_PATH) -> int:
+    """Siembra zonas al arrancar: idempotente (skip si ya hay) y resiliente (no rompe si falta el JSON)."""
+    existing = (await db.execute(select(func.count()).select_from(Zone))).scalar_one()
+    if existing:
+        return 0
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Seed de zonas omitido: no se pudo leer %s (%s)", path, e)
+        return 0
+    return await import_zones(db, data)
