@@ -84,7 +84,10 @@ async def test_public_flood_zones(client, db_session):
     await db_session.commit()
     resp = await client.get("/api/v1/public/flood-zones")
     assert resp.status_code == 200
-    fc = resp.json()
-    assert fc["type"] == "FeatureCollection"
-    assert len(fc["features"]) == 1
-    assert fc["features"][0]["properties"]["status"] == "watch"
+    zones = resp.json()
+    # Contrato frontend (updateFloodZones): array plano con geom como geometría GeoJSON.
+    assert isinstance(zones, list)
+    assert len(zones) == 1
+    assert zones[0]["status"] == "watch"
+    assert zones[0]["geom"]["type"] == "Polygon"
+    assert zones[0]["name"] == "Q. Test"

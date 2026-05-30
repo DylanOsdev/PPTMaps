@@ -86,7 +86,7 @@ async def public_fatalities(limit: int = 100, db: AsyncSession = Depends(get_db)
     return await _accidents_feature_collection(db, limit)
 
 
-@router.get("/flood-zones", summary="Zonas de riesgo de inundación en GeoJSON")
+@router.get("/flood-zones", summary="Zonas de riesgo de inundación")
 async def public_flood_zones(db: AsyncSession = Depends(get_db)):
     rows = (
         await db.execute(
@@ -100,19 +100,17 @@ async def public_flood_zones(db: AsyncSession = Depends(get_db)):
             )
         )
     ).all()
-    features = [
+    # Array plano: el frontend (updateFloodZones) espera [{id, name, status, geom}]
+    # donde geom es la geometría GeoJSON directa (no un Feature).
+    return [
         {
-            "type": "Feature",
-            "geometry": json.loads(r.geom_json),
-            "properties": {
-                "id": r.id,
-                "name": r.name,
-                "siata_station_id": r.siata_station_id,
-                "status": r.status.value if hasattr(r.status, "value") else str(r.status),
-                "water_level_m": r.water_level_m,
-            },
+            "id": r.id,
+            "name": r.name,
+            "siata_station_id": r.siata_station_id,
+            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+            "water_level_m": r.water_level_m,
+            "geom": json.loads(r.geom_json),
         }
         for r in rows
         if r.geom_json
     ]
-    return {"type": "FeatureCollection", "features": features}
