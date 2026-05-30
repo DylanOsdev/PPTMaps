@@ -6,9 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-<<<<<<< HEAD
     "build": "vite build && cp -r pages dist/pages && cp ../tppmaps.html dist/landing.html",
->>>>>>> cd57734 (fix(frontend): eliminar fetch duplicado clima, mover static a src/, fallback satelite, limpiar tailwind v4)
     "preview": "vite preview"
   },
   "keywords": [],
