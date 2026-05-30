@@ -7,6 +7,16 @@ export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
 export async function loadComunasData() {
+  // Fuente primaria: backend PostGIS (/public/comunas). Fallback: JSON estático.
+  try {
+    const res = await fetch(`${CONFIG.apiBase}/public/comunas`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.comunas?.length) return data;
+    }
+  } catch (err) {
+    console.warn("[map] /public/comunas no disponible, usando JSON estático:", err);
+  }
   const res = await fetch(CONFIG.dataUrl);
   if (!res.ok) throw new Error("No se pudo cargar medellin-comunas.json");
   return res.json();

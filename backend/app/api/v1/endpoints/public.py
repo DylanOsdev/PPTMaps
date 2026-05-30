@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from geoalchemy2.functions import ST_AsGeoJSON, ST_X, ST_Y
-from sqlalchemy import desc, select
+from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import crud_alert
@@ -16,6 +16,7 @@ from app.db.database import get_db
 from app.models.flood_hazard import FloodHazard
 from app.models.report import Report, ReportType
 from app.models.weather import WeatherSnapshot
+from app.models.zone import Zone
 from app.websocket.ws_router import _latest_telemetry
 
 router = APIRouter()
@@ -159,3 +160,96 @@ async def public_weather(db: AsyncSession = Depends(get_db)):
 @router.get("/rain-risk", summary="Puntos con riesgo de lluvia en las próximas 2h")
 async def public_rain_risk(db: AsyncSession = Depends(get_db)):
     return await _weather_rows(db, min_prob=RAIN_RISK_THRESHOLD)
+
+
+# Contorno estático de la ciudad (no es una zona; lo usa el frontend para el borde).
+_CITY = {
+    "name": "Medellín",
+    "department": "Antioquia",
+    "country": "Colombia",
+    "center": [6.2442, -75.5812],
+    "outline": [
+        [6.298, -75.632], [6.312, -75.595], [6.308, -75.558], [6.288, -75.528],
+        [6.262, -75.512], [6.232, -75.518], [6.202, -75.535], [6.178, -75.562],
+        [6.172, -75.598], [6.188, -75.628], [6.218, -75.642], [6.252, -75.638],
+        [6.278, -75.635],
+    ],
+}
+
+
+def _zone_item(row) -> dict:
+    """Reconstruye el item con el contrato del frontend (geojson = Feature completo)."""
+    feature = {
+        "type": "Feature",
+        "properties": {"name": row.name},
+        "geometry": json.loads(row.geom_json),
+    }
+    item = {
+        "name": row.name,
+        "slug": row.slug,
+        "center": [row.center_lat, row.center_lng],
+        "geojson": feature,
+    }
+    if row.kind == "comuna":
+        item["type"] = "comuna"
+        item["number"] = row.number
+    else:
+        item["color"] = row.color
+    return item
+
+
+@router.get("/comunas", summary="Comunas y municipios del Valle de Aburrá (desde PostGIS)")
+async def public_comunas(db: AsyncSession = Depends(get_db)):
+    rows = (
+        await db.execute(
+            select(
+                Zone.kind, Zone.name, Zone.slug, Zone.number,
+                Zone.center_lat, Zone.center_lng, Zone.color,
+                ST_AsGeoJSON(Zone.geom).label("geom_json"),
+            ).order_by(Zone.kind, Zone.number, Zone.name)
+        )
+    ).all()
+    comunas = [_zone_item(r) for r in rows if r.kind == "comuna" and r.geom_json]
+    municipios = [_zone_item(r) for r in rows if r.kind == "municipio" and r.geom_json]
+    return {"city": _CITY, "comunas": comunas, "municipios": municipios}
+
+
+@router.get("/comunas/stats", summary="Accidentes y vehículos por comuna (cruce espacial)")
+async def public_comunas_stats(db: AsyncSession = Depends(get_db)):
+    """Cuenta, por comuna (polígono), los accidentes y la última posición de vehículos
+    que caen dentro vía ST_Contains. Solo comunas (los municipios son puntos)."""
+    rows = (
+        await db.execute(
+            text(
+                """
+                WITH last_pos AS (
+                    SELECT DISTINCT ON (vehicle_id) vehicle_id, location
+                    FROM telemetry
+                    ORDER BY vehicle_id, timestamp DESC
+                )
+                SELECT
+                    z.name, z.slug, z.number,
+                    COUNT(DISTINCT r.id) AS accident_count,
+                    COUNT(DISTINCT lp.vehicle_id) AS vehicle_count
+                FROM zones z
+                LEFT JOIN reports r
+                    ON r.report_type = 'accident' AND ST_Contains(z.geom, r.geom)
+                LEFT JOIN last_pos lp
+                    ON ST_Contains(z.geom, lp.location)
+                WHERE z.kind = 'comuna'
+                GROUP BY z.name, z.slug, z.number
+                ORDER BY z.number NULLS LAST, z.name
+                """
+            )
+        )
+    ).all()
+    return [
+        {
+            "name": r.name,
+            "slug": r.slug,
+            "number": r.number,
+            "accident_count": r.accident_count,
+            "vehicle_count": r.vehicle_count,
+        }
+        for r in rows
+    ]
