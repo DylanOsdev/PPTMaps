@@ -72,8 +72,9 @@ export default function Landing() {
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
-        <span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.05em' }}>
-          TPPMAPS
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.2rem', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.05em' }}>
+          <img src="/logo.jpg" alt="PPTMaps" style={{ height: '34px', width: '34px', borderRadius: '50%', objectFit: 'cover' }} />
+          PPTMaps
         </span>
         <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <a href="#funciones" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
@@ -100,12 +101,24 @@ export default function Landing() {
       </header>
 
       {/* ── HERO ── */}
-      <section style={{
-        maxWidth: '860px',
-        margin: '0 auto',
-        padding: '6rem 2rem 5rem',
-        textAlign: 'center',
-      }}>
+      {/* ── HERO ── */}
+      <section style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Imagen de fondo de Medellín + overlay oscuro */}
+        <img src="/medellin.jpg" alt="" style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', zIndex: 0,
+        }} />
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.7) 50%, rgba(15,23,42,0.9) 100%)',
+        }} />
+        <div style={{
+          position: 'relative', zIndex: 2,
+          maxWidth: '860px',
+          margin: '0 auto',
+          padding: '6rem 2rem 5rem',
+          textAlign: 'center',
+        }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.35rem 1rem', marginBottom: '2rem',
@@ -170,6 +183,19 @@ export default function Landing() {
           >
             Reportar Incidente
           </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              fontSize: '1rem', fontWeight: 600,
+              backgroundColor: 'transparent', color: '#22d3ee',
+              border: '1px solid rgba(34,211,238,0.5)',
+              borderRadius: '10px',
+              padding: '0.85rem 2.25rem', cursor: 'pointer',
+            }}
+          >
+            Dashboard
+          </button>
+        </div>
         </div>
       </section>
 

@@ -209,6 +209,23 @@ def resolve_frontend_dir(root: Path):
 
 _frontend = resolve_frontend_dir(PROJECT_ROOT)
 if _frontend is not None:
-    app.mount("/", StaticFiles(directory=str(_frontend), html=True), name="frontend")
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+
+    _index = _frontend / "index.html"
+    _api_prefixes = ("api/", "ws/", "health", "docs", "redoc", "openapi.json")
+
+    app.mount("/assets", StaticFiles(directory=str(_frontend / "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        """Sirve archivos del dist si existen; si no, index.html (deep-links SPA).
+        Excluye prefijos de API/infra para no enmascarar sus 404."""
+        if full_path.startswith(_api_prefixes):
+            raise HTTPException(status_code=404, detail="Not Found")
+        candidate = _frontend / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(_index))
 else:
     logger.warning("Frontend no montado: falta frontend/dist. Corré 'npm run build' en frontend/.")

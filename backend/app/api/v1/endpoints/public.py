@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from geoalchemy2.functions import ST_AsGeoJSON, ST_X, ST_Y
-from sqlalchemy import desc, select, text
+from sqlalchemy import desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import crud_alert
@@ -17,6 +17,7 @@ from app.models.flood_hazard import FloodHazard
 from app.models.report import Report, ReportType
 from app.models.weather import WeatherSnapshot
 from app.models.zone import Zone
+from app.models.accident_incident import AccidentIncident
 from app.services.weather import ForecastClient, OpenMeteoForecastClient
 from app.websocket.ws_router import _latest_telemetry
 
@@ -169,6 +170,34 @@ def get_forecast_client() -> ForecastClient:
 @router.get("/weather/forecast", summary="Pronóstico detallado (actual + horario + diario) de Medellín")
 async def public_weather_forecast(client: ForecastClient = Depends(get_forecast_client)):
     return await client.fetch_forecast(FORECAST_LAT, FORECAST_LNG)
+
+
+async def _group_count(db: AsyncSession, column, limit: int | None = None):
+    """Agrupa accident_incidents por una columna y cuenta, ignorando nulos."""
+    q = (
+        select(column.label("key"), func.count().label("count"))
+        .where(column.isnot(None))
+        .group_by(column)
+        .order_by(func.count().desc())
+    )
+    if limit:
+        q = q.limit(limit)
+    rows = (await db.execute(q)).all()
+    return [{"key": str(r.key), "count": r.count} for r in rows]
+
+
+@router.get("/accidents/stats", summary="Estadísticas agregadas de accidentalidad (datos oficiales Medellín)")
+async def public_accidents_stats(db: AsyncSession = Depends(get_db)):
+    """Agregados para el dashboard analítico. Fuente: Secretaría de Movilidad de Medellín
+    (dataset abierto Mendeley r6g5dfnpgh, CC BY 4.0)."""
+    total = (await db.execute(select(func.count()).select_from(AccidentIncident))).scalar_one()
+    return {
+        "total": total,
+        "by_severity": await _group_count(db, AccidentIncident.severity),
+        "by_class": await _group_count(db, AccidentIncident.incident_class),
+        "by_comuna": await _group_count(db, AccidentIncident.comuna, limit=10),
+        "by_year": await _group_count(db, AccidentIncident.year),
+    }
 
 
 @router.get("/rain-risk", summary="Puntos con riesgo de lluvia en las próximas 2h")

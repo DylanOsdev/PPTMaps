@@ -35,7 +35,7 @@ async def test_detect_overspeed_creates_alert(db_session):
     await _add_ping(db_session, v.id, OVERSPEED_THRESHOLD_KMH + 20)
 
     created = await detect_overspeed(db_session)
-    assert created == 1
+    assert len(created) == 1
 
     alerts = (await db_session.execute(select(Alert).where(Alert.type == "OVERSPEED"))).scalars().all()
     assert len(alerts) == 1
@@ -47,7 +47,7 @@ async def test_detect_overspeed_ignores_within_limit(db_session):
     await _add_ping(db_session, v.id, OVERSPEED_THRESHOLD_KMH - 10)
 
     created = await detect_overspeed(db_session)
-    assert created == 0
+    assert len(created) == 0
 
 
 async def test_detect_overspeed_no_duplicate_active_alert(db_session):
@@ -58,4 +58,4 @@ async def test_detect_overspeed_no_duplicate_active_alert(db_session):
     await _add_ping(db_session, v.id, OVERSPEED_THRESHOLD_KMH + 5)
 
     created = await detect_overspeed(db_session)
-    assert created == 0
+    assert len(created) == 0
