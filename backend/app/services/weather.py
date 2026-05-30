@@ -90,6 +90,34 @@ class OpenMeteoClient(WeatherClient):
         return readings
 
 
+class ForecastClient(ABC):
+    """Puerto: pronóstico detallado (actual + horario + diario) para un punto."""
+
+    @abstractmethod
+    async def fetch_forecast(self, lat: float, lng: float) -> dict:
+        ...
+
+
+class OpenMeteoForecastClient(ForecastClient):
+    """Adaptador HTTP a Open-Meteo: pronóstico rico para un punto (shape que consume el widget)."""
+
+    async def fetch_forecast(self, lat: float, lng: float) -> dict:
+        params = {
+            "latitude": lat,
+            "longitude": lng,
+            "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,cloud_cover,surface_pressure",
+            "hourly": "temperature_2m,precipitation_probability,weather_code",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code",
+            "timezone": "America/Bogota",
+            "forecast_days": 5,
+            "wind_speed_unit": "kmh",
+        }
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(OPEN_METEO_URL, params=params)
+            resp.raise_for_status()
+            return resp.json()
+
+
 class WeatherSyncService:
     def __init__(self, client: WeatherClient):
         self._client = client
