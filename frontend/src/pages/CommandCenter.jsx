@@ -325,18 +325,6 @@ export default function CommandCenter() {
                 <span className="search-prefix">⌕</span>
                 <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autoComplete="off" />
               </div>
-              <div className="tool-grid" id="toolGrid">
-                <button type="button" className="tool-btn" data-cmd="ruta" title="Ruta segura">RUTA</button>
-                <button type="button" className="tool-btn" data-cmd="reporte">REPORTE</button>
-                <button type="button" className="tool-btn" data-cmd="siata">SIATA</button>
-                <button type="button" className="tool-btn" data-cmd="telemetria">GPS</button>
-                <button type="button" className="tool-btn" data-cmd="clusters">DBSCAN</button>
-                <button type="button" className="tool-btn" data-cmd="inundacion">INUNDA</button>
-                <button type="button" className="tool-btn" data-cmd="prediccion">IA 2H</button>
-                <button type="button" className="tool-btn" data-cmd="layers">CAPAS</button>
-                <button type="button" className="tool-btn" data-cmd="mobile">MÓVIL</button>
-                <button type="button" className="tool-btn btn-tool-all" data-cmd="all">TODO</button>
-              </div>
               <div className="scan-box">
                 <p className="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
                 <div className="scan-row">

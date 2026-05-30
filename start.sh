@@ -6,16 +6,16 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 BACKEND_DIR="$ROOT_DIR/backend"
 
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║         MoviMed — Inicio Rápido (Linux)             ║"
+echo "║         TPPMaps — Inicio Rápido (Linux)             ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
 # 1. Verificar PostgreSQL
 echo "[1/4] Verificando PostgreSQL..."
 if command -v pg_isready &>/dev/null && pg_isready -q 2>/dev/null; then
-    echo "  ✅ PostgreSQL está corriendo."
+    echo "   PostgreSQL está corriendo."
 else
-    echo "  ⚠️  PostgreSQL no está accesible."
+    echo "    PostgreSQL no está accesible."
     echo "     Para iniciarlo: sudo systemctl start postgresql"
     echo "     La app se iniciará pero los datos no estarán disponibles."
 fi
@@ -26,7 +26,7 @@ echo "[2/4] Verificando pg_hba.conf..."
 PG_HBA=$(find /etc/postgresql -name pg_hba.conf 2>/dev/null | head -1)
 if [ -n "$PG_HBA" ]; then
     if grep -q "local.*postgres.*ident" "$PG_HBA" 2>/dev/null; then
-        echo "  ⚠️  pg_hba.conf usa autenticación 'ident'. Cambiando a 'md5'..."
+        echo "    pg_hba.conf usa autenticación 'ident'. Cambiando a 'md5'..."
         echo "     Para arreglar permanentemente:"
         echo "     sudo sed -i 's/local.*all.*all.*peer/local all all md5/' $PG_HBA"
         echo "     sudo sed -i 's/local.*postgres.*ident/local postgres postgres md5/' $PG_HBA"
@@ -44,22 +44,32 @@ fi
 echo ""
 echo "[3/4] Construyendo frontend..."
 cd "$FRONTEND_DIR"
+if [ ! -d "node_modules" ]; then
+    echo "  Instalando dependencias del frontend..."
+    npm install
+fi
 npm run build 2>&1 | tail -3
-echo "  ✅ Frontend compilado en dist/"
+echo "   Frontend compilado en dist/"
 
-# 4. Iniciar servidor
+# 4. Configurar e Iniciar servidor
 echo ""
 echo "[4/4] Iniciando servidor..."
 echo ""
-echo "  🌐 Abrir en el navegador: http://localhost:8000"
-echo "  📖 Documentación API:    http://localhost:8000/docs"
+echo "   Abrir en el navegador: http://localhost:8000"
+echo "   Documentación API:    http://localhost:8000/docs"
 echo ""
 
-cd "$BACKEND_DIR"
+cd "$ROOT_DIR"
 
-# Activar virtualenv si existe
-if [ -f venv/bin/activate ]; then
-    source venv/bin/activate
+# Configurar virtualenv y dependencias del backend
+if [ ! -d "venv" ]; then
+    echo "  Creando entorno virtual..."
+    python3 -m venv venv
 fi
+source venv/bin/activate
+
+echo "  Instalando dependencias del backend..."
+cd "$BACKEND_DIR"
+pip install -q -r requirements.txt
 
 exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

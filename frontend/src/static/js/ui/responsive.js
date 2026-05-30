@@ -50,18 +50,4 @@ export function initResponsive() {
   document.getElementById("fabLayers")?.addEventListener("click", () => togglePanel("left"));
   document.getElementById("fabAlerts")?.addEventListener("click", () => togglePanel("right"));
 
-  document.querySelectorAll(".tool-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tool-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const cmd = btn.dataset.cmd;
-      if (cmd === "ruta") window.location.href = "pages/mobile/navegar.html";
-      else if (cmd === "reporte") window.location.href = "pages/mobile/reportar.html";
-      else if (cmd === "mobile") window.location.href = "pages/mobile/inicio.html";
-      else if (cmd === "layers") {
-        if (isMobile()) togglePanel("left");
-        else document.getElementById(PANEL.left)?.scrollIntoView({ behavior: "smooth" });
-      }
-    });
-  });
 }
