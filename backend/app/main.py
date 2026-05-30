@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ciclo de vida de la aplicación: verifica la BD al arrancar."""
-    logger.info("🚀 Iniciando MoviMed API...")
+    logger.info("🚀 Iniciando PPTMaps API...")
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -30,14 +30,14 @@ async def lifespan(app: FastAPI):
 
     yield  # La app corre aquí
 
-    logger.info("🛑 Cerrando MoviMed API — liberando conexiones a la BD...")
+    logger.info("🛑 Cerrando PPTMaps API — liberando conexiones a la BD...")
     await engine.dispose()
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=(
-        "**MoviMed API** — Plataforma unificada de movilidad inteligente para Medellín.\n\n"
+        "**PPTMaps API** — Plataforma unificada de movilidad inteligente para Medellín.\n\n"
         "Gestiona reportes ciudadanos, zonas de accidentalidad y riesgos de inundación."
     ),
     version="1.0.0",

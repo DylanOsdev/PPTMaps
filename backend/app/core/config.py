@@ -3,7 +3,7 @@ from typing import List, Union
 from pydantic import AnyHttpUrl, validator
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "MoviMed"
+    PROJECT_NAME: str = "PPTMaps"
     API_V1_STR: str = "/api/v1"
     
     # Configuraciones de Base de Datos (PostgreSQL / PostGIS)

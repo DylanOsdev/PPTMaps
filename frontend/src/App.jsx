@@ -130,7 +130,7 @@ function App() {
           <div className="panel-head">
             <h2>DATA LAYERS</h2>
             <span className="layer-fraction" id="layerFraction">6/14</span>
-            <button type="button" className="btn-mini" id="btnLayerPreset" title="Preset MoviMed">SET</button>
+            <button type="button" className="btn-mini" id="btnLayerPreset" title="Preset PPTMaps">SET</button>
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
           <div className="panel-scroll" id="layersList">
