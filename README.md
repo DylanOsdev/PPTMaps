@@ -65,77 +65,81 @@ FRONTEND                     BACKEND                        BASE DE DATOS
 
 ## Arquitectura del Proyecto
 
-```
+```text
 TTPMaps/
-  backend/                    API REST en FastAPI
-    app/
-      api/v1/                 Endpoints REST
-        endpoints/
-          auth.py             Login / Registro JWT
-          users.py            CRUD de usuarios
-          reports.py          Reportes ciudadanos
-          public.py           Endpoints publicos (geograficos)
-          vehicles.py         Gestion de vehiculos
-          routes.py           Optimizacion de rutas
-        router.py             Agrupador de rutas
-      core/                   Configuracion y seguridad
-        config.py             Settings con Pydantic
-        security.py           JWT, hashing, autenticacion
-        exceptions.py         Manejador de errores
-        database.py           Engine SQLAlchemy (legacy)
-      db/                     Base de datos (activo)
-        database.py           Engine asincrono (asyncpg)
-        base_class.py         DeclarativeBase SQLAlchemy 2.0
-        base.py               Import de modelos
-      models/                 Modelos SQLAlchemy + PostGIS
-        user.py               Usuarios y roles
-        report.py             Reportes ciudadanos
-        accident_zone.py      Zonas de accidentalidad
-        flood_hazard.py       Riesgos de inundacion (SIATA)
-        vehicle.py            Vehiculos registrados
-        telemetry.py          Telemetria en tiempo real
-        alert.py              Alertas y notificaciones
-      schemas/                Validadores Pydantic
-        user.py               Schemas de usuario
-        report.py             Schemas de reportes
-        token.py              Schemas JWT
-        route.py              Schemas de rutas
-      crud/                   Operaciones de base de datos
-      services/               Logica de negocio
-        ingestion.py          Ingesta de datos MEData
-        siata_sync.py         Sincronizacion SIATA
-        notification.py       Servicio de notificaciones
-        routing.py            Motor de rutas
-      websocket/              Conexiones en tiempo real
-      tasks/                  Tareas asincronas (Celery)
-        celery_app.py         Configuracion de Celery
-        worker.py             Workers background
-        cron_jobs.py          Tareas programadas
-      ml/                     Machine Learning
-        predict_traffic.py    Prediccion de trafico
-        dbscan_clustering.py  Clusterizacion de accidentes
-        models/               Modelos entrenados
-      tests/                  Tests
-    alembic/                  Migraciones de base de datos
-    schema.sql                Esquema SQL oficial
-    requirements.txt          Dependencias Python
-    .env.example              Plantilla de configuracion
-
-  frontend/                   Dashboard web
-    src/                      Codigo fuente React
-    public/                   Assets estaticos
-    pages/                    Paginas HTML adicionales
-    vite.config.js            Configuracion Vite
-    package.json              Dependencias Node
-    tailwind.config.js        Configuracion Tailwind
-
-  tppmaps.html                Landing page + Dashboard (SPA)
-  start.sh                    Inicio rapido (Linux)
-  start.bat                   Inicio rapido (Windows)
-  README.md                   Este archivo
-```
-
----
+├── backend/                        # API REST en FastAPI
+│   ├── alembic/                    # Migraciones de la base de datos
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── v1/                 # Endpoints versión 1
+│   │   │       ├── endpoints/
+│   │   │       │   ├── auth.py             # Login / Registro JWT
+│   │   │       │   ├── users.py            # CRUD de usuarios
+│   │   │       │   ├── reports.py          # Reportes ciudadanos
+│   │   │       │   ├── public.py           # Endpoints públicos (geográficos)
+│   │   │       │   ├── vehicles.py         # Gestión de vehículos
+│   │   │       │   └── routes.py           # Optimización de rutas
+│   │   │       └── router.py       # Agrupador de rutas v1
+│   │   ├── core/                   # Configuración central y seguridad
+│   │   │   ├── config.py           # Settings con Pydantic
+│   │   │   ├── security.py         # JWT, hashing, autenticación
+│   │   │   └── exceptions.py       # Manejador global de errores
+│   │   ├── db/                     # Capa de datos (Conexión asíncrona)
+│   │   │   ├── base.py             # Import consolidado de modelos (para Alembic)
+│   │   │   ├── base_class.py       # DeclarativeBase de SQLAlchemy 2.0
+│   │   │   └── database.py         # Engine asíncrono (asyncpg) y sesión
+│   │   ├── models/                 # Modelos SQLAlchemy + PostGIS
+│   │   │   ├── user.py             # Usuarios y roles
+│   │   │   ├── report.py           # Reportes ciudadanos
+│   │   │   ├── accident_zone.py    # Zonas de accidentalidad
+│   │   │   ├── flood_hazard.py     # Riesgos de inundación (SIATA)
+│   │   │   ├── vehicle.py          # Vehículos registrados
+│   │   │   ├── telemetry.py        # Telemetría en tiempo real
+│   │   │   └── alert.py            # Alertas y notificaciones
+│   │   ├── schemas/                # Validadores de datos (Pydantic)
+│   │   │   ├── user.py             # Schemas de usuario
+│   │   │   ├── report.py           # Schemas de reportes
+│   │   │   ├── token.py            # Schemas JWT
+│   │   │   └── route.py            # Schemas de rutas
+│   │   ├── crud/                   # Operaciones atómicas de BD (Select, Insert, etc.)
+│   │   ├── services/               # Lógica de negocio e integraciones de datos
+│   │   │   ├── ingestion.py        # Ingesta de datos de MEData
+│   │   │   ├── siata_sync.py       # Sincronización API SIATA
+│   │   │   ├── notification.py     # Servicio de notificaciones externas
+│   │   │   └── routing.py          # Motor/Algoritmo de cálculo de rutas
+│   │   ├── websocket/              # Controladores de conexiones en tiempo real
+│   │   ├── tasks/                  # Tareas asíncronas en segundo plano (Celery)
+│   │   │   ├── celery_app.py       # Configuración e instancia de Celery
+│   │   │   ├── worker.py           # Definición de tareas / Workers
+│   │   │   └── cron_jobs.py        # Tareas programadas recurrentes
+│   │   ├── ml/                     # Módulos de Inteligencia Artificial / Data Science
+│   │   │   ├── predict_traffic.py  # Predicción de tráfico y congestión
+│   │   │   ├── dbscan_clustering.py# Clusterización espacial de accidentes
+│   │   │   └── models/             # Artefactos y binarios de modelos entrenados
+│   │   └── main.py                 # Archivo de entrada de FastAPI
+│   ├── tests/                      # Pruebas unitarias y de integración (pytest)
+│   ├── .env.example                # Variables de entorno de muestra
+│   ├── requirements.txt            # Dependencias de Python
+│   └── schema.sql                  # Dump de respaldo del esquema SQL oficial
+│
+├── frontend/                       # Dashboard Web (React + Vite)
+│   ├── public/                     # Assets estáticos globales
+│   ├── src/                        # Código fuente de la aplicación
+│   │   ├── assets/                 # Imágenes, logos, mapas base estáticos
+│   │   ├── components/             # Componentes reutilizables de UI
+│   │   ├── pages/                  # Vistas principales del Dashboard / SPA
+│   │   ├── services/               # Clientes API para consumir el backend
+│   │   ├── App.jsx                 # Componente raíz
+│   │   └── main.jsx                # Punto de entrada de React
+│   ├── index.html                  # Plantilla HTML principal de Vite
+│   ├── package.json                # Scripts y dependencias de Node
+│   ├── tailwind.config.js          # Configuración de estilos de Tailwind CSS
+│   └── vite.config.js              # Configuración del empaquetador Vite
+│
+├── tppmaps.html                    # Landing page / Acceso rápido (SPA independiente)
+├── start.sh                        # Script de automatización para Linux
+├── start.bat                       # Script de automatización para Windows
+└── README.md                       # Documentación general del proyecto
 
 ## Endpoints de la API
 
