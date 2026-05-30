@@ -13,6 +13,7 @@ export const CONFIG = {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
   },
   dataUrl: "assets/data/medellin-comunas.json",
+  accidentsUrl: "assets/data/accidents-metro.json",
   breakpoints: {
     tablet: 1100,
     mobile: 768,

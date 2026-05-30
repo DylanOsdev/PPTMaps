@@ -35,8 +35,12 @@ export function initResponsive() {
     btn.addEventListener("click", closeAllPanels);
   });
 
+  let resizeTimer;
   window.addEventListener("resize", () => {
-    if (!isMobile()) closeAllPanels();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!isMobile()) closeAllPanels();
+    }, 100);
   });
 
   document.addEventListener("keydown", (e) => {

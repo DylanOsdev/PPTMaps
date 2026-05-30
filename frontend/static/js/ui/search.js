@@ -4,8 +4,10 @@ import { buildGeocodeIndex, geocodeQuery } from "../services/geocode.js";
 import { fetchRoute } from "../services/api.js";
 
 let geocodeIndex = null;
+let lastRoutePolyline = null;
 
 export function initSearch() {
+  if (!AppState.comunasData) return;
   geocodeIndex = buildGeocodeIndex(AppState.comunasData);
 
   const runScan = () => {
@@ -17,6 +19,11 @@ export function initSearch() {
 
     const map = AppState.map;
     const coords = geocodeQuery(q, geocodeIndex);
+
+    if (lastRoutePolyline) {
+      map.removeLayer(lastRoutePolyline);
+      lastRoutePolyline = null;
+    }
 
     if (coords) {
       map.flyTo(coords, 14, { duration: 1.2 });
@@ -30,8 +37,8 @@ export function initSearch() {
     fetchRoute(q)
       .then((data) => {
         if (data.coordinates?.length) {
-          L.polyline(data.coordinates, { color: "#4ade80", weight: 5 }).addTo(map);
-          map.fitBounds(L.polyline(data.coordinates).getBounds(), { padding: [40, 40] });
+          lastRoutePolyline = L.polyline(data.coordinates, { color: "#4ade80", weight: 5 }).addTo(map);
+          map.fitBounds(lastRoutePolyline.getBounds(), { padding: [40, 40] });
         }
       })
       .catch(() => {

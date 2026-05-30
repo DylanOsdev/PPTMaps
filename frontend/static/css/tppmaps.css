@@ -21,24 +21,6 @@
   --panel-w: 280px;
   --panel-w-right: 300px;
 }
-  --bg-deep: #050608;
-  --bg-panel: rgba(8, 12, 18, 0.88);
-  --border-cyan: rgba(56, 189, 248, 0.35);
-  --text-cyan: #67e8f9;
-  --text-dim: #94a3b8;
-  --text-bright: #e2e8f0;
-  --accent-gold: #fbbf24;
-  --accent-green: #4ade80;
-  --accent-red: #f87171;
-  --accent-orange: #fb923c;
-  --glow-cyan: 0 0 12px rgba(56, 189, 248, 0.25);
-  --font-display: "Orbitron", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --header-h: 72px;
-  --footer-h: 44px;
-  --panel-w: 280px;
-  --panel-w-right: 300px;
-}
 
 *,
 *::before,
@@ -104,9 +86,8 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  background: linear-gradient(180deg, rgba(5, 8, 12, 0.95) 0%, rgba(5, 8, 12, 0.75) 100%);
+  background: linear-gradient(180deg, rgba(5, 8, 12, 0.97) 0%, rgba(5, 8, 12, 0.85) 100%);
   border-bottom: 1px solid var(--border-cyan);
-  backdrop-filter: blur(8px);
 }
 
 .brand-title {
@@ -186,15 +167,15 @@ body {
 
 /* Panels */
 .panel {
-  background: var(--bg-panel);
+  background: rgba(5, 8, 14, 0.95);
   border: 1px solid var(--border-cyan);
-  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   margin: 4px;
   border-radius: 6px;
   box-shadow: var(--glow-cyan);
+  contain: layout style paint;
 }
 
 .panel-left {
@@ -516,6 +497,7 @@ body {
   overflow-y: auto;
   flex: 1;
   padding: 6px 10px;
+  contain: layout style paint;
 }
 
 .alerts-feed::-webkit-scrollbar {
@@ -594,9 +576,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 14px;
-  background: rgba(5, 8, 12, 0.92);
+  background: rgba(5, 8, 12, 0.95);
   border-top: 1px solid var(--border-cyan);
-  backdrop-filter: blur(8px);
 }
 
 .bottom-left {
@@ -664,6 +645,7 @@ body {
   animation: ticker 45s linear infinite;
   padding: 4px 0;
   font-size: 9px;
+  will-change: transform;
 }
 
 .ticker-track span {
@@ -691,16 +673,16 @@ body {
 
 /* Resaltado Medellín */
 .medellin-area-fill {
-  filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.45));
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
 }
 
 .medellin-area-glow {
-  filter: drop-shadow(0 0 22px rgba(103, 232, 249, 0.35));
   pointer-events: none;
 }
 
 .medellin-pulse {
   animation: medellinPulse 3s ease-in-out infinite;
+  will-change: opacity;
 }
 
 @keyframes medellinPulse {
@@ -733,6 +715,7 @@ body {
     0 2px 8px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   white-space: nowrap;
+  will-change: transform;
 }
 
 .barrio-label-wrap {
@@ -764,7 +747,37 @@ body {
 }
 
 .comuna-polygon {
-  transition: fill-opacity 0.15s ease;
+  /* removed transition to fix zoom lag and distortion */
+}
+
+/* Pause all CSS animations during Leaflet zoom to prevent jank */
+.leaflet-zoom-anim .gps-pulse-ring,
+.leaflet-zoom-anim .accident-ripple,
+.leaflet-zoom-anim .medellin-pulse,
+.leaflet-zoom-anim .predict-zone,
+.leaflet-zoom-anim .accident-core,
+.leaflet-zoom-anim .barrier-icon,
+.leaflet-zoom-anim .marker-safe-route-dash,
+.leaflet-zoom-anim .ticker-track {
+  animation-play-state: paused !important;
+}
+
+/* Disable pointer events on polygon overlays while zooming */
+.leaflet-zoom-anim .comuna-polygon,
+.leaflet-zoom-anim .metro-polygon {
+  pointer-events: none !important;
+}
+
+/* Hide custom markers and reduce flicker during zoom transitions */
+.leaflet-zoom-anim .leaflet-div-icon-clean {
+  opacity: 0.4 !important;
+  transition: none !important;
+}
+.leaflet-zoom-anim .fatality-dot {
+  opacity: 0.3 !important;
+}
+.leaflet-zoom-anim .leaflet-marker-icon {
+  transition: none !important;
 }
 
 /* Lista de comunas (panel) */
@@ -915,7 +928,7 @@ body {
 }
 
 .marker-safe-route {
-  filter: drop-shadow(0 0 6px #4ade80);
+  will-change: transform;
 }
 
 .marker-safe-route-dash {
@@ -1003,6 +1016,7 @@ body {
   opacity: 0;
   animation: gpsRingPulse 2.2s ease-out infinite;
   z-index: 2;
+  will-change: transform, opacity;
 }
 
 .gps-pulse-ring--2 {
@@ -1052,6 +1066,7 @@ body {
   justify-content: center;
   box-shadow: 0 0 16px var(--ring-color, #ef4444), 0 3px 10px rgba(0,0,0,0.7);
   animation: accidentGlow 1.4s ease-in-out infinite alternate;
+  will-change: box-shadow;
 }
 
 @keyframes accidentGlow {
@@ -1072,6 +1087,7 @@ body {
   opacity: 0;
   animation: accidentRipple 2s ease-out infinite;
   z-index: 2;
+  will-change: transform, opacity;
 }
 
 .accident-ripple--2 { animation-delay: 1s; }
@@ -1126,6 +1142,7 @@ body {
 
 .predict-zone {
   animation: predictPulse 3s ease-in-out infinite;
+  will-change: opacity;
 }
 
 @keyframes predictPulse {
@@ -1264,8 +1281,8 @@ body {
 .barrier-icon {
   font-size: 16px;
   line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(239,68,68,0.8));
   animation: barrierPulse 1.8s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes barrierPulse {
@@ -1327,9 +1344,8 @@ body {
 
 /* Hover highlight for metro polygons (Leaflet path element) */
 .metro-polygon {
-  transition: fill-opacity 0.15s ease, stroke-width 0.15s ease;
-
-
+  /* removed transition to fix zoom lag and distortion */
+}
 
 /* Toggle switch — neon glow when checked */
 body.night-mode .toggle:checked {
@@ -1435,7 +1451,7 @@ body.night-mode .popup-dark .leaflet-popup-content-wrapper {
 
 /* Safe route brighter glow */
 body.night-mode .marker-safe-route {
-  filter: drop-shadow(0 0 10px #4ade80) drop-shadow(0 0 20px rgba(74,222,128,0.5));
+  box-shadow: 0 0 10px #4ade80;
 }
 
 /* Scroll bar in night mode */

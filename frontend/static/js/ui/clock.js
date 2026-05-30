@@ -1,7 +1,10 @@
 import { AppState } from "../core/state.js";
 import { pad } from "../core/utils.js";
+import { onWsEvent } from "../services/api.js";
 
 export function initClock() {
+  if (AppState._clockInterval) clearInterval(AppState._clockInterval);
+
   const tick = () => {
     const now = new Date();
     const zulu = document.getElementById("zuluTime");
@@ -15,15 +18,14 @@ export function initClock() {
     }
   };
   tick();
-  setInterval(tick, 1000);
+  AppState._clockInterval = setInterval(tick, 1000);
 }
 
 export function initTicker() {
   const items = [
     { cls: "up", t: "16 comunas Medellín activas" },
     { cls: "", t: "SIATA: Deprimidos OK" },
-    { cls: "warn", t: "Lluvia 45min — Bulerías" },
-    { cls: "down", t: "Vía bloqueada Av. Regional" },
+    { cls: "warn", t: "Sistema de monitoreo activo" },
     { cls: "", t: "PostGIS + Redis: CONECTADO" },
   ];
   const html = items.map((i) => `<span class="${i.cls}">${i.t}</span>`).join("");
@@ -32,8 +34,32 @@ export function initTicker() {
 }
 
 export function initThroughput() {
+  const el = document.getElementById("statThroughput");
+  if (!el) return;
+
+  let bytesTotal = 0;
+  let lastTs = performance.now();
+
+  const update = (val) => {
+    const now = performance.now();
+    const elapsed = (now - lastTs) / 1000;
+    bytesTotal += val * (1024 * 1024);
+    if (elapsed > 0 && bytesTotal > 0) {
+      const mbps = (bytesTotal / (1024 * 1024)) / elapsed;
+      el.textContent = `${mbps.toFixed(2).replace(".", ",")} MB/s`;
+    }
+  };
+
+  onWsEvent("telemetry", (data) => {
+    const items = Array.isArray(data) ? data : (data.positions || [data]);
+    const size = JSON.stringify(items).length;
+    const mb = size / (1024 * 1024);
+    update(mb);
+  });
+
+  // Reset accumulator every 10s
   setInterval(() => {
-    const el = document.getElementById("statThroughput");
-    if (el) el.textContent = `${(Math.random() * 0.08).toFixed(2).replace(".", ",")} MB/s`;
-  }, 3000);
+    bytesTotal = 0;
+    lastTs = performance.now();
+  }, 10000);
 }

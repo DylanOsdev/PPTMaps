@@ -1,0 +1,16 @@
+@import '../static/css/tppmaps.css';
+@import "tailwindcss";
+
+/* Fix for Leaflet + Tailwind: prevent tiles from distorting and lagging on zoom */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-container {
+  /* Prevent tailwind's default SVG display block from messing up Leaflet SVGs */
+}
+.leaflet-container svg {
+  max-width: none !important;
+  max-height: none !important;
+}

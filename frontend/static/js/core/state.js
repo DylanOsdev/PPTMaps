@@ -1,4 +1,3 @@
-/** Estado compartido de la aplicación (patrón store ligero) */
 export const AppState = {
   map: null,
   layerGroups: {},
@@ -6,4 +5,5 @@ export const AppState = {
   startTime: Date.now(),
   alertFilter: "all",
   activeComuna: null,
+  wsConnected: false,
 };
