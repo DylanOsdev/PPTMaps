@@ -221,6 +221,18 @@ export default function Landing() {
                 INICIAR COMANDO
               </button>
               <button
+                onClick={() => navigate('/dashboard')}
+                style={{
+                  padding: '16px 32px', fontFamily: '"Orbitron", sans-serif', fontSize: '14px',
+                  fontWeight: 600, letterSpacing: '0.1em', color: '#fbbf24', background: 'transparent',
+                  border: '1px solid #fbbf24', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                onMouseOver={e => { e.target.style.background = 'rgba(251, 191, 36, 0.12)'; e.target.style.boxShadow = '0 0 14px rgba(251, 191, 36, 0.2)'; }}
+                onMouseOut={e => { e.target.style.background = 'transparent'; e.target.style.boxShadow = 'none'; }}
+              >
+                DASHBOARD
+              </button>
+              <button
                 onClick={() => navigate('/navigate')}
                 style={{
                   padding: '16px 32px', fontFamily: '"Orbitron", sans-serif', fontSize: '14px',

@@ -4,6 +4,7 @@ import Landing from './pages/Landing.jsx';
 import NavigatePage from './pages/Navigate.jsx';
 import Report from './pages/Report.jsx';
 import CommandCenter from './pages/CommandCenter.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 
 function ErrorFallback() {
   const error = useRouteError();
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
   { path: "/navigate", element: <NavigatePage />, errorElement: <ErrorFallback /> },
   { path: "/report", element: <Report />, errorElement: <ErrorFallback /> },
   { path: "/map", element: <CommandCenter />, errorElement: <ErrorFallback /> },
+  { path: "/dashboard", element: <Dashboard />, errorElement: <ErrorFallback /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
