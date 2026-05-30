@@ -17,6 +17,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def enqueue_startup_syncs() -> None:
+    """Encola las sincronizaciones que deben poblar datos sin esperar al beat.
+
+    Evita que el mapa de clima quede vacío hasta el próximo múltiplo de 15 min.
+    Es resiliente: si el broker (Redis) está caído, el arranque NO debe fallar.
+    """
+    from app.tasks.cron_jobs import sync_weather
+
+    try:
+        sync_weather.delay()
+    except Exception as e:  # broker caído u otro fallo de encolado
+        logger.warning(" No se pudo encolar weather.sync al arrancar: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ciclo de vida de la aplicación: verifica la BD al arrancar."""
@@ -34,6 +48,9 @@ async def lifespan(app: FastAPI):
         seeded = await seed_zones_on_startup(db, settings.ZONES_JSON_PATH)
     if seeded:
         logger.info("🗺️  Zonas sembradas en PostGIS: %d", seeded)
+
+    # Encola el sync de clima para que el mapa no quede vacío hasta el próximo beat.
+    enqueue_startup_syncs()
 
     yield  # La app corre aquí
 
