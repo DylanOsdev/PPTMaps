@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    # API key para ingesta de telemetría (dispositivos GPS = máquinas, no users)
+    TELEMETRY_API_KEY: str = "dev-telemetry-key-change-me"
+
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
