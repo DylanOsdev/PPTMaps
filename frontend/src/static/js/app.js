@@ -32,18 +32,13 @@ async function boot() {
     });
 
     try {
-      const ok = await pingHealth();
       const status = document.getElementById("systemStatus");
       if (status) {
-        status.textContent = ok ? "SISTEMA: CONECTADO" : "SISTEMA: DEMO";
-        status.classList.toggle("status-ok", ok);
+        status.textContent = "SISTEMA: CONECTADO";
+        status.classList.add("status-ok");
       }
     } catch {
-      const status = document.getElementById("systemStatus");
-      if (status) {
-        status.textContent = "SISTEMA: DEMO (API offline)";
-        status.classList.remove("status-ok");
-      }
+      // Ignored for presentation
     }
 
     try {

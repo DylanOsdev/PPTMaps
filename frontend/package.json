@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && cp -r pages dist/pages",
+    "build": "vite build && cp -r pages dist/pages && cp ../tppmaps.html dist/landing.html",
     "preview": "vite preview"
   },
   "keywords": [],
@@ -22,8 +22,10 @@
     "vite": "^8.0.14"
   },
   "dependencies": {
+    "gsap": "^3.15.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-icons": "^5.6.0"
+    "react-icons": "^5.6.0",
+    "react-router-dom": "^7.16.0"
   }
 }

@@ -1,16 +1,80 @@
-@import '../static/css/tppmaps.css';
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+@import './static/css/tppmaps.css';
+@import './static/css/movil.css';
 @import "tailwindcss";
+
+@theme {
+  --color-bg-deep: #050608;
+  --color-bg-panel: rgba(8, 12, 18, 0.88);
+  --color-text-cyan: #67e8f9;
+  --color-text-dim: #94a3b8;
+  --color-text-bright: #e2e8f0;
+  --color-accent-gold: #fbbf24;
+  --color-accent-green: #4ade80;
+  --color-accent-red: #f87171;
+  --color-accent-orange: #fb923c;
+  --color-border-cyan: rgba(56, 189, 248, 0.35);
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Orbitron", system-ui, sans-serif;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scan {
+  from { top: 0; }
+  to { top: 100%; }
+}
 
 /* Fix for Leaflet + Tailwind: prevent tiles from distorting and lagging on zoom */
 .leaflet-container img {
   max-width: none !important;
   max-height: none !important;
+  /* Prevent fractional zoom gaps */
+  outline: 1px solid transparent; 
+  backface-visibility: hidden;
 }
 
-.leaflet-container {
-  /* Prevent tailwind's default SVG display block from messing up Leaflet SVGs */
-}
+/* Prevent tailwind's default SVG display block from messing up Leaflet SVGs */
 .leaflet-container svg {
   max-width: none !important;
   max-height: none !important;
+}
+
+/* EXTREME PERFORMANCE FIXES FOR LEAFLET ZOOM */
+/* Force hardware acceleration on the zoom container */
+.leaflet-zoom-animated {
+  will-change: transform;
+}
+
+/* Brutal kill of ALL transitions and animations during zoom to prevent browser crashes */
+.leaflet-zoom-anim * {
+  transition: none !important;
+  animation-play-state: paused !important;
+}
+
+/* Ensure paths don't try to transition their stroke/fill during scale */
+.leaflet-zoom-anim svg,
+.leaflet-zoom-anim path {
+  transition: none !important;
+}
+
+/* Optimize overlay interaction */
+.leaflet-overlay-pane svg {
+  pointer-events: none;
+}
+.leaflet-overlay-pane path {
+  pointer-events: visiblePainted;
 }

@@ -10,9 +10,9 @@
   --font: "JetBrains Mono", system-ui, sans-serif;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+.mobile-page * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+.mobile-page {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
@@ -41,7 +41,7 @@ body {
 
 .sub-bar .voice { color: var(--green); }
 
-main { flex: 1; padding: 0 12px 80px; overflow-y: auto; }
+.mobile-page main { flex: 1; padding: 0 12px 80px; overflow-y: auto; }
 
 .search-box {
   display: flex;

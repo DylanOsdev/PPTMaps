@@ -36,6 +36,8 @@ export function initTicker() {
 export function initThroughput() {
   const el = document.getElementById("statThroughput");
   if (!el) return;
+  if (AppState._throughputInit) return;
+  AppState._throughputInit = true;
 
   let bytesTotal = 0;
   let lastTs = performance.now();
@@ -50,15 +52,15 @@ export function initThroughput() {
     }
   };
 
-  onWsEvent("telemetry", (data) => {
+  AppState._throughputHandler = (data) => {
     const items = Array.isArray(data) ? data : (data.positions || [data]);
     const size = JSON.stringify(items).length;
     const mb = size / (1024 * 1024);
     update(mb);
-  });
+  };
+  onWsEvent("telemetry", AppState._throughputHandler);
 
-  // Reset accumulator every 10s
-  setInterval(() => {
+  AppState._throughputReset = setInterval(() => {
     bytesTotal = 0;
     lastTs = performance.now();
   }, 10000);
