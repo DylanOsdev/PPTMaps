@@ -16,7 +16,7 @@ class Telemetry(Base):
     longitude = Column(Float, nullable=False)
     speed = Column(Float, nullable=True)
     heading = Column(Float, nullable=True)
-    location = Column(Geometry(geometry_type="POINT", srid=4326), nullable=False)
+    location = Column(Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (

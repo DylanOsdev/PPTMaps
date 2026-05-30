@@ -9,7 +9,7 @@ async def test_register_user(client: AsyncClient):
         "email": "nuevo@movimed.co",
         "password": "SecurePass1!",
         "full_name": "Nuevo Usuario",
-        "role": "USER",
+        "role": "citizen",
     })
     assert response.status_code == 201
     data = response.json()
@@ -18,7 +18,7 @@ async def test_register_user(client: AsyncClient):
 
 async def test_register_duplicate_user(client: AsyncClient):
     """Registrar el mismo email dos veces debe retornar 400."""
-    payload = {"email": "dup@movimed.co", "password": "Pass123!", "role": "USER"}
+    payload = {"email": "dup@movimed.co", "password": "Pass123!", "role": "citizen"}
     await client.post("/api/v1/auth/register", json=payload)
     response = await client.post("/api/v1/auth/register", json=payload)
     assert response.status_code == 400
