@@ -1,0 +1,9 @@
+# Build context hygiene — el Dockerfile recompila el frontend desde cero.
+**/node_modules
+**/dist
+**/__pycache__
+backend/venv
+backend/.venv
+**/.pytest_cache
+.git
+*.log

@@ -94,7 +94,17 @@ async def health_db():
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-if FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+
+def resolve_frontend_dir(root: Path):
+    """Devuelve el build compilado (frontend/dist) solo si existe su index.html; si no, None."""
+    dist = root / "frontend" / "dist"
+    return dist if (dist / "index.html").is_file() else None
+
+
+_frontend = resolve_frontend_dir(PROJECT_ROOT)
+if _frontend is not None:
+    app.mount("/", StaticFiles(directory=str(_frontend), html=True), name="frontend")
+else:
+    logger.warning("Frontend no montado: falta frontend/dist. Corré 'npm run build' en frontend/.")
