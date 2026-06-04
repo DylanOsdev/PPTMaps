@@ -24,18 +24,26 @@ async def publish_alert(redis: Redis, alert_data: dict) -> None:
 
 
 async def listen_and_broadcast_alerts(redis: Redis):
-    """Bucle infinito: escucha alertas publicadas en Redis y las reenvía a
+    """Bucle infinito resiliente: escucha alertas publicadas en Redis y las reenvía a
     todos los clientes WebSocket conectados vía ConnectionManager."""
     from app.websocket.connection_manager import manager
 
-    pubsub = redis.pubsub()
-    await pubsub.subscribe(ALERTS_CHANNEL)
-    logger.info("Escuchando alertas en canal Redis: %s", ALERTS_CHANNEL)
-    async for message in pubsub.listen():
-        if message["type"] != "message":
-            continue
+    while True:
         try:
-            data = json.loads(message["data"])
-            await manager.broadcast({"type": "alerts", "data": [data]})
+            pubsub = redis.pubsub()
+            await pubsub.subscribe(ALERTS_CHANNEL)
+            logger.info("Escuchando alertas en canal Redis: %s", ALERTS_CHANNEL)
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                try:
+                    data = json.loads(message["data"])
+                    await manager.broadcast({"type": "alerts", "data": [data]})
+                except Exception as e:
+                    logger.warning("Error reenviando alerta desde Redis: %s", e)
+        except asyncio.CancelledError:
+            logger.info("Subscripción a alertas cancelada.")
+            raise
         except Exception as e:
-            logger.warning("Error reenviando alerta desde Redis: %s", e)
+            logger.warning("Conexión perdida con el canal de alertas de Redis: %s. Reintentando en 5s...", e)
+            await asyncio.sleep(5)

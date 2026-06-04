@@ -3,6 +3,7 @@
 La lógica vive en detect_overspeed(db) (async, testeable). El task Celery es un
 wrapper fino que abre una sesión y ejecuta el core.
 """
+
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
@@ -58,14 +59,16 @@ async def detect_overspeed(db: AsyncSession) -> list[dict]:
             message=f"Exceso de velocidad: {round(row.max_speed, 1)} km/h (límite {OVERSPEED_THRESHOLD_KMH})",
         )
         db.add(alert)
-        created_alerts.append({
-            "id": str(alert.id),
-            "type": "overspeed",
-            "severity": "WARNING",
-            "message": alert.message,
-            "vehicle_id": str(row.vehicle_id) if row.vehicle_id else None,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        created_alerts.append(
+            {
+                "id": str(alert.id),
+                "type": "overspeed",
+                "severity": "WARNING",
+                "message": alert.message,
+                "vehicle_id": str(row.vehicle_id) if row.vehicle_id else None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
     await db.commit()
 
@@ -87,11 +90,28 @@ async def detect_overspeed(db: AsyncSession) -> list[dict]:
 
 @celery_app.task(name="overspeed.check")
 def check_overspeed_alerts() -> int:
-    """Task periódica: corre detect_overspeed sobre una sesión nueva."""
+    """Task periódica: corre detect_overspeed sobre una sesión nueva.
+
+    Nota: Usamos un patrón seguro para evitar conflictos de event loops
+    entre Celery y asyncpg/SQLAlchemy.
+    """
+    import nest_asyncio
+
+    # Permite anidamiento de event loops (necesario para Celery + async)
+    nest_asyncio.apply()
 
     async def _run():
+        # Usamos el sessionmaker directamente, no el generador get_db()
+        # que está pensado para FastAPI
         async with async_session_maker() as db:
             alerts = await detect_overspeed(db)
             return len(alerts)
 
-    return asyncio.run(_run())
+    # Ejecutar de forma segura: si ya existe un loop, reusarlo
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    return loop.run_until_complete(_run())

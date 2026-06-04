@@ -201,7 +201,39 @@ Documentación interactiva: `http://localhost:8000/docs` (Swagger UI)
 
 ## Inicio Rápido
 
-### Linux (script automatizado)
+### Opción 1: Docker (Recomendado)
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/DylanOsdev/PPTMaps.git
+cd PPTMaps
+
+# 2. Levantar el stack completo (incluye ingesta automática de 702k registros)
+cd backend
+docker-compose -f docker-compose.pptmaps.yml up -d --build
+
+# 3. Esperar ~2 minutos para que la ingesta termine
+# Verificar progreso:
+docker-compose -f docker-compose.pptmaps.yml logs -f api
+
+# 4. Verificar que todo funcione
+chmod +x test_docker_stack.sh
+./test_docker_stack.sh
+
+# 5. Acceder a la aplicación
+# - Frontend: http://localhost:8000
+# - Dashboard: http://localhost:8000/dashboard
+# - API Docs: http://localhost:8000/docs
+```
+
+**Nota**: La primera vez que ejecutás `docker-compose up`, el sistema:
+1. Construye las imágenes (backend + frontend)
+2. Aplica migraciones de PostGIS
+3. Ingesta automáticamente 702,540 incidentes viales (2008-2025)
+4. Siembra 30 zonas (comunas + municipios)
+5. Arranca la API en http://localhost:8000
+
+### Opción 2: Linux (script automatizado)
 
 ```bash
 # 1. Clonar el repositorio
