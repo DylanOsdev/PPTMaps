@@ -21,6 +21,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
+# Copiar entrypoint y dataset
+RUN chmod +x /repo/backend/docker-entrypoint.sh
+
 # Frontend compilado: main.py lo sirve desde <repo>/frontend/dist vía StaticFiles.
 COPY --from=frontend /frontend/dist /repo/frontend/dist
 

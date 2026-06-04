@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-movimed}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # host:container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-movimed}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"   # host:container
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      ZONES_JSON_PATH: /data/medellin-comunas.json
+    volumes:
+      - ../frontend/public/assets/data/medellin-comunas.json:/data/medellin-comunas.json:ro
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    # Entrypoint automático: migraciones + ingesta de datos + API
+    command: sh /repo/backend/docker-entrypoint.sh
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - api
+    command: celery -A app.tasks.celery_app.celery_app worker --loglevel=info
+
+  beat:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - worker
+    command: celery -A app.tasks.celery_app.celery_app beat --loglevel=info
+
+volumes:
+  pgdata:

@@ -33,8 +33,16 @@ def sync_weather() -> int:
 
 
 async def _run_flush() -> int:
-    async with async_session_maker() as db:
-        return await flush_telemetry(db, get_redis())
+    from redis.asyncio import Redis
+    from app.core.config import settings
+    
+    redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    try:
+        async with async_session_maker() as db:
+            result = await flush_telemetry(db, redis)
+        return result
+    finally:
+        await redis.aclose()
 
 
 @celery_app.task(name="telemetry.flush")
