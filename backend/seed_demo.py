@@ -55,6 +55,8 @@ async def main():
 
         # 5) Reporte de accidente (para /public/accidents/geojson)
         await create_report(db, ReportCreate(report_type=ReportType.accident, description="Choque múltiple Autopista Sur", latitude=6.2380, longitude=-75.5750))
+        await create_report(db, ReportCreate(report_type=ReportType.flood, description="Acumulación de agua en deprimido Feria de Ganado", latitude=6.2820, longitude=-75.5650))
+        await create_report(db, ReportCreate(report_type=ReportType.obstruction, description="Hueco profundo en carril derecho de Av. El Poblado", latitude=6.2100, longitude=-75.5680))
 
     await redis.aclose()
     print(f"Seed OK: {len(VEHICLES)} vehículos, {flushed} pings, 2 alertas, {hazards} flood_hazards, 1 accidente")

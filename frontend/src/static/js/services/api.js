@@ -49,6 +49,8 @@ export function connectWebSocket() {
         dispatchWsEvent("alerts", msg.data || msg);
       } else if (msg.type === "accident") {
         dispatchWsEvent("accidents", msg.data || msg);
+      } else if (msg.type === "new_report") {
+        dispatchWsEvent("new_report", msg.data || msg);
       } else {
         dispatchWsEvent("message", msg);
       }
@@ -146,8 +148,13 @@ export async function fetchFloodZones() {
   return res.json();
 }
 
-export async function fetchRoute(destination) {
-  const res = await fetch(`${CONFIG.apiBase}/routes?destination=${encodeURIComponent(destination)}`, {
+export async function fetchRoute(destination, origin = null) {
+  let url = `${CONFIG.apiBase}/routes?destination=${encodeURIComponent(destination)}&_cb=${Date.now()}`;
+  if (origin) {
+    url += `&origin=${encodeURIComponent(origin)}`;
+  }
+  const res = await fetch(url, {
+    cache: "no-store",
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error("Route fetch failed");
@@ -167,5 +174,24 @@ export async function fetchRainRisk() {
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error("Error fetching rain risk");
+  return res.json();
+}
+
+export async function fetchPublicReports() {
+  const res = await fetch(`${CONFIG.apiBase}/public/reports`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching public reports");
+  return res.json();
+}
+
+export async function createPublicReport({ report_type, description, latitude, longitude }) {
+  const res = await fetch(`${CONFIG.apiBase}/public/reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ report_type, description, latitude, longitude }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error("Error creating report");
   return res.json();
 }

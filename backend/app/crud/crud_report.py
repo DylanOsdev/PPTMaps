@@ -1,10 +1,12 @@
+import json
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from geoalchemy2.functions import ST_MakePoint, ST_SetSRID
 from app.models.report import Report, ReportType
 from app.schemas.report import ReportCreate, ReportUpdate
-
+from app.db.redis import get_redis
+from app.services.alert_broadcaster import publish_alert
 
 async def create_report(db: AsyncSession, report_in: ReportCreate, reporter_id: Optional[int] = None) -> Report:
     point = ST_SetSRID(ST_MakePoint(report_in.longitude, report_in.latitude), 4326)
@@ -17,6 +19,26 @@ async def create_report(db: AsyncSession, report_in: ReportCreate, reporter_id: 
     db.add(db_report)
     await db.commit()
     await db.refresh(db_report)
+    
+    # Notificar en tiempo real vía WebSocket (Redis Pub/Sub)
+    try:
+        redis = await get_redis()
+        report_data = {
+            "type": "new_report",
+            "data": {
+                "id": db_report.id,
+                "report_type": db_report.report_type.value,
+                "description": db_report.description,
+                "latitude": report_in.latitude,
+                "longitude": report_in.longitude,
+                "created_at": db_report.created_at.isoformat() if db_report.created_at else None
+            }
+        }
+        await publish_alert(redis, report_data)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error publishing new_report to Redis: {e}")
+
     return db_report
 
 

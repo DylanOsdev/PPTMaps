@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -15,7 +15,7 @@ function setLayerStatus(ok) {
 }
 
 let _layersLoaded = 0;
-const _LAYERS_TOTAL = 4;
+const _LAYERS_TOTAL = 5;
 
 function trackLayer(ok) {
   _layersLoaded++;
@@ -78,6 +78,19 @@ export async function loadWeatherData() {
   }
 }
 
+export async function loadReportsData() {
+  try {
+    const reports = await fetchPublicReports();
+    if (Array.isArray(reports)) {
+      updateReportsLayers(reports);
+    }
+    trackLayer(true);
+  } catch (err) {
+    console.warn("[map] No se pudieron cargar reportes ciudadanos:", err);
+    trackLayer(false);
+  }
+}
+
 export async function loadFatalitiesData() {
   try {
     const data = await fetchFatalities();
@@ -105,13 +118,26 @@ let fatalitiesPollTimer = null;
 export function startFatalitiesPolling() {
   stopFatalitiesPolling();
   loadFatalitiesData();
-  fatalitiesPollTimer = setInterval(loadFatalitiesData, 30000);
 }
 
 export function stopFatalitiesPolling() {
   if (fatalitiesPollTimer) {
     clearInterval(fatalitiesPollTimer);
     fatalitiesPollTimer = null;
+  }
+}
+
+let reportsPollTimer = null;
+
+export function startReportsPolling() {
+  stopReportsPolling();
+  loadReportsData();
+}
+
+export function stopReportsPolling() {
+  if (reportsPollTimer) {
+    clearInterval(reportsPollTimer);
+    reportsPollTimer = null;
   }
 }
 
@@ -193,6 +219,7 @@ export async function setupMapLayers() {
   loadAccidentsData();
   loadFloodZonesData(map);
   loadWeatherData();
+  startReportsPolling();
   startFatalitiesPolling();
 
   let statsTimer;
