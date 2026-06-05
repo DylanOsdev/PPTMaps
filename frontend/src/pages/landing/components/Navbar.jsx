@@ -47,7 +47,7 @@ export default function Navbar() {
         {NAV_LINKS.map((link, i) => (
           <button
             key={link.id}
-            onClick={() => scrollToSection(link.id)}
+            onClick={() => link.isRoute ? window.location.href = link.route : scrollToSection(link.id)}
             className="relative group cursor-pointer py-2 bg-transparent border-none"
           >
             <span className="text-[10px] text-cyan-400/50 mr-2">[{String(i + 1).padStart(2, '0')}]</span>
@@ -60,6 +60,13 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-6">
+        <button
+          onClick={() => { window.location.href = '/dashboard'; }}
+          className="px-4 py-1.5 border border-cyan-400/40 bg-[#041327]/60 text-cyan-400 text-[9px] font-bold tracking-widest uppercase cursor-pointer"
+          style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))" }}
+        >
+          Estadísticas
+        </button>
         <div className="hidden sm:block text-[11px] text-slate-300 tracking-widest">
           {time}
         </div>

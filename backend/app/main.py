@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -98,6 +99,7 @@ async def health_db():
         raise HTTPException(status_code=503, detail=f"Database unreachable: {e}")
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -111,6 +113,25 @@ def resolve_frontend_dir(root: Path):
 
 _frontend = resolve_frontend_dir(PROJECT_ROOT)
 if _frontend is not None:
-    app.mount("/", StaticFiles(directory=str(_frontend), html=True), name="frontend")
+    # Montar archivos estáticos primero
+    app.mount("/assets", StaticFiles(directory=str(_frontend / "assets")), name="assets")
+    app.mount("/static", StaticFiles(directory=str(_frontend / "static")), name="static")
+    
+    # Catch-all para React Router: SOLO rutas que no sean /api, /docs, /health, /ws
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Sirve el SPA de React para cualquier ruta que no sea API/docs/health/ws."""
+        # Si la ruta empieza con prefijos reservados, NO capturar (dejar que FastAPI maneje 404)
+        if full_path.startswith(("api/", "docs", "redoc", "health", "ws/", "openapi.json")):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Si es un archivo estático existente, servirlo directamente
+        file_path = _frontend / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        
+        # Todas las demás rutas sirven el index.html (React Router)
+        return FileResponse(_frontend / "index.html")
 else:
     logger.warning("Frontend no montado: falta frontend/dist. Corré 'npm run build' en frontend/.")
