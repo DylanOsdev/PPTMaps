@@ -1,0 +1,304 @@
+═══════════════════════════════════════════════════════════════════════════════
+              ANÁLISIS V4 COMPLETO - PPTMAPS LANDING
+                    1774 líneas | 87,519 caracteres
+═══════════════════════════════════════════════════════════════════════════════
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  ❌ REGRESIONES V3→V4 (5 errores reintroducidos)                              ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+❌ REGRESIÓN #1: useNavigateSafe ELIMINADO → useNavigate DIRECTO
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 289, 1448
+
+V3: const useNavigateSafe = () => { try { return useNavigate(); } catch (e) { ... } };
+V4: const navigate = useNavigate(); // Sin protección
+
+CONSECUENCIA: Si no hay <Router>, la app crashea.
+
+
+❌ REGRESIÓN #2: HeroCTA setTimeout SIN CLEANUP
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 294
+
+V3: navTimerRef.current = setTimeout(...) + cleanup
+V4: setTimeout(() => navigate('/map'), 1200); // Sin ref, sin cleanup
+
+CONSECUENCIA: Si se desmonta antes de 1.2s, navega en componente muerto.
+
+
+❌ REGRESIÓN #3: pin: true VUELVE EN SCROLLTRIGGER
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 1680
+
+V3: pin: false
+V4: pin: true, pinSpacing: true
+
+CONSECUENCIA: En móvil, address bar de Safari rompe el scroll.
+
+
+❌ REGRESIÓN #4: WebkitClipPath VUELVE A 9 INSTANCIAS
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 556-557, 580-581, 604-605, 628-629, 1540
+
+V3: Solo clipPath, sin WebkitClipPath
+V4: clipPath + WebkitClipPath duplicado
+
+CONSECUENCIA: Redundante. React añade prefijos automáticamente.
+
+
+❌ REGRESIÓN #5: anticipatePin ELIMINADO
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 1680
+
+V3: anticipatePin: 1
+V4: Eliminado
+
+CONSECUENCIA: Con pin: true, saltos bruscos al inicio de sección.
+
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🔴 NUEVOS ERRORES CRÍTICOS EN V4 (8)                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+🔴 NUEVO #1: fetch SIN AbortController
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 660-683
+
+TEXTO EXACTO:
+  const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=6.2442&longitude=-75.5812&current=...");
+
+PROBLEMA: fetch sin AbortController no puede cancelarse. Si el componente se desmonta durante fetch, memory leak.
+
+FIX:
+  const controller = new AbortController();
+  const res = await fetch(url, { signal: controller.signal });
+  return () => controller.abort();
+
+
+🔴 NUEVO #2: parseFloat(weather.visibility) PUEDE SER NaN
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 887
+
+TEXTO EXACTO:
+  value: parseFloat(weather.visibility),
+
+PROBLEMA: Si visibility es "--", parseFloat("--") = NaN. UI muestra "NaN km".
+
+FIX:
+  value: weather.loading ? 0 : parseFloat(weather.visibility) || 0,
+
+
+🔴 NUEVO #3: toFixed EN VALOR FALSY (0)
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 676
+
+TEXTO EXACTO:
+  visibility: data.hourly?.visibility?.[h] ? (data.hourly.visibility[h] / 1000).toFixed(1) : "10.0",
+
+PROBLEMA: Si visibilidad es 0 (falsy), muestra "10.0" en lugar de "0.0".
+
+FIX:
+  visibility: data.hourly?.visibility?.[h] != null 
+    ? (data.hourly.visibility[h] / 1000).toFixed(1) 
+    : "10.0",
+
+
+🔴 NUEVO #4: new Date().getHours() SIN TIMEZONE
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 668
+
+TEXTO EXACTO:
+  const h = new Date().getHours();
+
+PROBLEMA: Usa hora LOCAL del cliente. Si está en Tokyo, pide índice 14 para datos de Medellín.
+
+FIX:
+  const h = new Date().toLocaleString('en-US', { timeZone: 'America/Bogota', hour: 'numeric' }).split(' ')[0];
+
+
+🔴 NUEVO #5: VARIABLE 'V' NOMBRE INCOMPRENSIBLE
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 698
+
+TEXTO EXACTO:
+  const V = weather.loading;
+
+PROBLEMA: 'V' no describe qué representa. Debería ser 'isLoading'.
+
+FIX:
+  const isLoading = weather.loading;
+
+
+🔴 NUEVO #6: fmt FUNCIÓN INLINE CON TERNARIOS ANIDADOS
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 699
+
+TEXTO EXACTO:
+  const fmt = (n, d=0) => V ? "--" : (typeof n === "number" ? n.toFixed(d) : n);
+
+PROBLEMA: Si n es NaN, typeof NaN === "number" es true, pero NaN.toFixed() = "NaN".
+
+FIX:
+  const formatValue = (value, decimals = 0) => {
+    if (isLoading) return "--";
+    if (typeof value !== "number" || isNaN(value)) return "--";
+    return value.toFixed(decimals);
+  };
+
+
+🔴 NUEVO #7: ARRAY INLINE DE SENSORES
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 885-888
+
+TEXTO EXACTO:
+  {[
+    { id:"HUM", label:"Humedad", value:weather.humidity, ... },
+    { id:"PRB", label:"Lluvia", value:weather.precipProb, ... },
+    ...
+  ].map((s) => (...))}
+
+PROBLEMA: Array inline se crea nuevo en cada render. 4 sensores re-renderizan innecesariamente.
+
+FIX:
+  const sensors = useMemo(() => [...], [weather.humidity, ...]);
+
+
+🔴 NUEVO #8: FONDO INCONSISTENTE
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 702
+
+TEXTO EXACTO:
+  <div className="absolute inset-0 bg-[#020617] overflow-hidden font-sans">
+
+PROBLEMA: #020617 es casi negro. El resto de la app usa #041327. Flash visual.
+
+FIX:
+  <div className="absolute inset-0 bg-[#041327] overflow-hidden font-sans">
+
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🟡 NUEVOS ERRORES MEDIOS EN V4 (6)                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+🟡 NUEVO #1: boxShadow CON TEMPLATE STRING DINÁMICO
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 824
+
+TEXTO EXACTO:
+  animate={{ boxShadow: [`0 0 40px ${ac.hex}15`, ...] }}
+
+PROBLEMA: Template string con ac.hex se evalúa en cada render. Framer Motion recalcula animación.
+
+
+🟡 NUEVO #2: res.ok GENÉRICO
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 666
+
+TEXTO EXACTO:
+  if (res.ok) { ... } else { setWeather(p => ({ ...p, loading: false, error: true })); }
+
+PROBLEMA: No distingue 429 (rate limit) vs 500 (server error). No hay retry logic.
+
+
+🟡 NUEVO #3: NO HAY SKELETON DE LOADING
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: WeatherSection
+
+PROBLEMA: Durante loading, muestra "--" en todos los valores. No hay indicador visual.
+
+
+🟡 NUEVO #4: isAlert RECALCULADO EN CADA RENDER
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 690
+
+TEXTO EXACTO:
+  const isAlert = weather.precipProb > 40 || weather.windGusts > 35;
+
+PROBLEMA: Se recalcula en cada render. useMemo sería más explícito.
+
+
+🟡 NUEVO #5: pt-24 HARDCODED PARA NAVBAR
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 708
+
+TEXTO EXACTO:
+  <div className="... pt-24 pb-12 z-10">
+
+PROBLEMA: pt-24 = 96px asume navbar exacto. Layout shift si cambia navbar.
+
+
+🟡 NUEVO #6: -webkit- REDUNDANTE EN KEYFRAMES
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 95, 96, 101, 102, 107, 108
+
+TEXTO EXACTO:
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); -webkit-transform: scale(1); }
+  }
+
+PROBLEMA: @keyframes no necesita prefijos -webkit- en browsers modernos.
+
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🔴 ERRORES CRÍTICOS PERSISTENTES (5)                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+🔴 PERSISTENTE #1: motion.circle SIN cx/cy CORRECTOS
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Líneas 459-474
+
+PROBLEMA: Framer Motion no anima atributos SVG nativos correctamente.
+
+
+🔴 PERSISTENTE #2: gap HYDRATION MISMATCH
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 1218
+
+PROBLEMA: Hydration mismatch garantizado en SSR.
+
+
+🔴 PERSISTENTE #3: e.target SIN NULL CHECK
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 164
+
+PROBLEMA: t.closest() falla si t es null.
+
+
+🔴 PERSISTENTE #4: hoveredRef RACE CONDITION
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 1042
+
+PROBLEMA: Mezcla useRef + useState para mismo propósito.
+
+
+🔴 PERSISTENTE #5: reportCount INCREMENTA INFINITAMENTE
+─────────────────────────────────────────────────────────────────────────────
+UBICACIÓN: Línea 944
+
+PROBLEMA: Crece sin límite.
+
+
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  📊 ESTADÍSTICAS FINALES V4                                                  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+  V1 → V2:  10 fixes
+  V2 → V3:   8 fixes
+  V3 → V4:  -5 regresiones + 14 nuevos errores
+  
+  Errores totales V1: 37
+  Errores totales V4: 42
+  
+  NETO V4: Peor que V3 por las regresiones.
+
+═══════════════════════════════════════════════════════════════════════════════

@@ -63,13 +63,31 @@ sudo -u postgres psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 # 5. Configurar pg_hba.conf para permitir auth md5/scram por TCP
 echo ""
 echo "▶ Verificando configuración de autenticación (pg_hba.conf)..."
-PG_HBA="/var/lib/pgsql/data/pg_hba.conf"
+
+# Localizar pg_hba.conf dinámicamente
+PG_HBA=""
+DATA_DIR=$(sudo -u postgres psql -tAc "SHOW data_directory" 2>/dev/null || true)
+if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/pg_hba.conf" ]; then
+    PG_HBA="$DATA_DIR/pg_hba.conf"
+else
+    PG_HBA=$(find /var/lib/pgsql /etc/postgresql -name pg_hba.conf 2>/dev/null | head -1 || true)
+fi
+
+if [ -z "$PG_HBA" ]; then
+    echo "❌ No se pudo localizar pg_hba.conf."
+    echo "   Búscalo manualmente: find /var/lib/pgsql -name pg_hba.conf"
+    exit 1
+fi
+
+echo "   Config: $PG_HBA"
+
 if grep -q "^host.*all.*all.*127.0.0.1.*md5\|^host.*all.*all.*127.0.0.1.*scram-sha-256" "$PG_HBA" 2>/dev/null; then
     echo "ℹ️  Autenticación por contraseña TCP ya configurada."
 else
     echo "   Añadiendo regla de autenticación md5 para 127.0.0.1..."
     echo "host    all             all             127.0.0.1/32            scram-sha-256" >> "$PG_HBA"
-    sudo -u postgres pg_ctl reload -D /var/lib/pgsql/data
+    PG_DATA_DIR=$(dirname "$PG_HBA")
+    sudo -u postgres pg_ctl reload -D "$PG_DATA_DIR"
     echo "✅ pg_hba.conf actualizado y servicio recargado."
 fi
 

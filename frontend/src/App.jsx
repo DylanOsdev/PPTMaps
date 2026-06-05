@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate, useRouteError } from 'react-router-dom';
 import Landing from './pages/Landing.jsx';
-import NavigatePage from './pages/Navigate.jsx';
-import Report from './pages/Report.jsx';
-import CommandCenter from './pages/CommandCenter.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+
+const NavigatePage = lazy(() => import('./pages/Navigate.jsx'));
+const Report = lazy(() => import('./pages/Report.jsx'));
+const CommandCenter = lazy(() => import('./pages/CommandCenter.jsx'));
 
 function ErrorFallback() {
   const error = useRouteError();
@@ -16,12 +16,15 @@ function ErrorFallback() {
   );
 }
 
+function SuspenseWrapper({ children }) {
+  return <Suspense fallback={<div style={{height:'100vh',background:'#041327'}} />}>{children}</Suspense>;
+}
+
 const router = createBrowserRouter([
   { path: "/", element: <Landing />, errorElement: <ErrorFallback /> },
-  { path: "/navigate", element: <NavigatePage />, errorElement: <ErrorFallback /> },
-  { path: "/report", element: <Report />, errorElement: <ErrorFallback /> },
-  { path: "/map", element: <CommandCenter />, errorElement: <ErrorFallback /> },
-  { path: "/dashboard", element: <Dashboard />, errorElement: <ErrorFallback /> },
+  { path: "/navigate", element: <SuspenseWrapper><NavigatePage /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
+  { path: "/report", element: <SuspenseWrapper><Report /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
+  { path: "/map", element: <SuspenseWrapper><CommandCenter /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 

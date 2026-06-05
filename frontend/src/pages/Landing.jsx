@@ -1,337 +1,113 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
 
-const STATS = [
-  { value: '16',   label: 'Comunas monitoreadas' },
-  { value: '847',  label: 'Conductores GPS activos' },
-  { value: '9',    label: 'Capas de datos activas' },
-  { value: '<30s', label: 'Latencia de actualización' },
-];
+import CustomCursor from './landing/components/CustomCursor.jsx';
+import Navbar from './landing/components/Navbar.jsx';
+import HeroSection from './landing/sections/HeroSection.jsx';
+import TelemetrySection from './landing/sections/TelemetrySection.jsx';
+import WeatherSection from './landing/sections/WeatherSection.jsx';
+import ReportsSection from './landing/sections/ReportsSection.jsx';
+import BackendSection from './landing/sections/BackendSection.jsx';
+import LayersSection from './landing/sections/LayersSection.jsx';
+import FinalCTA from './landing/sections/FinalCTA.jsx';
 
-const FEATURES = [
-  {
-    icon: '⬡',
-    title: 'Capas Geoespaciales',
-    desc: 'Contorno de ciudad, polígonos de comunas y corregimientos del Valle de Aburrá con control granular de visibilidad.',
-  },
-  {
-    icon: '⬡',
-    title: 'Telemetría Vial',
-    desc: 'Rastreo GPS de conductores en tiempo real y clusters de accidentes calculados con DBSCAN.',
-  },
-  {
-    icon: '⬡',
-    title: 'SIATA & Clima',
-    desc: 'Alertas tempranas de inundación, riesgo de lluvia a 2 horas y estado de deprimidos viales críticos.',
-  },
-  {
-    icon: '⬡',
-    title: 'Reportes Ciudadanos',
-    desc: 'Canal georeferenciado para reportar colisiones, obstáculos y obras sin señalización en segundos.',
-  },
-  {
-    icon: '⬡',
-    title: 'Rutas Seguras',
-    desc: 'Rutas que evitan zonas de riesgo activo, lluvia inminente y vías bloqueadas, actualizadas cada 30 s.',
-  },
-  {
-    icon: '⬡',
-    title: 'API en Tiempo Real',
-    desc: 'Endpoints REST sobre PostGIS y Redis con soporte GeoJSON, alta disponibilidad y baja latencia.',
-  },
+const SECTIONS = [
+  { id: 'hero', Component: HeroSection },
+  { id: 'telemetry', Component: TelemetrySection },
+  { id: 'weather', Component: WeatherSection },
+  { id: 'reports', Component: ReportsSection },
+  { id: 'backend', Component: BackendSection },
+  { id: 'layers', Component: LayersSection },
+  { id: 'final', Component: FinalCTA },
 ];
 
 export default function Landing() {
-  const navigate = useNavigate();
+  const containerRef = useRef(null);
 
-  // Habilita scroll en la landing y lo restaura al salir
   useEffect(() => {
-    document.documentElement.classList.add('page-landing');
-    return () => document.documentElement.classList.remove('page-landing');
+    document.documentElement.classList.add('page-landing-futuristic');
+
+    let gsap, ScrollTrigger, Lenis, cleanup;
+
+    import('gsap').then(g => {
+      gsap = g.default;
+      return import('gsap/ScrollTrigger');
+    }).then(st => {
+      ScrollTrigger = st.ScrollTrigger;
+      gsap.registerPlugin(ScrollTrigger);
+      return import('lenis');
+    }).then(l => {
+      Lenis = l.default;
+
+      const lenis = new Lenis({
+        duration: 1.0,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smooth: true,
+        smoothTouch: false,
+        normalizeWheel: true,
+        wheelMultiplier: 0.8,
+        lerp: 0.06,
+      });
+
+      lenis.on('scroll', ScrollTrigger.update);
+
+      const lenisRaf = (time) => lenis.raf(time * 1000);
+      gsap.ticker.add(lenisRaf);
+
+      const ctx = gsap.context(() => {
+        if (!containerRef.current) return;
+        const panels = Array.from(containerRef.current.querySelectorAll('.gsap-panel'));
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top top",
+            end: `+=${panels.length * 100}%`,
+            pin: true,
+            pinSpacing: true,
+            anticipatePin: 1,
+            scrub: 0.5,
+          }
+        });
+
+        panels.forEach((panel, i) => {
+          gsap.set(panel, { zIndex: 100 - i, willChange: 'transform, opacity' });
+          if (i === 0) return;
+          gsap.set(panel, { opacity: 0, scale: 0.95 });
+          tl.to(panels[i - 1], { opacity: 0, scale: 1.05, ease: "power1.inOut" }, i);
+          tl.to(panel, { opacity: 1, scale: 1, ease: "power1.inOut" }, i);
+        });
+      }, containerRef);
+
+      cleanup = () => {
+        gsap.ticker.remove(lenisRaf);
+        lenis.destroy();
+        ctx.revert();
+        ScrollTrigger.getAll().forEach(t => t.kill());
+      };
+    });
+
+    return () => {
+      document.documentElement.classList.remove('page-landing-futuristic');
+      if (cleanup) cleanup();
+    };
   }, []);
 
   return (
-    <div style={{
-      backgroundColor: '#0f172a',
-      minHeight: '100vh',
-      color: '#e2e8f0',
-      fontFamily: "'Inter', system-ui, sans-serif",
-      fontSize: '16px',
-      lineHeight: '1.6',
-    }}>
+    <div className="bg-[#041327] text-white font-sans selection:bg-cyan-400 selection:text-black">
+      <CustomCursor />
+      <Navbar />
 
-      {/* ── NAV ── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        backgroundColor: 'rgba(15,23,42,0.92)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(56,189,248,0.15)',
-        padding: '0 3rem',
-        height: '68px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.2rem', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.05em' }}>
-          <img src="/logo.jpg" alt="PPTMaps" style={{ height: '34px', width: '34px', borderRadius: '50%', objectFit: 'cover' }} />
-          PPTMaps
-        </span>
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <a href="#funciones" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
-             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
-             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Funciones</a>
-          <a href="#stats" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
-             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
-             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Estadísticas</a>
-          <a href="#" style={{ fontSize: '0.9rem', color: '#94a3b8', textDecoration: 'none' }}
-             onMouseEnter={e => e.target.style.color = '#e2e8f0'}
-             onMouseLeave={e => e.target.style.color = '#94a3b8'}>Documentación</a>
-          <button
-            onClick={() => navigate('/map')}
-            style={{
-              fontSize: '0.875rem', fontWeight: 600,
-              backgroundColor: '#22d3ee', color: '#0f172a',
-              border: 'none', borderRadius: '8px',
-              padding: '0.5rem 1.25rem', cursor: 'pointer',
-            }}
+      <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
+        {SECTIONS.map(({ id, Component }) => (
+          <div
+            key={id}
+            id={`section-${id}`}
+            className="gsap-panel absolute inset-0 w-full h-screen bg-[#041327]"
           >
-            Abrir Mapa
-          </button>
-        </nav>
-      </header>
-
-      {/* ── HERO ── */}
-      {/* ── HERO ── */}
-      <section style={{ position: 'relative', overflow: 'hidden' }}>
-        {/* Imagen de fondo de Medellín + overlay oscuro */}
-        <img src="/medellin.jpg" alt="" style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover', zIndex: 0,
-        }} />
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 1,
-          background: 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.7) 50%, rgba(15,23,42,0.9) 100%)',
-        }} />
-        <div style={{
-          position: 'relative', zIndex: 2,
-          maxWidth: '860px',
-          margin: '0 auto',
-          padding: '6rem 2rem 5rem',
-          textAlign: 'center',
-        }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-          padding: '0.35rem 1rem', marginBottom: '2rem',
-          borderRadius: '999px',
-          border: '1px solid rgba(34,211,238,0.3)',
-          backgroundColor: 'rgba(34,211,238,0.07)',
-          fontSize: '0.8rem', color: '#67e8f9',
-        }}>
-          <span style={{
-            width: '7px', height: '7px', borderRadius: '50%',
-            backgroundColor: '#22d3ee',
-            display: 'inline-block',
-          }} />
-          Sistema activo · Medellín, Antioquia
-        </div>
-
-        <h1 style={{
-          fontSize: 'clamp(2.5rem, 5.5vw, 4rem)',
-          fontWeight: 800,
-          lineHeight: 1.1,
-          color: '#ffffff',
-          marginBottom: '1.25rem',
-          letterSpacing: '-0.025em',
-        }}>
-          Inteligencia urbana{' '}
-          <span style={{ color: '#22d3ee' }}>en tiempo real</span>
-        </h1>
-
-        <p style={{
-          fontSize: '1.1rem',
-          color: '#94a3b8',
-          lineHeight: 1.75,
-          maxWidth: '560px',
-          margin: '0 auto 2.5rem',
-        }}>
-          Plataforma de comando geoespacial para monitorear el tráfico, clima y
-          alertas de las 16 comunas del Valle de Aburrá, sincronizado con SIATA y GPS en vivo.
-        </p>
-
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => navigate('/map')}
-            style={{
-              fontSize: '1rem', fontWeight: 700,
-              backgroundColor: '#22d3ee', color: '#0f172a',
-              border: 'none', borderRadius: '10px',
-              padding: '0.85rem 2.25rem', cursor: 'pointer',
-              boxShadow: '0 0 28px rgba(34,211,238,0.25)',
-            }}
-          >
-            Abrir Consola de Comando
-          </button>
-          <button
-            onClick={() => navigate('/report')}
-            style={{
-              fontSize: '1rem', fontWeight: 600,
-              backgroundColor: 'transparent', color: '#e2e8f0',
-              border: '1px solid rgba(148,163,184,0.35)',
-              borderRadius: '10px',
-              padding: '0.85rem 2.25rem', cursor: 'pointer',
-            }}
-          >
-            Reportar Incidente
-          </button>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              fontSize: '1rem', fontWeight: 600,
-              backgroundColor: 'transparent', color: '#22d3ee',
-              border: '1px solid rgba(34,211,238,0.5)',
-              borderRadius: '10px',
-              padding: '0.85rem 2.25rem', cursor: 'pointer',
-            }}
-          >
-            Dashboard
-          </button>
-        </div>
-        </div>
-      </section>
-
-      {/* ── STATS ── */}
-      <section id="stats" style={{
-        borderTop: '1px solid rgba(56,189,248,0.12)',
-        borderBottom: '1px solid rgba(56,189,248,0.12)',
-        backgroundColor: 'rgba(255,255,255,0.02)',
-      }}>
-        <div style={{
-          maxWidth: '1000px', margin: '0 auto',
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-        }}>
-          {STATS.map((s, i) => (
-            <div key={s.label} style={{
-              textAlign: 'center',
-              padding: '3rem 1.5rem',
-              borderRight: i < 3 ? '1px solid rgba(56,189,248,0.12)' : 'none',
-            }}>
-              <p style={{ fontSize: '2.75rem', fontWeight: 800, color: '#22d3ee', margin: 0, lineHeight: 1 }}>
-                {s.value}
-              </p>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.5rem', margin: '0.5rem 0 0' }}>
-                {s.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section id="funciones" style={{ maxWidth: '1100px', margin: '0 auto', padding: '6rem 2rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem' }}>
-            Todo lo que necesitas
-          </h2>
-          <p style={{ fontSize: '1rem', color: '#64748b', maxWidth: '480px', margin: '0 auto' }}>
-            Un ecosistema completo de datos urbanos para tomar decisiones informadas en tiempo real.
-          </p>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.25rem',
-        }}>
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              style={{
-                backgroundColor: '#1e293b',
-                border: '1px solid rgba(56,189,248,0.1)',
-                borderRadius: '12px',
-                padding: '1.75rem',
-                cursor: 'default',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(34,211,238,0.35)';
-                e.currentTarget.style.boxShadow = '0 4px 24px rgba(34,211,238,0.07)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(56,189,248,0.1)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{
-                width: '40px', height: '40px',
-                backgroundColor: 'rgba(34,211,238,0.1)',
-                borderRadius: '8px',
-                marginBottom: '1rem',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.5rem' }}>
-                {f.title}
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.65, margin: 0 }}>
-                {f.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section style={{
-        borderTop: '1px solid rgba(56,189,248,0.12)',
-        backgroundColor: 'rgba(34,211,238,0.02)',
-        padding: '6rem 2rem',
-        textAlign: 'center',
-      }}>
-        <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem' }}>
-            Explora el mapa ahora
-          </h2>
-          <p style={{ fontSize: '1rem', color: '#64748b', marginBottom: '2rem' }}>
-            Accede a todas las capas, alertas y telemetría del Valle de Aburrá.
-          </p>
-          <button
-            onClick={() => navigate('/map')}
-            style={{
-              fontSize: '1rem', fontWeight: 700,
-              backgroundColor: '#22d3ee', color: '#0f172a',
-              border: 'none', borderRadius: '10px',
-              padding: '0.9rem 2.75rem', cursor: 'pointer',
-              boxShadow: '0 0 24px rgba(34,211,238,0.28)',
-            }}
-          >
-            Abrir TPPMAPS
-          </button>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer style={{
-        borderTop: '1px solid rgba(56,189,248,0.1)',
-        backgroundColor: '#0a1120',
-        padding: '1.5rem 3rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '0.5rem',
-      }}>
-        <span style={{ fontWeight: 700, color: '#22d3ee', fontSize: '1rem' }}>TPPMAPS</span>
-        <p style={{ fontSize: '0.8rem', color: '#475569', margin: 0 }}>
-          Sistema demo · Medellín, Antioquia · Colombia
-        </p>
-        <p style={{ fontSize: '0.8rem', color: '#334155', margin: 0 }}>
-          PostGIS + Redis conectado · API v2.1
-        </p>
-      </footer>
-
+            <Component />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

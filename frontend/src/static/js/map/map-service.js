@@ -1,7 +1,7 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers } from "./demo-layers.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateBlockedRoads } from "./demo-layers.js";
 import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
@@ -221,11 +221,16 @@ export async function setupMapLayers() {
   loadWeatherData();
   startReportsPolling();
   startFatalitiesPolling();
+  updateSafeRoutes(map);
+  updateBlockedRoads(map);
 
   let statsTimer;
   map.on("moveend zoomend", () => {
-    clearTimeout(statsTimer);
-    statsTimer = setTimeout(() => updateMapStats(city.isInsideCity), 100);
+    if (statsTimer) return;
+    statsTimer = setTimeout(() => {
+      statsTimer = null;
+      updateMapStats(city.isInsideCity);
+    }, 200);
   });
 
   return city;

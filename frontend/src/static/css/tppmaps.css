@@ -57,8 +57,14 @@ html.page-landing body {
 }
 
 .leaflet-container {
-  background: #e8e0d8; /* neutral tile placeholder — no black boxes */
+  background: #e8e0d8;
   font-family: var(--font-mono);
+}
+
+.leaflet-map-pane {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .leaflet-control-attribution {
@@ -203,6 +209,7 @@ html.page-landing body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   contain: layout style paint;
+  content-visibility: auto;
 }
 
 .panel-left {
@@ -337,24 +344,18 @@ html.page-landing body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 9px 14px;
-  margin: 2px 4px;
-  font-size: 10.5px;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 4px;
+  font-size: 9.5px;
   color: var(--text-dim);
   cursor: pointer;
   border-radius: 6px;
-  border-left: 3px solid transparent;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .layer-row:hover {
   background: rgba(56, 189, 248, 0.08);
-  color: var(--text-bright);
-}
-
-.layer-row:has(.toggle:checked) {
-  border-left-color: var(--accent-gold);
   color: var(--text-bright);
 }
 
@@ -531,6 +532,7 @@ html.page-landing body {
   flex: 1;
   padding: 6px 10px;
   contain: layout style paint;
+  content-visibility: auto;
 }
 
 .alerts-feed::-webkit-scrollbar {
@@ -809,33 +811,24 @@ html.page-landing body {
   /* removed transition to fix zoom lag and distortion */
 }
 
-/* Pause all CSS animations during Leaflet zoom to prevent jank */
-.leaflet-zoom-anim .gps-pulse-ring,
-.leaflet-zoom-anim .accident-ripple,
+/* Optimize zoom transitions — hide non-essential markers, disable animations */
 .leaflet-zoom-anim .medellin-pulse,
-.leaflet-zoom-anim .predict-zone,
-.leaflet-zoom-anim .accident-core,
-.leaflet-zoom-anim .barrier-icon,
-.leaflet-zoom-anim .marker-safe-route-dash,
 .leaflet-zoom-anim .ticker-track {
   animation-play-state: paused !important;
 }
 
-/* Disable pointer events on polygon overlays while zooming */
 .leaflet-zoom-anim .comuna-polygon,
 .leaflet-zoom-anim .metro-polygon {
   pointer-events: none !important;
 }
 
-/* Hide custom markers and reduce flicker during zoom transitions */
-.leaflet-zoom-anim .leaflet-div-icon-clean {
-  opacity: 0.4 !important;
+.leaflet-zoom-anim .leaflet-marker-icon {
+  opacity: 0.15 !important;
   transition: none !important;
 }
-.leaflet-zoom-anim .fatality-dot {
-  opacity: 0.3 !important;
-}
-.leaflet-zoom-anim .leaflet-marker-icon {
+
+.leaflet-zoom-anim .leaflet-div-icon {
+  opacity: 0.15 !important;
   transition: none !important;
 }
 
@@ -1036,65 +1029,28 @@ html.page-landing body {
 
 .marker-dest-pin { font-size: 11px; }
 
-/* ─── GPS Driver Marker (compact) ────────────────────────────────────────────── */
+/* ─── GPS Driver Marker (optimized) ──────────────────────────────────────────── */
 .gps-driver-marker {
   position: relative;
-  width: 28px;
+  width: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.gps-bus-body {
-  position: relative;
-  z-index: 3;
-  width: 20px;
-  height: 20px;
-  background: linear-gradient(145deg, #0f172a, #1e293b);
-  border: 1.5px solid #38bdf8;
-  border-radius: 4px;
+.gps-bus-icon {
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow:
-    0 0 0 1px rgba(56,189,248,0.15),
-    0 0 8px rgba(56,189,248,0.5),
-    0 2px 6px rgba(0,0,0,0.7);
-  padding: 2px;
 }
 
-.gps-bus-body svg { width: 100%; height: auto; display: block; }
-
-.gps-pulse-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 28px;
-  height: 28px;
-  margin-top: -14px;
-  margin-left: -14px;
-  border-radius: 50%;
-  border: 1.5px solid #38bdf8;
-  opacity: 0;
-  animation: gpsRingPulse 2.2s ease-out infinite;
-  z-index: 2;
-  will-change: transform, opacity;
-}
-
-.gps-pulse-ring--2 {
-  animation-delay: 1.1s;
-}
-
-@keyframes gpsRingPulse {
-  0%   { transform: scale(0.5); opacity: 0.8; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
+.gps-bus-icon svg { width: 100%; height: auto; display: block; }
 
 .gps-route-label {
-  position: relative;
-  z-index: 3;
-  margin-top: 3px;
-  padding: 1px 5px;
+  margin-top: 2px;
+  padding: 1px 4px;
   font-family: var(--font-mono);
   font-size: 7px;
   font-weight: 700;
@@ -1102,116 +1058,61 @@ html.page-landing body {
   color: #38bdf8;
   background: rgba(8,18,32,0.88);
   border: 1px solid rgba(56,189,248,0.4);
-  border-radius: 3px;
+  border-radius: 2px;
   white-space: nowrap;
   text-align: center;
+  line-height: 1.2;
 }
 
-/* ─── Accident Beacon ────────────────────────────────────────────────────────── */
-.accident-beacon {
+/* ─── Accident Marker (optimized, no animation) ──────────────────────────────── */
+.acc-marker {
   position: relative;
-  width: 56px;
+  width: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.accident-core {
-  position: relative;
-  z-index: 3;
-  width: 34px;
-  height: 34px;
+.acc-core {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 2px solid;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px var(--ring-color, #ef4444), 0 3px 10px rgba(0,0,0,0.7);
-  animation: accidentGlow 1.4s ease-in-out infinite alternate;
-  will-change: box-shadow;
-  line-height: 1;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  box-shadow: 0 0 10px currentColor;
 }
 
-@keyframes accidentGlow {
-  from { box-shadow: 0 0 10px var(--ring-color, #ef4444), 0 2px 8px rgba(0,0,0,0.6); }
-  to   { box-shadow: 0 0 28px var(--ring-color, #ef4444), 0 4px 14px rgba(0,0,0,0.7); }
-}
-
-.accident-ripple {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 38px;
-  height: 38px;
-  margin-top: -19px;
-  margin-left: -19px;
-  border-radius: 50%;
-  border: 2px solid var(--ring-color, #ef4444);
-  opacity: 0;
-  animation: accidentRipple 2s ease-out infinite;
-  z-index: 2;
-  will-change: transform, opacity;
-}
-
-.accident-ripple--2 { animation-delay: 1s; }
-
-@keyframes accidentRipple {
-  0%   { transform: scale(0.6); opacity: 0.9; }
-  100% { transform: scale(2.8); opacity: 0; }
-}
-
-.accident-label {
-  position: relative;
-  z-index: 3;
-  margin-top: 4px;
+.acc-label {
+  margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: 6.5px;
+  font-size: 6px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  background: rgba(0,0,0,0.75);
-  padding: 1px 5px;
-  border-radius: 3px;
+  background: rgba(0,0,0,0.7);
+  padding: 1px 4px;
+  border-radius: 2px;
   white-space: nowrap;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 /* ─── Prediction Zone Label ──────────────────────────────────────────────────── */
 .predict-label {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 6px;
   background: rgba(5,8,14,0.82);
   border: 1px solid;
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-  line-height: 1.2;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  border-radius: 4px;
+  line-height: 1;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.5);
 }
 
 .predict-pct {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
-}
-
-.predict-tag {
-  font-family: var(--font-mono);
-  font-size: 6px;
-  letter-spacing: 0.12em;
-  opacity: 0.85;
-}
-
-.predict-zone {
-  animation: predictPulse 3s ease-in-out infinite;
-  will-change: opacity;
-}
-
-@keyframes predictPulse {
-  0%, 100% { fill-opacity: 0.22; stroke-opacity: 0.7; }
-  50%       { fill-opacity: 0.42; stroke-opacity: 1.0; }
 }
 
 /* ─── Leaflet Popup (dark theme) ─────────────────────────────────────────────── */
@@ -1340,18 +1241,9 @@ html.page-landing body {
 }
 
 /* ─── Blocked Road Segment ───────────────────────────────────────────────────── */
-/* The actual polyline styling is done in Leaflet options; these are for DOM elements */
-
 .barrier-icon {
   font-size: 16px;
   line-height: 1;
-  animation: barrierPulse 1.8s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes barrierPulse {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(239,68,68,0.8)); transform: scale(1); }
-  50%       { filter: drop-shadow(0 0 10px rgba(239,68,68,1));  transform: scale(1.12); }
 }
 
 .blocked-road-label {
@@ -1453,21 +1345,13 @@ body.night-mode .throughput {
   text-shadow: 0 0 8px rgba(74,222,128,0.6);
 }
 
-/* GPS drivers glow stronger at night */
-body.night-mode .gps-bus-body {
-  box-shadow:
-    0 0 0 2px rgba(56,189,248,0.25),
-    0 0 22px rgba(56,189,248,0.75),
-    0 4px 14px rgba(0,0,0,0.85);
+/* Night mode marker visibility */
+body.night-mode .gps-bus-icon svg rect[stroke] {
+  stroke: #7dd3fc;
 }
 
-body.night-mode .gps-pulse-ring {
-  border-color: #67e8f9;
-}
-
-/* Accident beacons pulse harder at night */
-body.night-mode .accident-core {
-  filter: brightness(1.15);
+body.night-mode .acc-core {
+  box-shadow: 0 0 14px currentColor;
 }
 
 /* Commune labels — higher contrast */
@@ -1515,4 +1399,228 @@ body.night-mode .panel-scroll::-webkit-scrollbar-thumb,
 body.night-mode .alerts-feed::-webkit-scrollbar-thumb,
 body.night-mode .comunas-list::-webkit-scrollbar-thumb {
   background: rgba(56,189,248,0.5);
+}
+
+/* ─── Layer Search ───────────────────────────────────────────────── */
+.layer-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 10px 8px;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 4px;
+  transition: border-color 0.2s;
+}
+
+.layer-search:focus-within {
+  border-color: var(--border-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.1);
+}
+
+.layer-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-bright);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.layer-search input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.45;
+}
+
+/* ─── Preset Bar ─────────────────────────────────────────────────── */
+.preset-bar {
+  display: flex;
+  gap: 3px;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+  margin-bottom: 2px;
+}
+
+.btn-preset {
+  flex: 1;
+  padding: 4px 4px;
+  font-size: 7px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.btn-preset:hover {
+  color: var(--text-cyan);
+  border-color: var(--border-cyan);
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.btn-preset:active {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+/* ─── Group Count Badge ──────────────────────────────────────────── */
+.group-count {
+  font-size: 7px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-gold);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  margin-left: auto;
+  margin-right: 4px;
+  line-height: 1.4;
+}
+
+/* ─── Toggle All Button ──────────────────────────────────────────── */
+.btn-toggle-all {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn-toggle-all:hover {
+  color: var(--text-cyan);
+  border-color: var(--border-cyan);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* ─── Active Layer Row Highlight ─────────────────────────────────── */
+.layer-row:has(.toggle:checked) {
+  color: var(--text-bright);
+  background: rgba(56, 189, 248, 0.06);
+  border-left: 2px solid var(--accent-gold);
+  border-radius: 0 6px 6px 0;
+}
+
+.layer-row:has(.toggle:checked):hover {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+/* ─── Satellite Opacity Slider ───────────────────────────────────── */
+.sat-opacity-row {
+  list-style: none;
+  padding: 0 8px 4px 14px;
+}
+
+.sat-opacity-row .layer-row {
+  padding: 4px 8px;
+  gap: 8px;
+}
+
+.opacity-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  max-width: 100px;
+  height: 3px;
+  background: rgba(56, 189, 248, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 1;
+}
+
+.opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+  cursor: pointer;
+}
+
+.opacity-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+  cursor: pointer;
+}
+
+/* ─── Keyboard Shortcut Hint ─────────────────────────────────────── */
+.kbd-hint {
+  padding: 8px 16px 10px;
+  font-size: 7px;
+  color: var(--text-dim);
+  opacity: 0.4;
+  text-align: center;
+  letter-spacing: 0.05em;
+  border-top: 1px solid rgba(56, 189, 248, 0.06);
+}
+
+.kbd-hint .kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--text-cyan);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 3px;
+  margin: 0 2px;
+}
+
+/* ─── Smooth Group Open Animation ────────────────────────────────── */
+.layer-group[open] .layer-items {
+  animation: fadeIn 0.2s ease;
+}
+
+/* ─── LayersSection 3D Animations (GPU composited) ──────────────── */
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.2; border-width: 1.5px; }
+  50% { opacity: 0.5; border-width: 2.5px; }
+}
+.ring-anim-1 { animation: pulse-ring 4s ease-in-out infinite; will-change: opacity; }
+.ring-anim-2 { animation: pulse-ring 5s ease-in-out infinite 0.5s; will-change: opacity; }
+@keyframes float-stack {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.float-stack { animation: float-stack 6s ease-in-out infinite; will-change: transform; }
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+.glow-pulse { animation: glow-pulse 3s ease-in-out infinite; will-change: opacity; }
+@keyframes grid-shift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(40px, 40px); }
+}
+.grid-shift { animation: grid-shift 20s linear infinite; will-change: transform; }
+.card-glow { animation: glow-pulse 2.5s ease-in-out infinite; }
+@keyframes card-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }

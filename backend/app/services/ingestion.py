@@ -4,9 +4,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import httpx
 
-from geoalchemy2.functions import ST_SetSRID, ST_MakePoint
+from geoalchemy2.functions import ST_SetSRID, ST_MakePoint, ST_DWithin, ST_X, ST_Y
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.models.report import Report, ReportType
 from app.models.flood_hazard import FloodHazard, FloodStatus
@@ -46,6 +46,18 @@ SEED_FLOOD_ZONES = [
 
 async def sync_soda_incidents(db: AsyncSession) -> int:
     count = 0
+    from app.schemas.report import ReportCreate
+
+    async def _report_exists(lat: float, lng: float, desc: str) -> bool:
+        point = ST_SetSRID(ST_MakePoint(lng, lat), 4326)
+        stmt = select(Report).where(
+            Report.report_type == ReportType.accident,
+            ST_DWithin(Report.geom, point, 0.0001),
+            Report.description == desc,
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(f"{SODA_INCIDENTES_URL}?$limit=100")
@@ -56,43 +68,38 @@ async def sync_soda_incidents(db: AsyncSession) -> int:
                         lat = item.get("latitude") or item.get("lat")
                         lng = item.get("longitude") or item.get("lng")
                         if lat and lng:
-                            existing = await db.execute(
-                                select(Report).where(
-                                    Report.report_type == ReportType.accident
-                                ).limit(1)
-                            )
-                            await create_report(db, {
-                                "report_type": ReportType.accident,
-                                "description": item.get("description", "Sincronizado desde SODA"),
-                                "latitude": float(lat),
-                                "longitude": float(lng),
-                            })
+                            lat_f, lng_f = float(lat), float(lng)
+                            desc = item.get("description", "Sincronizado desde SODA")
+                            if await _report_exists(lat_f, lng_f, desc):
+                                continue
+                            await create_report(db, ReportCreate(
+                                report_type=ReportType.accident,
+                                description=desc,
+                                latitude=lat_f,
+                                longitude=lng_f,
+                            ))
                             count += 1
-                logger.info(f"SODA sync: {count} incidentes importados")
+                    await db.commit()
+                logger.info("SODA sync: %d incidentes importados", count)
             else:
-                logger.warning(f"SODA API responded with {resp.status_code}")
+                logger.warning("SODA API responded with %s", resp.status_code)
     except Exception as e:
-        logger.warning(f"SODA API error (fallback to seed): {e}")
+        logger.warning("SODA API error (fallback to seed): %s", e)
 
     if count == 0:
         for acc in SEED_ACCIDENTS:
-            existing = await db.execute(
-                select(Report).where(
-                    Report.report_type == ReportType.accident,
-                    Report.description == acc["desc"]
-                )
-            )
-            if not existing.scalar_one_or_none():
-                from app.schemas.report import ReportCreate
-                await create_report(db, ReportCreate(
-                    report_type=ReportType(acc["type"]),
-                    description=acc["desc"],
-                    latitude=acc["lat"],
-                    longitude=acc["lng"],
-                ))
-                count += 1
-        await db.commit()
-        logger.info(f"Seed data: {count} accidentes sembrados")
+            if await _report_exists(acc["lat"], acc["lng"], acc["desc"]):
+                continue
+            await create_report(db, ReportCreate(
+                report_type=ReportType(acc["type"]),
+                description=acc["desc"],
+                latitude=acc["lat"],
+                longitude=acc["lng"],
+            ))
+            count += 1
+        if count:
+            await db.commit()
+        logger.info("Seed data: %d accidentes sembrados", count)
 
     return count
 
@@ -116,7 +123,7 @@ async def seed_flood_zones(db: AsyncSession) -> int:
             count += 1
     if count:
         await db.commit()
-        logger.info(f"Flood seed: {count} zonas sembradas")
+        logger.info("Flood seed: %d zonas sembradas", count)
     return count
 
 async def run_ingestion(db: AsyncSession):

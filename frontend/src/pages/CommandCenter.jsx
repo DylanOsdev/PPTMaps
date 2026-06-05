@@ -4,12 +4,12 @@ import { initMap, setupMapLayers, updateMapStats, stopFatalitiesPolling, stopRep
 import { pingHealth, connectWebSocket, disconnectWebSocket, onWsEvent, offWsEvent } from "../static/js/services/api.js";
 import { initAlerts } from "../static/js/ui/alerts.js";
 import { initClock, initTicker, initThroughput } from "../static/js/ui/clock.js";
-import { initLayersPanel } from "../static/js/ui/layers-panel.js";
+import { applySavedLayerState, initLayersPanel } from "../static/js/ui/layers-panel.js";
 import { initResponsive } from "../static/js/ui/responsive.js";
 import { initSearch } from "../static/js/ui/search.js";
 import { AppState } from "../static/js/core/state.js";
 
-import { FaCrosshairs, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaMicrophone, FaBars, FaGlobeAmericas } from 'react-icons/fa';
+import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaMicrophone, FaBars, FaGlobeAmericas } from 'react-icons/fa';
 import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
@@ -26,7 +26,7 @@ export default function CommandCenter() {
   const handleLocateMe = () => {
     const m = AppState.map;
     if (!m) return;
-    
+
     if (AppState.watchId) {
       navigator.geolocation.clearWatch(AppState.watchId);
       AppState.watchId = null;
@@ -34,32 +34,31 @@ export default function CommandCenter() {
       setLocating(false);
       return;
     }
-    
+
     setLocating(true);
     AppState.followUser = true;
 
     AppState.watchId = navigator.geolocation.watchPosition((pos) => {
       const latlng = [pos.coords.latitude, pos.coords.longitude];
       AppState.userLocation = { lat: latlng[0], lng: latlng[1] };
-      
+
       if (!AppState.userMarker) {
         AppState.userMarker = L.marker(latlng, {
           icon: L.divIcon({
-            className: "leaflet-div-icon-clean",
-            html: `<div class="gps-pulse-ring" style="--ring-color:#38bdf8;width:30px;height:30px;"></div><div style="width:12px;height:12px;background:#38bdf8;border-radius:50%;border:2px solid #fff;margin:9px;"></div>`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
+            className: "",
+            html: `<div style="width:12px;height:12px;background:#38bdf8;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #38bdf8;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
           })
-        }).addTo(m).bindPopup("📍 Estás aquí");
+        }).addTo(m).bindPopup("Estás aquí");
       } else {
         AppState.userMarker.setLatLng(latlng);
       }
-      
+
       if (AppState.followUser) {
         m.panTo(latlng, { animate: true, duration: 1.0 });
       }
     }, (err) => {
-      alert("No se pudo obtener la ubicación GPS en tiempo real.");
       if (AppState.watchId) navigator.geolocation.clearWatch(AppState.watchId);
       AppState.watchId = null;
       AppState.followUser = false;
@@ -87,6 +86,7 @@ export default function CommandCenter() {
         }
 
         initMap();
+        applySavedLayerState();
         const city = await setupMapLayers();
         updateMapStats(city.isInsideCity);
 
@@ -104,7 +104,6 @@ export default function CommandCenter() {
         document.addEventListener("tppmaps:layers-changed", handleLayersChanged);
         AppState._layersChangedHandler = handleLayersChanged;
 
-        // Si venimos de /report con coordenadas, centrar el mapa allí.
         const pLat = parseFloat(searchParams.get("lat"));
         const pLng = parseFloat(searchParams.get("lng"));
         const pZoom = parseInt(searchParams.get("zoom"), 10) || 16;
@@ -115,7 +114,7 @@ export default function CommandCenter() {
               m.flyTo([pLat, pLng], pZoom, { duration: 1.5 });
               L.popup({ className: "popup-dark" })
                 .setLatLng([pLat, pLng])
-                .setContent(`<div class="popup-accident"><div class="popup-accident-title">📍 Tu reporte</div><div class="popup-accident-coords">${pLat.toFixed(4)}, ${pLng.toFixed(4)}</div></div>`)
+                .setContent(`<div class="popup-accident"><div class="popup-accident-title">Tu reporte</div><div class="popup-accident-coords">${pLat.toFixed(4)}, ${pLng.toFixed(4)}</div></div>`)
                 .openOn(m);
             }, 600);
           }
@@ -203,10 +202,10 @@ export default function CommandCenter() {
 
         {/* Floating Waze-style Search & Navigation Bar */}
         <div style={{ position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: '10px', width: '90%', maxWidth: '600px' }}>
-          <input 
-            type="text" 
-            id="wazeSearch" 
-            placeholder="¿A dónde vas? (Ej. Comuna 13)" 
+          <input
+            type="text"
+            id="wazeSearch"
+            placeholder="¿A dónde vas? (Ej. Comuna 13)"
             style={{ flex: 1, padding: '14px 22px', borderRadius: '30px', border: '2px solid rgba(56, 189, 248, 0.6)', backgroundColor: 'rgba(5, 8, 12, 0.95)', color: '#fff', fontSize: '15px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', outline: 'none', fontFamily: '"Orbitron", sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}
             onKeyDown={(e) => {
                if (e.key === "Enter") {
@@ -215,8 +214,8 @@ export default function CommandCenter() {
                }
             }}
           />
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={handleLocateMe}
             style={{ padding: '0 22px', borderRadius: '30px', border: locating ? '2px solid #ef4444' : '2px solid #0ea5e9', backgroundColor: locating ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)', color: locating ? '#ef4444' : '#0ea5e9', fontSize: '13px', fontWeight: 'bold', boxShadow: locating ? '0 0 20px rgba(239, 68, 68, 0.4)' : '0 4px 20px rgba(14,165,233,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
             title={locating ? "Detener seguimiento" : "Iniciar seguimiento GPS"}
@@ -230,15 +229,26 @@ export default function CommandCenter() {
           <div className="panel-head">
             <h2>DATA LAYERS</h2>
             <span className="layer-status-dot" id="layerStatusDot" style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:'#fbbf24',marginRight:4,boxShadow:'0 0 6px #fbbf24'}} title="Cargando capas..."></span>
-            <span className="layer-fraction" id="layerFraction"></span>
-            <button type="button" className="btn-mini" id="btnLayerPreset" title="Preset MoviMed">SET</button>
+            <span className="layer-fraction" id="layerFraction">0/16</span>
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
           <div className="panel-scroll" id="layersList">
-            <details className="layer-group" open>
+            <div className="layer-search">
+              <span className="search-prefix">⌕</span>
+              <input type="search" id="layerSearch" placeholder="Buscar capas..." autoComplete="off" />
+            </div>
+            <div className="preset-bar">
+              <button type="button" className="btn-preset" id="btnPresetNavigation" title="Navegación (7 capas)">NAV</button>
+              <button type="button" className="btn-preset" id="btnPresetAll" title="Todas (16 capas)">ALL</button>
+              <button type="button" className="btn-preset" id="btnPresetWeather" title="Clima (5 capas)">CLIMA</button>
+              <button type="button" className="btn-preset" id="btnPresetMinimal" title="Mínimo (2 capas)">MIN</button>
+            </div>
+            <details className="layer-group" open data-group="comunas">
               <summary>
                 <span className="layer-icon"><FaCity /></span>
                 <span>VALLE DEL ABURRÁ — COMUNAS Y CORREGIMIENTOS</span>
+                <span className="group-count" id="count-comunas">0/4</span>
+                <button type="button" className="btn-toggle-all" data-group="comunas" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -257,13 +267,19 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Municipios Área Metro (9)</span>
-                    <input type="checkbox" className="toggle" data-layer="metro-municipios" />
+                    <input type="checkbox" className="toggle" data-layer="metro-municipios" defaultChecked />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span><FaGlobeAmericas size={12} style={{verticalAlign:'middle',marginRight:4}} /> Satelital</span>
                     <input type="checkbox" className="toggle" data-layer="satellite-base" />
+                  </label>
+                </li>
+                <li className="sat-opacity-row" id="satOpacityRow" style={{display:'none'}}>
+                  <label className="layer-row" style={{gap:8}}>
+                    <span style={{fontSize:8,opacity:0.6}}>Opacidad satelital</span>
+                    <input type="range" id="satOpacity" min="0.1" max="1" step="0.05" defaultValue="1" className="opacity-slider" />
                   </label>
                 </li>
               </ul>
@@ -273,10 +289,12 @@ export default function CommandCenter() {
               </div>
             </details>
 
-            <details className="layer-group" open>
+            <details className="layer-group" open data-group="telemetry">
               <summary>
                 <span className="layer-icon"><FaSatelliteDish /></span>
                 <span>TELEMETRÍA VIAL</span>
+                <span className="group-count" id="count-telemetry">0/4</span>
+                <button type="button" className="btn-toggle-all" data-group="telemetry" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -294,30 +312,32 @@ export default function CommandCenter() {
                 </li>
                 <li>
                   <label className="layer-row">
-                    <span>💥 Accidentes viales</span>
-                    <input type="checkbox" className="toggle" data-layer="accident-clusters" />
+                    <span>Clusters accidentes (DBSCAN)</span>
+                    <input type="checkbox" className="toggle" data-layer="accident-clusters" defaultChecked />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
-                    <span>💀 Muertes viales</span>
-                    <input type="checkbox" className="toggle" data-layer="fatalities-layer" />
+                    <span><FaSkull size={14} style={{verticalAlign:'middle',marginRight:6,color:'#ef4444'}} /> Muertes en tiempo real</span>
+                    <input type="checkbox" className="toggle" data-layer="fatalities-layer" defaultChecked />
                   </label>
                 </li>
               </ul>
             </details>
 
-            <details className="layer-group" open>
+            <details className="layer-group" open data-group="climate">
               <summary>
                 <span className="layer-icon"><FaCloudRain /></span>
                 <span>SIATA Y CLIMA</span>
+                <span className="group-count" id="count-climate">0/3</span>
+                <button type="button" className="btn-toggle-all" data-group="climate" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
                 <li>
                   <label className="layer-row">
                     <span>Deprimidos inundables</span>
-                    <input type="checkbox" className="toggle" data-layer="flood-zones" />
+                    <input type="checkbox" className="toggle" data-layer="flood-zones" defaultChecked />
                   </label>
                 </li>
                 <li>
@@ -335,17 +355,19 @@ export default function CommandCenter() {
               </ul>
             </details>
 
-            <details className="layer-group" open>
+            <details className="layer-group" data-group="reports">
               <summary>
                 <span className="layer-icon"><FaExclamationTriangle /></span>
                 <span>REPORTES CIUDADANOS</span>
+                <span className="group-count" id="count-reports">0/3</span>
+                <button type="button" className="btn-toggle-all" data-group="reports" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
                 <li>
                   <label className="layer-row">
                     <span>Colisiones activas</span>
-                    <input type="checkbox" className="toggle" data-layer="reports-collision" />
+                    <input type="checkbox" className="toggle" data-layer="reports-collision" defaultChecked />
                   </label>
                 </li>
                 <li>
@@ -363,10 +385,12 @@ export default function CommandCenter() {
               </ul>
             </details>
 
-            <details className="layer-group">
+            <details className="layer-group" data-group="routes">
               <summary>
                 <span className="layer-icon"><FaRoad /></span>
                 <span>RUTAS SEGURAS</span>
+                <span className="group-count" id="count-routes">0/2</span>
+                <button type="button" className="btn-toggle-all" data-group="routes" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -379,12 +403,15 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Vías bloqueadas</span>
-                    <input type="checkbox" className="toggle" data-layer="blocked-roads" />
+                    <input type="checkbox" className="toggle" data-layer="blocked-roads" defaultChecked />
                   </label>
                 </li>
               </ul>
             </details>
 
+            <div className="kbd-hint">
+              <span className="kbd">1</span>–<span className="kbd">9</span> atajos de capas
+            </div>
           </div>
         </aside>
 
@@ -394,11 +421,9 @@ export default function CommandCenter() {
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
 
-          {/* Scrollable container for all right panel content */}
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
                className="panel-scroll">
 
-            {/* ── Widget Clima Real ── */}
             <div style={{ borderBottom: '1px solid rgba(56, 189, 248, 0.15)' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',

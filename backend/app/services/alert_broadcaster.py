@@ -4,6 +4,7 @@ Los workers Celery no pueden llamar directamente a ConnectionManager porque vive
 en procesos distintos al servidor FastAPI. Este módulo usa Redis pub/sub como
 canal de comunicación entre procesos.
 """
+import asyncio
 import json
 import logging
 
@@ -24,26 +25,24 @@ async def publish_alert(redis: Redis, alert_data: dict) -> None:
 
 
 async def listen_and_broadcast_alerts(redis: Redis):
-    """Bucle infinito resiliente: escucha alertas publicadas en Redis y las reenvía a
+    """Bucle infinito: escucha alertas publicadas en Redis y las reenvía a
     todos los clientes WebSocket conectados vía ConnectionManager."""
     from app.websocket.connection_manager import manager
 
-    while True:
-        try:
-            pubsub = redis.pubsub()
-            await pubsub.subscribe(ALERTS_CHANNEL)
-            logger.info("Escuchando alertas en canal Redis: %s", ALERTS_CHANNEL)
-            async for message in pubsub.listen():
-                if message["type"] != "message":
-                    continue
-                try:
-                    data = json.loads(message["data"])
-                    await manager.broadcast({"type": "alerts", "data": [data]})
-                except Exception as e:
-                    logger.warning("Error reenviando alerta desde Redis: %s", e)
-        except asyncio.CancelledError:
-            logger.info("Subscripción a alertas cancelada.")
-            raise
-        except Exception as e:
-            logger.warning("Conexión perdida con el canal de alertas de Redis: %s. Reintentando en 5s...", e)
-            await asyncio.sleep(5)
+    pubsub = redis.pubsub()
+    await pubsub.subscribe(ALERTS_CHANNEL)
+    logger.info("Escuchando alertas en canal Redis: %s", ALERTS_CHANNEL)
+    try:
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+            try:
+                data = json.loads(message["data"])
+                await manager.broadcast({"type": "alerts", "data": [data]})
+            except Exception as e:
+                logger.warning("Error reenviando alerta desde Redis: %s", e)
+    except asyncio.CancelledError:
+        logger.info("Listener pub/sub Redis cancelado.")
+        raise
+    except Exception as e:
+        logger.warning("Error en listener pub/sub Redis: %s", e)

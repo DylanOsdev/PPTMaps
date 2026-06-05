@@ -37,50 +37,61 @@ echo "✅ Usando $($PYTHON_BIN --version)"
 echo ""
 
 # ─────────────────────────────────────────────
-# [1/4] Verificar PostgreSQL
+# [1/4] Verificar PostgreSQL e intentar iniciarlo
 # ─────────────────────────────────────────────
 echo "[1/4] Verificando PostgreSQL..."
-PG_OK=0
+
+PG_AVAILABLE=0
 if command -v pg_isready &>/dev/null; then
     if pg_isready -q 2>/dev/null; then
-        PG_OK=1
+        PG_AVAILABLE=1
+    fi
+    # Docker PostgreSQL (puerto explícito)
+    if [ "$PG_AVAILABLE" -eq 0 ] && pg_isready -h localhost -p 5432 -q 2>/dev/null; then
+        PG_AVAILABLE=1
     fi
 fi
 
-if [ "$PG_OK" -eq 1 ]; then
-    echo "  ✅ PostgreSQL está corriendo."
+# Verificar que la BD movimed sea accesible
+PG_READY=0
+if [ "$PG_AVAILABLE" -eq 1 ]; then
+    if command -v psql &>/dev/null; then
+        if PGPASSWORD=postgres psql -h localhost -U postgres -d movimed -c "SELECT 1" -q 2>/dev/null; then
+            PG_READY=1
+        fi
+    fi
+fi
+
+if [ "$PG_READY" -eq 1 ]; then
+    echo "  ✅ PostgreSQL activo — BD 'movimed' lista."
+elif [ "$PG_AVAILABLE" -eq 1 ]; then
+    echo "  ⚠️  PostgreSQL accesible pero falta la BD 'movimed'."
+    echo "     Ejecuta: sudo bash backend/setup_db.sh"
 else
-    echo "  ⚠️  PostgreSQL no está accesible."
-    echo "     Para iniciarlo: sudo systemctl start postgresql"
-    echo "     La app se iniciará pero los datos no estarán disponibles."
+    echo "  ℹ️  PostgreSQL no está corriendo."
+    echo "     La BD se necesita solo para el backend (conductores, reportes, etc.)."
 fi
 
 # ─────────────────────────────────────────────
-# [2/4] Verificar pg_hba.conf
+# [2/4] Verificar pg_hba.conf (solo si PostgreSQL está activo)
 # ─────────────────────────────────────────────
 echo ""
-echo "[2/4] Verificando pg_hba.conf..."
+echo "[2/4] Verificando credenciales PostgreSQL..."
 
-# PostgreSQL en Fedora guarda su config en /var/lib/pgsql, no en /etc/postgresql
-PG_HBA=""
-for pg_dir in /etc/postgresql /var/lib/pgsql; do
-    if [ -d "$pg_dir" ]; then
-        PG_HBA=$(find "$pg_dir" -name pg_hba.conf 2>/dev/null | head -1 || true)
-        [ -n "$PG_HBA" ] && break
+if [ "$PG_READY" -eq 1 ]; then
+    PG_AUTH_OK=0
+    if PGPASSWORD=postgres psql -h localhost -U postgres -d movimed -c "SELECT 1" -q 2>/dev/null; then
+        PG_AUTH_OK=1
     fi
-done
 
-if [ -n "$PG_HBA" ]; then
-    if grep -qE "local\s+.*postgres.*ident" "$PG_HBA" 2>/dev/null; then
-        echo "  ⚠️  pg_hba.conf usa autenticación 'ident'."
-        echo "     Para arreglar permanentemente ejecuta:"
-        echo "       sudo sed -i \"s/local.*all.*all.*peer/local all all md5/\" $PG_HBA"
-        echo "       sudo systemctl restart postgresql"
+    if [ "$PG_AUTH_OK" -eq 1 ]; then
+        echo "  ✅ Credenciales correctas (postgres:postgres @ localhost:5432/movimed)."
     else
-        echo "  ✅ pg_hba.conf configurado correctamente."
+        echo "  ⚠️  No se pudo autenticar con postgres:postgres."
+        echo "     Verifica la contraseña en backend/app/core/config.py"
     fi
 else
-    echo "  ⚠️  No se encontró pg_hba.conf. PostgreSQL puede no estar instalado."
+    echo "  ℹ️  PostgreSQL no disponible — se omite verificación de credenciales."
 fi
 
 # ─────────────────────────────────────────────
