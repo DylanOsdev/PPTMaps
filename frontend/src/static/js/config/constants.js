@@ -8,9 +8,9 @@ export const CONFIG = {
     defaultZoom: 11,
     maxZoom: 19,
     // Use standard OSM tiles for a less neon appearance
-    tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     tileAttribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   dataUrl: "assets/data/medellin-comunas.json",
   accidentsUrl: "assets/data/accidents-metro.json",

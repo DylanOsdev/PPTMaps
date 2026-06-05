@@ -10,21 +10,82 @@ const REPORT_TYPES = [
   { id: 'otro',       label: 'Otra novedad', desc: 'Cualquier incidente no listado' },
 ];
 
+// Mapeo de IDs del formulario → ReportType del backend.
+const TYPE_MAP = {
+  accidente:  'accident',
+  via_cerrada: 'obstruction',
+  inundacion: 'flood',
+  hueco:      'obstruction',
+  semaforo:   'obstruction',
+  otro:       'other',
+};
+
+const DEFAULT_LAT = 6.2442;
+const DEFAULT_LNG = -75.5812;
+
 export default function Report() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState(null);
   const [description, setDescription] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const [coords, setCoords] = useState({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+  const [geoStatus, setGeoStatus] = useState('detecting'); // 'detecting' | 'granted' | 'denied'
 
   useEffect(() => {
     document.documentElement.classList.add('page-landing');
     return () => document.documentElement.classList.remove('page-landing');
   }, []);
 
-  const handleSubmit = (e) => {
+  // Solicitar ubicación real del navegador.
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGeoStatus('denied');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeoStatus('granted');
+      },
+      () => {
+        // Permiso denegado o error → quedamos con el centro de Medellín.
+        setGeoStatus('denied');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selected) return;
-    setSubmitted(true);
+    if (!selected || sending) return;
+
+    setSending(true);
+    setError(null);
+
+    const body = {
+      report_type: TYPE_MAP[selected] || 'other',
+      description: description.trim() || `Reporte: ${REPORT_TYPES.find(t => t.id === selected)?.label || selected}`,
+      latitude: coords.lat,
+      longitude: coords.lng,
+    };
+
+    try {
+      const API_BASE = window.TPPMAPS_API || '/api/v1';
+      const res = await fetch(`${API_BASE}/public/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSubmitted(true);
+    } catch (err) {
+      setError(`No se pudo enviar el reporte. ${err.message || 'Intenta de nuevo.'}`);
+    } finally {
+      setSending(false);
+    }
   };
 
   if (submitted) {
@@ -56,10 +117,10 @@ export default function Report() {
             Tu reporte fue registrado y será procesado en tiempo real.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button onClick={() => setSubmitted(false)} style={btnOutline}>
+            <button onClick={() => { setSubmitted(false); setSelected(null); setDescription(''); }} style={btnOutline}>
               Nuevo reporte
             </button>
-            <button onClick={() => navigate('/map')} style={btnPrimary}>
+            <button onClick={() => navigate(`/map?lat=${coords.lat}&lng=${coords.lng}&zoom=16`)} style={btnPrimary}>
               Ver en el mapa
             </button>
           </div>
@@ -113,6 +174,12 @@ export default function Report() {
           </h1>
           <p style={{ color: '#64748b', fontSize: '1rem' }}>
             Selecciona el tipo de incidente y añade una descripción. El reporte se georeferenciará automáticamente.
+          </p>
+          {/* Indicador de geolocalización */}
+          <p style={{ color: geoStatus === 'granted' ? '#4ade80' : geoStatus === 'detecting' ? '#fbbf24' : '#94a3b8', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+            {geoStatus === 'detecting' && '⏳ Detectando tu ubicación…'}
+            {geoStatus === 'granted' && `📍 Ubicación: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
+            {geoStatus === 'denied' && `📍 Ubicación predeterminada: Medellín (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`}
           </p>
         </div>
 
@@ -186,20 +253,31 @@ export default function Report() {
             />
           </div>
 
+          {/* Error */}
+          {error && (
+            <div style={{
+              padding: '0.75rem 1rem', marginBottom: '1.5rem',
+              backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+              borderRadius: '8px', color: '#fca5a5', fontSize: '0.875rem',
+            }}>
+              ⚠ {error}
+            </div>
+          )}
+
           {/* Submit */}
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
               type="submit"
-              disabled={!selected}
+              disabled={!selected || sending}
               style={{
                 ...btnPrimary,
-                opacity: selected ? 1 : 0.4,
-                cursor: selected ? 'pointer' : 'not-allowed',
+                opacity: (selected && !sending) ? 1 : 0.4,
+                cursor: (selected && !sending) ? 'pointer' : 'not-allowed',
                 padding: '0.875rem 2.5rem',
                 fontSize: '1rem',
               }}
             >
-              Enviar reporte
+              {sending ? 'Enviando…' : 'Enviar reporte'}
             </button>
             <button type="button" onClick={() => navigate('/map')} style={{ ...btnOutline, padding: '0.875rem 1.75rem', fontSize: '1rem' }}>
               Ver mapa

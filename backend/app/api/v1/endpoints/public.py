@@ -16,6 +16,7 @@ from app.db.database import get_db
 from app.models.flood_hazard import FloodHazard
 from app.models.report import Report, ReportType
 from app.models.weather import WeatherSnapshot
+from app.schemas.report import Report as SchemaReport, ReportCreate
 from app.models.zone import Zone
 from app.models.accident_incident import AccidentIncident
 from app.services.weather import ForecastClient, OpenMeteoForecastClient
@@ -296,3 +297,22 @@ async def public_comunas_stats(db: AsyncSession = Depends(get_db)):
         }
         for r in rows
     ]
+
+
+@router.get("/reports", response_model=list[SchemaReport], summary="Todos los reportes ciudadanos públicos")
+async def public_reports(
+    report_type: Optional[ReportType] = None,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.crud import crud_report
+    return await crud_report.get_reports(db, report_type=report_type, limit=limit)
+
+
+@router.post("/reports", response_model=SchemaReport, status_code=201, summary="Crear reporte de incidente de forma pública")
+async def create_public_report(
+    report_in: ReportCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.crud import crud_report
+    return await crud_report.create_report(db, report_in=report_in, reporter_id=None)

@@ -42,28 +42,40 @@ const accidentIconCache = {};
 function makeAccidentIcon(severity = "high") {
   if (accidentIconCache[severity]) return accidentIconCache[severity];
 
-  const colors = {
-    high:   { ring: "#ef4444", fill: "#7f1d1d", text: "#fca5a5", label: "MUERTE" },
-    medium: { ring: "#f97316", fill: "#7c2d12", text: "#fdba74", label: "HERIDO" },
-    low:    { ring: "#eab308", fill: "#713f12", text: "#fde047", label: "DAÑOS" },
+  const configs = {
+    high: {
+      ring: "#ef4444", fill: "#7f1d1d", text: "#fca5a5", label: "MUERTE",
+      size: [62, 72], anchor: [31, 66], popup: [0, -70],
+      coreSize: 40, emoji: "💀",
+    },
+    medium: {
+      ring: "#f97316", fill: "#7c2d12", text: "#fdba74", label: "HERIDO",
+      size: [52, 60], anchor: [26, 54], popup: [0, -58],
+      coreSize: 32, emoji: "🏥",
+    },
+    low: {
+      ring: "#eab308", fill: "#713f12", text: "#fde047", label: "DAÑOS",
+      size: [48, 56], anchor: [24, 50], popup: [0, -54],
+      coreSize: 28, emoji: "💥",
+    },
   };
-  const c = colors[severity] || colors.high;
-  const iconSvg = getAccidentSvg(severity);
+  const c = configs[severity] || configs.low;
+
   const html = `
     <div class="accident-beacon" data-severity="${severity}">
       <div class="accident-ripple" style="--ring-color:${c.ring}"></div>
       <div class="accident-ripple accident-ripple--2" style="--ring-color:${c.ring}"></div>
-      <div class="accident-core" style="background:${c.fill};border-color:${c.ring}">
-        ${iconSvg}
+      <div class="accident-core" style="background:${c.fill};border-color:${c.ring};width:${c.coreSize}px;height:${c.coreSize}px;font-size:${Math.round(c.coreSize * 0.5)}px">
+        ${c.emoji}
       </div>
       <div class="accident-label" style="color:${c.text}">${c.label}</div>
     </div>`;
   const icon = L.divIcon({
     className: "leaflet-div-icon-clean",
     html,
-    iconSize: [56, 64],
-    iconAnchor: [28, 58],
-    popupAnchor: [0, -62],
+    iconSize: c.size,
+    iconAnchor: c.anchor,
+    popupAnchor: c.popup,
   });
   accidentIconCache[severity] = icon;
   return icon;
@@ -108,16 +120,89 @@ export function createDemoLayers(map) {
 
   groups["safe-route"]        = L.layerGroup();
   groups["blocked-roads"]     = L.layerGroup();
-  groups["accident-clusters"] = L.layerGroup();
+  groups["accident-clusters"] = L.markerClusterGroup({
+    disableClusteringAtZoom: 16,
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+  });
   groups["fatalities-layer"]  = L.layerGroup();
   groups["flood-zones"]       = L.layerGroup();
   groups["telemetry-gps"]     = L.layerGroup();
-  groups["reports-collision"] = L.layerGroup();
+  groups["reports-collision"] = L.markerClusterGroup({
+    disableClusteringAtZoom: 16,
+    maxClusterRadius: 50,
+  });
   groups["telemetry-predict"] = L.layerGroup();
   groups["rain-risk"]         = L.layerGroup();
   groups["weather-alerts"]    = L.layerGroup();
-  groups["reports-flood"]     = L.layerGroup();
-  groups["reports-obstacle"]  = L.layerGroup();
+  groups["reports-flood"]     = L.markerClusterGroup({
+    disableClusteringAtZoom: 16,
+    maxClusterRadius: 50,
+  });
+  groups["reports-obstacle"]  = L.markerClusterGroup({
+    disableClusteringAtZoom: 16,
+    maxClusterRadius: 50,
+  });
+
+  // ── Zonas predictivas de congestión (Heatmap) ──
+  const predictGroup = groups["telemetry-predict"];
+  const predictionPoints = [
+    [6.2100, -75.5680, 0.85], // El Poblado
+    [6.2460, -75.5960, 0.65], // Laureles
+    [6.2518, -75.5636, 0.90], // Centro
+    [6.2330, -75.5890, 0.50], // Belén
+    [6.2756, -75.5387, 0.70], // Aranjuez
+    [6.2850, -75.5580, 0.60], // Castilla
+    [6.2650, -75.5880, 0.55], // Robledo
+    [6.1750, -75.6080, 0.40], // Itagüí
+    [6.3350, -75.5580, 0.45], // Bello
+  ];
+  
+  if (typeof L.heatLayer === 'function') {
+    const heat = L.heatLayer(predictionPoints, {
+      radius: 45,
+      blur: 35,
+      maxZoom: 14,
+      gradient: { 0.4: 'blue', 0.6: 'cyan', 0.8: 'yellow', 1.0: 'red' }
+    });
+    predictGroup.addLayer(heat);
+  } else {
+    console.warn("[map] Leaflet.heat no está cargado.");
+  }
+
+
+  // ── Vías bloqueadas (demo) ──
+  const blockedGroup = groups["blocked-roads"];
+  const blockedRoads = [
+    {
+      name: "Autopista Sur — cierre parcial por obras",
+      coords: [[6.2380, -75.5750], [6.2320, -75.5735], [6.2260, -75.5720], [6.2200, -75.5705]],
+    },
+    {
+      name: "Calle 10 — cierre total por evento",
+      coords: [[6.2518, -75.5680], [6.2518, -75.5620], [6.2518, -75.5560]],
+    },
+    {
+      name: "Av. Oriental — carril bloqueado por accidente",
+      coords: [[6.2490, -75.5636], [6.2450, -75.5636], [6.2410, -75.5636]],
+    },
+  ];
+  blockedRoads.forEach((road) => {
+    const line = L.polyline(road.coords, {
+      color: "#ef4444",
+      weight: 5,
+      opacity: 0.85,
+      dashArray: "12 8",
+      lineCap: "round",
+    });
+    line.bindPopup(`
+      <div class="popup-accident">
+        <div class="popup-accident-title">🚧 Vía bloqueada</div>
+        <div class="popup-accident-sev">${escapeHtml(road.name)}</div>
+      </div>
+    `, { className: "popup-dark" });
+    blockedGroup.addLayer(line);
+  });
 
   connectRealTimeLayer(map, groups);
 }
@@ -169,6 +254,10 @@ function connectRealTimeLayer(map, groups) {
   onWsEvent("accidents", (data) => {
     updateAccidents(data);
   });
+
+  onWsEvent("new_report", (data) => {
+    addSingleReport(data);
+  });
 }
 
 export function updateAccidents(data) {
@@ -189,7 +278,7 @@ export function updateAccidents(data) {
       const coords = item.geometry.coordinates;
       lat = coords[1];
       lng = coords[0];
-      severity = item.properties.severity || "high";
+      severity = item.properties.severity || "low";
       if (item.properties.gravedad === "MUERTO") { severity = "high"; gravedadLabel = "MUERTO"; }
       else if (item.properties.gravedad === "HERIDO") { severity = "medium"; gravedadLabel = "HERIDO"; }
       else { gravedadLabel = item.properties.gravedad || "DAÑOS"; }
@@ -394,4 +483,112 @@ export function updateWeather(rainRisk, weather) {
       weatherGroup.addLayer(marker);
     });
   }
+}
+
+
+// ── Reportes ciudadanos (desde la API /public/reports) ──
+
+const REPORT_TYPE_CONFIG = {
+  accident:    { emoji: "🚗", label: "Accidente", group: "reports-collision" },
+  flood:       { emoji: "🌊", label: "Inundación", group: "reports-flood" },
+  obstruction: { emoji: "🚧", label: "Obstáculo", group: "reports-obstacle" },
+  other:       { emoji: "❗", label: "Otro",       group: "reports-obstacle" },
+};
+
+export function updateReportsLayers(reports) {
+  const groups = AppState.layerGroups;
+
+  // Limpiar los tres grupos antes de repoblar.
+  ["reports-collision", "reports-flood", "reports-obstacle"].forEach((key) => {
+    if (groups[key]?.clearLayers) groups[key].clearLayers();
+  });
+
+  if (!Array.isArray(reports)) return;
+
+  reports.forEach((r) => {
+    const lat = r.latitude;
+    const lng = r.longitude;
+    if (lat == null || lng == null) return;
+
+    const cfg = REPORT_TYPE_CONFIG[r.report_type] || REPORT_TYPE_CONFIG.other;
+    const group = groups[cfg.group];
+    if (!group) return;
+
+    let isTraffic = false;
+    if (cfg.group === "reports-obstacle" && r.description && r.description.toLowerCase().includes("cerrada")) {
+      isTraffic = true;
+    }
+
+    const htmlContent = isTraffic
+      ? `<div style="width: 40px; height: 10px; background: rgba(239,68,68,0.7); border: 2px dashed #f87171; border-radius: 4px; box-shadow: 0 0 10px rgba(239,68,68,0.8); transform: rotate(-15deg);"></div>`
+      : `<div style="
+        font-size:22px;text-align:center;line-height:1;
+        filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      ">${cfg.emoji}</div>`;
+
+    const icon = L.divIcon({
+      className: "leaflet-div-icon-clean",
+      html: htmlContent,
+      iconSize: isTraffic ? [40, 10] : [28, 28],
+      iconAnchor: isTraffic ? [20, 5] : [14, 14],
+      popupAnchor: [0, -16],
+    });
+
+    const marker = L.marker([lat, lng], { icon });
+    const dateStr = r.created_at
+      ? new Date(r.created_at).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
+      : "";
+    marker.bindPopup(`
+      <div class="popup-accident">
+        <div class="popup-accident-title">${cfg.emoji} ${escapeHtml(cfg.label)}</div>
+        <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
+        <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
+      </div>
+    `, { className: "popup-dark" });
+    group.addLayer(marker);
+  });
+}
+
+export function addSingleReport(r) {
+  const groups = AppState.layerGroups;
+  const lat = r.latitude;
+  const lng = r.longitude;
+  if (lat == null || lng == null) return;
+
+  const cfg = REPORT_TYPE_CONFIG[r.report_type] || REPORT_TYPE_CONFIG.other;
+  const group = groups[cfg.group];
+  if (!group) return;
+
+  let isTraffic = false;
+  if (cfg.group === "reports-obstacle" && r.description && r.description.toLowerCase().includes("cerrada")) {
+    isTraffic = true;
+  }
+
+  const htmlContent = isTraffic
+    ? `<div style="width: 40px; height: 10px; background: rgba(239,68,68,0.7); border: 2px dashed #f87171; border-radius: 4px; box-shadow: 0 0 10px rgba(239,68,68,0.8); transform: rotate(-15deg);"></div>`
+    : `<div style="
+      font-size:22px;text-align:center;line-height:1;
+      filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    ">${cfg.emoji}</div>`;
+
+  const icon = L.divIcon({
+    className: "leaflet-div-icon-clean",
+    html: htmlContent,
+    iconSize: isTraffic ? [40, 10] : [28, 28],
+    iconAnchor: isTraffic ? [20, 5] : [14, 14],
+    popupAnchor: [0, -16],
+  });
+
+  const marker = L.marker([lat, lng], { icon });
+  const dateStr = r.created_at
+    ? new Date(r.created_at).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
+    : "";
+  marker.bindPopup(`
+    <div class="popup-accident">
+      <div class="popup-accident-title">${cfg.emoji} ${escapeHtml(cfg.label)}</div>
+      <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
+      <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
+    </div>
+  `);
+  group.addLayer(marker);
 }
