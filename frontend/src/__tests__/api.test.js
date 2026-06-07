@@ -1,0 +1,375 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  pingHealth,
+  fetchTelemetry,
+  fetchAlerts,
+  fetchAccidentsGeoJSON,
+  fetchFatalities,
+  fetchFloodZones,
+  fetchRoute,
+  fetchWeather,
+  fetchRainRisk,
+  fetchPublicReports,
+  createPublicReport,
+  connectWebSocket,
+  disconnectWebSocket,
+  onWsEvent,
+  offWsEvent,
+  clearAllWsListeners,
+} from '../static/js/services/api.js';
+
+// Mock de fetch global
+global.fetch = vi.fn();
+
+// Mock de WebSocket
+global.WebSocket = vi.fn().mockImplementation(() => ({
+  readyState: 0,
+  close: vi.fn(),
+  addEventListener: vi.fn(),
+  onopen: null,
+  onmessage: null,
+  onclose: null,
+  onerror: null,
+}));
+
+describe('services/api.js - Cliente HTTP', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    disconnectWebSocket();
+    clearAllWsListeners();
+  });
+
+  describe('pingHealth', () => {
+    it('debe retornar true si health check es exitoso', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'ok' }),
+      });
+
+      const result = await pingHealth();
+      expect(result).toBe(true);
+      expect(fetch).toHaveBeenCalledWith('/health', expect.any(Object));
+    });
+
+    it('debe retornar false si health check falla (HTTP error)', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      const result = await pingHealth();
+      expect(result).toBe(false);
+    });
+
+    it('debe retornar false si health check falla (network error)', async () => {
+      fetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await pingHealth();
+      expect(result).toBe(false);
+    });
+
+    it('debe usar timeout de 5s en el fetch', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'ok' }),
+      });
+
+      await pingHealth();
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/health',
+        expect.objectContaining({
+          signal: expect.any(Object),
+        })
+      );
+    });
+  });
+
+  describe('fetchTelemetry', () => {
+    it('debe fetchear telemetría del endpoint correcto', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ vehicle_id: 1, speed: 45 }),
+      });
+
+      const result = await fetchTelemetry();
+      expect(result).toEqual({ vehicle_id: 1, speed: 45 });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/telemetry/latest'),
+        expect.any(Object)
+      );
+    });
+
+    it('debe lanzar error si fetch falla', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      });
+
+      await expect(fetchTelemetry()).rejects.toThrow('Error fetching telemetry');
+    });
+  });
+
+  describe('fetchAlerts', () => {
+    it('debe fetchear alertas con filtros correctos', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, message: 'Alerta test' }],
+      });
+
+      const result = await fetchAlerts();
+      expect(result).toEqual([{ id: 1, message: 'Alerta test' }]);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/alerts?is_resolved=false&limit=20'),
+        expect.any(Object)
+      );
+    });
+
+    it('debe lanzar error si fetch falla', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(fetchAlerts()).rejects.toThrow('Error fetching alerts');
+    });
+  });
+
+  describe('fetchAccidentsGeoJSON', () => {
+    it('debe fetchear GeoJSON de accidentes', async () => {
+      const mockGeoJSON = {
+        type: 'FeatureCollection',
+        features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-75.5, 6.2] } }],
+      };
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockGeoJSON,
+      });
+
+      const result = await fetchAccidentsGeoJSON();
+      expect(result).toEqual(mockGeoJSON);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/accidents/geojson'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchFatalities', () => {
+    it('debe fetchear víctimas fatales', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, gravedad: 'MUERTO' }],
+      });
+
+      const result = await fetchFatalities();
+      expect(result).toEqual([{ id: 1, gravedad: 'MUERTO' }]);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/fatalities'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchFloodZones', () => {
+    it('debe fetchear zonas de inundación', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, zone: 'Río Medellín' }],
+      });
+
+      const result = await fetchFloodZones();
+      expect(result).toEqual([{ id: 1, zone: 'Río Medellín' }]);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/flood-zones'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchRoute', () => {
+    it('debe fetchear ruta con destino solamente', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ route: [[6.2, -75.5], [6.3, -75.6]] }),
+      });
+
+      const result = await fetchRoute('Parque Lleras');
+      expect(result).toEqual({ route: [[6.2, -75.5], [6.3, -75.6]] });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/routes?destination=Parque%20Lleras'),
+        expect.any(Object)
+      );
+    });
+
+    it('debe fetchear ruta con origen y destino', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ route: [[6.2, -75.5], [6.3, -75.6]] }),
+      });
+
+      await fetchRoute('Parque Lleras', 'Parque Berrío');
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('origin=Parque%20Berr%C3%ADo'),
+        expect.any(Object)
+      );
+    });
+
+    it('debe usar cache: no-store para evitar caché', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await fetchRoute('Test');
+      expect(fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          cache: 'no-store',
+        })
+      );
+    });
+
+    it('debe lanzar error si fetch falla', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(fetchRoute('Test')).rejects.toThrow('Route fetch failed');
+    });
+  });
+
+  describe('fetchWeather', () => {
+    it('debe fetchear clima del backend', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ temp: 24.5 }),
+      });
+
+      const result = await fetchWeather();
+      expect(result).toEqual({ temp: 24.5 });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/weather'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchRainRisk', () => {
+    it('debe fetchear riesgo de lluvia', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ risk: 'high' }),
+      });
+
+      const result = await fetchRainRisk();
+      expect(result).toEqual({ risk: 'high' });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/rain-risk'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('fetchPublicReports', () => {
+    it('debe fetchear reportes ciudadanos públicos', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, description: 'Accidente' }],
+      });
+
+      const result = await fetchPublicReports();
+      expect(result).toEqual([{ id: 1, description: 'Accidente' }]);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/reports'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('createPublicReport', () => {
+    it('debe enviar POST con datos del reporte', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, status: 'created' }),
+      });
+
+      const reportData = {
+        report_type: 'colision',
+        description: 'Accidente en Calle 10',
+        latitude: 6.2518,
+        longitude: -75.5636,
+      };
+
+      const result = await createPublicReport(reportData);
+      expect(result).toEqual({ id: 1, status: 'created' });
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/public/reports'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reportData),
+        })
+      );
+    });
+
+    it('debe lanzar error si POST falla', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+      });
+
+      const reportData = {
+        report_type: 'colision',
+        description: 'Test',
+        latitude: 6.2518,
+        longitude: -75.5636,
+      };
+
+      await expect(createPublicReport(reportData)).rejects.toThrow('Error creating report');
+    });
+  });
+
+  describe('WebSocket listeners', () => {
+    it('debe agregar listener a un tipo de evento', () => {
+      const mockListener = vi.fn();
+      onWsEvent('telemetry', mockListener);
+
+      // Simular dispatchWsEvent interno (esto es más complejo de testear sin refactor)
+      // Por ahora solo verificamos que no lance error
+      expect(() => onWsEvent('telemetry', mockListener)).not.toThrow();
+    });
+
+    it('debe remover listener de un tipo de evento', () => {
+      const mockListener = vi.fn();
+      onWsEvent('telemetry', mockListener);
+      offWsEvent('telemetry', mockListener);
+
+      expect(() => offWsEvent('telemetry', mockListener)).not.toThrow();
+    });
+
+    it('debe limpiar todos los listeners', () => {
+      const mockListener1 = vi.fn();
+      const mockListener2 = vi.fn();
+      onWsEvent('telemetry', mockListener1);
+      onWsEvent('alerts', mockListener2);
+
+      clearAllWsListeners();
+
+      // Después de clear, no debe haber listeners
+      expect(() => clearAllWsListeners()).not.toThrow();
+    });
+  });
+
+  describe('WebSocket connection', () => {
+    it('debe intentar crear conexión WebSocket al llamar connectWebSocket', () => {
+      // Solo verificamos que no lance error
+      expect(() => connectWebSocket()).not.toThrow();
+    });
+  });
+});

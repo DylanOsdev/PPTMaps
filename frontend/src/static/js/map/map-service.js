@@ -132,6 +132,9 @@ let reportsPollTimer = null;
 export function startReportsPolling() {
   stopReportsPolling();
   loadReportsData();
+  reportsPollTimer = setInterval(() => {
+    loadReportsData();
+  }, 30000); // Recargar cada 30s
 }
 
 export function stopReportsPolling() {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const REPORT_TYPES = [
@@ -25,41 +25,104 @@ const DEFAULT_LNG = -75.5812;
 
 export default function Report() {
   const navigate = useNavigate();
+  const isMounted = useRef(true);
   const [selected, setSelected] = useState(null);
   const [description, setDescription] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
-  const [coords, setCoords] = useState({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+  const [coords, setCoords] = useState(null);
   const [geoStatus, setGeoStatus] = useState('detecting'); // 'detecting' | 'granted' | 'denied'
 
   useEffect(() => {
     document.documentElement.classList.add('page-landing');
-    return () => document.documentElement.classList.remove('page-landing');
+    return () => {
+      document.documentElement.classList.remove('page-landing');
+    };
   }, []);
 
-  // Solicitar ubicación real del navegador.
+  // Seguimiento en TIEMPO REAL de la ubicación (watchPosition).
   useEffect(() => {
     if (!navigator.geolocation) {
       setGeoStatus('denied');
+      setError('Tu navegador no soporta geolocalización. No puedes crear reportes.');
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (!isMounted.current) return;
+        
+        const accuracy = pos.coords.accuracy;
+        const isGPSDevice = accuracy < 100; // GPS real típicamente da <50m
+        
+        const newCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: accuracy,
+          timestamp: pos.timestamp,
+          speed: pos.coords.speed || 0,
+          heading: pos.coords.heading || null,
+          isGPS: isGPSDevice
+        };
+        
+        setCoords(newCoords);
         setGeoStatus('granted');
+        
+        if (isGPSDevice) {
+          console.log('[Report] 📡 GPS satelital:', {
+            lat: newCoords.lat.toFixed(6),
+            lng: newCoords.lng.toFixed(6),
+            accuracy: '±' + accuracy.toFixed(0) + 'm',
+            speed: newCoords.speed ? (newCoords.speed * 3.6).toFixed(1) + ' km/h' : '0 km/h'
+          });
+        } else {
+          console.log('[Report] 📶 WiFi/Red (sin GPS):', {
+            lat: newCoords.lat.toFixed(6),
+            lng: newCoords.lng.toFixed(6),
+            accuracy: '±' + (accuracy/1000).toFixed(1) + ' km'
+          });
+        }
       },
-      () => {
-        // Permiso denegado o error → quedamos con el centro de Medellín.
+      (err) => {
+        if (!isMounted.current) return;
+        console.error('[Report] ❌ Error ubicación:', err);
         setGeoStatus('denied');
+        
+        let errorMsg = 'Error de ubicación: ';
+        if (err.code === 1) errorMsg += 'Permiso denegado. Permite el acceso en tu navegador.';
+        else if (err.code === 2) errorMsg += 'Posición no disponible. Verifica tu conexión.';
+        else if (err.code === 3) errorMsg += 'Timeout. Verifica tu conexión GPS/WiFi.';
+        else errorMsg += err.message;
+        
+        setError(errorMsg);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      {
+        enableHighAccuracy: true,  // Intenta usar GPS si está disponible
+        timeout: 60000,            // 60s para ubicación inicial
+        maximumAge: 0              // No usar caché
+      }
     );
+
+    // Cleanup: detener seguimiento al desmontar componente
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        console.log('[Report] 🛑 Seguimiento detenido');
+      }
+      isMounted.current = false;
+    };
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selected || sending) return;
+    
+    // VALIDACIÓN OBLIGATORIA: debe haber coordenadas reales
+    if (!coords || geoStatus !== 'granted') {
+      setError('Debes permitir el acceso a tu ubicación para enviar el reporte.');
+      return;
+    }
 
     setSending(true);
     setError(null);
@@ -70,6 +133,8 @@ export default function Report() {
       latitude: coords.lat,
       longitude: coords.lng,
     };
+
+    console.log('[Report] Enviando reporte con coordenadas exactas:', body);
 
     try {
       const API_BASE = window.TPPMAPS_API || '/api/v1';
@@ -175,12 +240,47 @@ export default function Report() {
           <p style={{ color: '#64748b', fontSize: '1rem' }}>
             Selecciona el tipo de incidente y añade una descripción. El reporte se georeferenciará automáticamente.
           </p>
-          {/* Indicador de geolocalización */}
-          <p style={{ color: geoStatus === 'granted' ? '#4ade80' : geoStatus === 'detecting' ? '#fbbf24' : '#94a3b8', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-            {geoStatus === 'detecting' && '⏳ Detectando tu ubicación…'}
-            {geoStatus === 'granted' && `📍 Ubicación: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`}
-            {geoStatus === 'denied' && `📍 Ubicación predeterminada: Medellín (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`}
-          </p>
+          {/* Indicador de geolocalización EN TIEMPO REAL */}
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            borderRadius: '8px',
+            backgroundColor: coords?.isGPS ? 'rgba(34,211,238,0.1)' : 'rgba(251,191,36,0.1)',
+            border: `2px solid ${coords?.isGPS ? '#22d3ee' : '#fbbf24'}`
+          }}>
+            <p style={{ 
+              color: coords?.isGPS ? '#22d3ee' : '#fbbf24',
+              fontSize: '0.85rem', 
+              fontWeight: 600,
+              margin: 0
+            }}>
+              {geoStatus === 'detecting' && '⏳ Buscando ubicación...'}
+              {geoStatus === 'granted' && coords && (
+                <>
+                  <span style={{ fontSize: '1.1rem' }}>
+                    {coords.isGPS ? '📡 GPS Real' : '📶 WiFi/Red'} · {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+                  </span>
+                  <br />
+                  <span style={{ fontSize: '0.7rem', color: coords.isGPS ? '#4ade80' : '#fb923c' }}>
+                    Precisión: ±{coords.isGPS ? coords.accuracy.toFixed(0) + 'm' : (coords.accuracy/1000).toFixed(1) + 'km'}
+                    {!coords.isGPS && ' ⚠️ Sin GPS (PC/laptop)'}
+                    {coords.speed > 0 && ` • Velocidad: ${(coords.speed * 3.6).toFixed(1)} km/h`}
+                    {' • '}
+                    Actualizado: {new Date(coords.timestamp).toLocaleTimeString('es-CO')}
+                  </span>
+                  {!coords.isGPS && (
+                    <>
+                      <br />
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                        💡 Para GPS real (±5-20m), usa celular/tablet
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
+              {geoStatus === 'denied' && '❌ Ubicación bloqueada. Permite el acceso y recarga la página.'}
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
