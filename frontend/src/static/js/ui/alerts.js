@@ -112,3 +112,9 @@ export function initAlerts() {
   };
   onWsEvent("alerts", AppState._alertsWsHandler);
 }
+
+// Export solo para testing - NO usar en producción
+export function __resetForTesting() {
+  alerts = [];
+  renderAlerts();
+}

@@ -570,25 +570,67 @@ export function updateWeather(rainRisk, weather) {
 // ── Reportes ciudadanos ──
 
 const REPORT_TYPE_CONFIG = {
-  accident:    { emoji: "🚗", label: "Accidente", group: "reports-collision" },
-  flood:       { emoji: "🌊", label: "Inundación", group: "reports-flood" },
-  obstruction: { emoji: "🚧", label: "Obstáculo", group: "reports-obstacle" },
-  other:       { emoji: "❗", label: "Otro",       group: "reports-obstacle" },
+  accident: {
+    label: "Accidente",
+    group: "reports-collision",
+    svg: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+      <path d="M16 8v8m0 4h.01" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    </svg>`,
+    color: "#ef4444"
+  },
+  flood: {
+    label: "Inundación",
+    group: "reports-flood",
+    svg: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" fill="#3b82f6" stroke="#fff" stroke-width="2"/>
+      <path d="M8 16c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2M8 20c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    color: "#3b82f6"
+  },
+  obstruction: {
+    label: "Obstáculo",
+    group: "reports-obstacle",
+    svg: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" fill="#f59e0b" stroke="#fff" stroke-width="2"/>
+      <path d="M16 8L8 24h16L16 8z" fill="#fff"/>
+      <path d="M16 14v4m0 2h.01" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    color: "#f59e0b"
+  },
+  other: {
+    label: "Otro",
+    group: "reports-obstacle",
+    svg: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" fill="#6366f1" stroke="#fff" stroke-width="2"/>
+      <circle cx="16" cy="16" r="3" fill="#fff"/>
+    </svg>`,
+    color: "#6366f1"
+  },
 };
+
+// Tracking de reportes para evitar duplicados
+const reportsMarkers = new Map(); // key: report_id, value: marker
 
 export function updateReportsLayers(reports) {
   const groups = AppState.layerGroups;
 
-  ["reports-collision", "reports-flood", "reports-obstacle"].forEach((key) => {
-    if (groups[key]?.clearLayers) groups[key].clearLayers();
-  });
-
   if (!Array.isArray(reports)) return;
+
+  const incomingIds = new Set();
 
   reports.forEach((r) => {
     const lat = r.latitude;
     const lng = r.longitude;
     if (lat == null || lng == null) return;
+
+    const reportId = r.id || `${lat.toFixed(6)}_${lng.toFixed(6)}_${r.report_type}`;
+    incomingIds.add(reportId);
+
+    // Si ya existe este reporte, no agregarlo de nuevo
+    if (reportsMarkers.has(reportId)) {
+      return;
+    }
 
     const cfg = REPORT_TYPE_CONFIG[r.report_type] || REPORT_TYPE_CONFIG.other;
     const group = groups[cfg.group];
@@ -601,14 +643,14 @@ export function updateReportsLayers(reports) {
 
     const htmlContent = isTraffic
       ? `<div style="width: 40px; height: 10px; background: rgba(239,68,68,0.7); border: 2px dashed #f87171; border-radius: 4px; box-shadow: 0 0 10px rgba(239,68,68,0.8); transform: rotate(-15deg);"></div>`
-      : `<div style="font-size:22px;text-align:center;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${cfg.emoji}</div>`;
+      : `<div style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">${cfg.svg}</div>`;
 
     const icon = L.divIcon({
-      className: "",
+      className: "report-icon",
       html: htmlContent,
-      iconSize: isTraffic ? [40, 10] : [28, 28],
-      iconAnchor: isTraffic ? [20, 5] : [14, 14],
-      popupAnchor: [0, -16],
+      iconSize: isTraffic ? [40, 10] : [32, 32],
+      iconAnchor: isTraffic ? [20, 5] : [16, 32],
+      popupAnchor: [0, -32],
     });
 
     const marker = L.marker([lat, lng], { icon });
@@ -617,12 +659,14 @@ export function updateReportsLayers(reports) {
       : "";
     marker.bindPopup(`
       <div class="popup-accident">
-        <div class="popup-accident-title">${cfg.emoji} ${escapeHtml(cfg.label)}</div>
+        <div class="popup-accident-title">${cfg.svg} ${escapeHtml(cfg.label)}</div>
         <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
         <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
       </div>
     `, { className: "popup-dark" });
+    
     group.addLayer(marker);
+    reportsMarkers.set(reportId, marker);
   });
 }
 
@@ -631,6 +675,14 @@ export function addSingleReport(r) {
   const lat = r.latitude;
   const lng = r.longitude;
   if (lat == null || lng == null) return;
+
+  const reportId = r.id || `${lat.toFixed(6)}_${lng.toFixed(6)}_${r.report_type}`;
+  
+  // Si ya existe, no agregarlo de nuevo
+  if (reportsMarkers.has(reportId)) {
+    console.log('[Reports] Reporte duplicado ignorado:', reportId);
+    return;
+  }
 
   const cfg = REPORT_TYPE_CONFIG[r.report_type] || REPORT_TYPE_CONFIG.other;
   const group = groups[cfg.group];
@@ -643,14 +695,14 @@ export function addSingleReport(r) {
 
   const htmlContent = isTraffic
     ? `<div style="width: 40px; height: 10px; background: rgba(239,68,68,0.7); border: 2px dashed #f87171; border-radius: 4px; box-shadow: 0 0 10px rgba(239,68,68,0.8); transform: rotate(-15deg);"></div>`
-    : `<div style="font-size:22px;text-align:center;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${cfg.emoji}</div>`;
+    : `<div style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">${cfg.svg}</div>`;
 
   const icon = L.divIcon({
-    className: "",
+    className: "report-icon",
     html: htmlContent,
-    iconSize: isTraffic ? [40, 10] : [28, 28],
-    iconAnchor: isTraffic ? [20, 5] : [14, 14],
-    popupAnchor: [0, -16],
+    iconSize: isTraffic ? [40, 10] : [32, 32],
+    iconAnchor: isTraffic ? [20, 5] : [16, 32],
+    popupAnchor: [0, -32],
   });
 
   const marker = L.marker([lat, lng], { icon });
@@ -659,10 +711,13 @@ export function addSingleReport(r) {
     : "";
   marker.bindPopup(`
     <div class="popup-accident">
-      <div class="popup-accident-title">${cfg.emoji} ${escapeHtml(cfg.label)}</div>
+      <div class="popup-accident-title">${cfg.svg} ${escapeHtml(cfg.label)}</div>
       <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
       <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
     </div>
   `);
+  
   group.addLayer(marker);
+  reportsMarkers.set(reportId, marker);
+  console.log('[Reports] Nuevo reporte agregado:', reportId);
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { initMap, setupMapLayers, updateMapStats, stopFatalitiesPolling, stopReportsPolling } from "../static/js/map/map-service.js";
 import { pingHealth, connectWebSocket, disconnectWebSocket, onWsEvent, offWsEvent } from "../static/js/services/api.js";
 import { initAlerts } from "../static/js/ui/alerts.js";
@@ -9,7 +9,7 @@ import { initResponsive } from "../static/js/ui/responsive.js";
 import { initSearch } from "../static/js/ui/search.js";
 import { AppState } from "../static/js/core/state.js";
 
-import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaMicrophone, FaBars, FaGlobeAmericas } from 'react-icons/fa';
+import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaFileAlt, FaBars, FaGlobeAmericas } from 'react-icons/fa';
 import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
@@ -17,6 +17,7 @@ import { useWeather } from '../hooks/useWeather.js';
 export default function CommandCenter() {
   const mapRef = useRef(false);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [systemStatus, setSystemStatus] = React.useState("INICIANDO...");
   const [isSystemOk, setIsSystemOk]     = React.useState(false);
@@ -472,7 +473,7 @@ export default function CommandCenter() {
         <footer className="bottom-bar">
           <div className="bottom-left">
             <button type="button" className="icon-btn" id="btnProfile" title="Perfil"><FaUser /></button>
-            <button type="button" className="icon-btn" id="btnVoice" title="Voz"><FaMicrophone /></button>
+            <button type="button" className="icon-btn" id="btnReport" title="Crear Reporte" onClick={() => navigate('/report')}><FaFileAlt /></button>
             <span className="metro-label">Valle del Aburrá</span>
           </div>
           <div className="bottom-center" id="mapStats">
