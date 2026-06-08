@@ -47,7 +47,7 @@ services:
     ports:
       - "8000:8000"
     # Entrypoint automático: migraciones + ingesta de datos + API
-    command: sh /repo/backend/docker-entrypoint.sh
+    command: sh /repo/backend/scripts/docker/docker-entrypoint.sh
 
   worker:
     build:
