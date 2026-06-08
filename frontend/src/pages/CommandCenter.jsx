@@ -274,7 +274,7 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span><FaGlobeAmericas size={12} style={{verticalAlign:'middle',marginRight:4}} /> Satelital</span>
-                    <input type="checkbox" className="toggle" data-layer="satellite-base" />
+                    <input type="checkbox" className="toggle" data-layer="satellite-base" defaultChecked />
                   </label>
                 </li>
                 <li className="sat-opacity-row" id="satOpacityRow" style={{display:'none'}}>
@@ -294,27 +294,33 @@ export default function CommandCenter() {
               <summary>
                 <span className="layer-icon"><FaSatelliteDish /></span>
                 <span>TELEMETRÍA VIAL</span>
-                <span className="group-count" id="count-telemetry">0/4</span>
+                <span className="group-count" id="count-telemetry">0/5</span>
                 <button type="button" className="btn-toggle-all" data-group="telemetry" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
                 <li>
                   <label className="layer-row">
-                    <span>GPS conductores (tiempo real)</span>
-                    <input type="checkbox" className="toggle" data-layer="telemetry-gps" defaultChecked />
+                    <span>GPS conductores (tiempo real) <span className="badge badge-soon">Próximamente</span></span>
+                    <input type="checkbox" className="toggle" data-layer="telemetry-gps" disabled />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Mapa predictivo congestión</span>
-                    <input type="checkbox" className="toggle" data-layer="telemetry-predict" />
+                    <input type="checkbox" className="toggle" data-layer="telemetry-predict" defaultChecked />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Clusters accidentes (DBSCAN)</span>
                     <input type="checkbox" className="toggle" data-layer="accident-clusters" defaultChecked />
+                  </label>
+                </li>
+                <li>
+                  <label className="layer-row">
+                    <span>🔥 Zonas calientes (630 hotspots)</span>
+                    <input type="checkbox" className="toggle" data-layer="accident-zones" defaultChecked />
                   </label>
                 </li>
                 <li>
@@ -344,13 +350,13 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Riesgo lluvia (2h)</span>
-                    <input type="checkbox" className="toggle" data-layer="rain-risk" />
+                    <input type="checkbox" className="toggle" data-layer="rain-risk" defaultChecked />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Alertas meteorológicas</span>
-                    <input type="checkbox" className="toggle" data-layer="weather-alerts" />
+                    <input type="checkbox" className="toggle" data-layer="weather-alerts" defaultChecked />
                   </label>
                 </li>
               </ul>
@@ -360,27 +366,21 @@ export default function CommandCenter() {
               <summary>
                 <span className="layer-icon"><FaExclamationTriangle /></span>
                 <span>REPORTES CIUDADANOS</span>
-                <span className="group-count" id="count-reports">0/3</span>
+                <span className="group-count" id="count-reports">0/2</span>
                 <button type="button" className="btn-toggle-all" data-group="reports" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
                 <li>
                   <label className="layer-row">
-                    <span>Colisiones activas</span>
+                    <span>Accidentes reportados</span>
                     <input type="checkbox" className="toggle" data-layer="reports-collision" defaultChecked />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Inundaciones reportadas</span>
-                    <input type="checkbox" className="toggle" data-layer="reports-flood" />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span>Obstáculos y huecos</span>
-                    <input type="checkbox" className="toggle" data-layer="reports-obstacle" />
+                    <input type="checkbox" className="toggle" data-layer="reports-flood" defaultChecked />
                   </label>
                 </li>
               </ul>
@@ -390,7 +390,7 @@ export default function CommandCenter() {
               <summary>
                 <span className="layer-icon"><FaRoad /></span>
                 <span>RUTAS SEGURAS</span>
-                <span className="group-count" id="count-routes">0/2</span>
+                <span className="group-count" id="count-routes">0/1</span>
                 <button type="button" className="btn-toggle-all" data-group="routes" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
@@ -399,12 +399,6 @@ export default function CommandCenter() {
                   <label className="layer-row">
                     <span>Ruta segura activa</span>
                     <input type="checkbox" className="toggle" data-layer="safe-route" defaultChecked />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span>Vías bloqueadas</span>
-                    <input type="checkbox" className="toggle" data-layer="blocked-roads" defaultChecked />
                   </label>
                 </li>
               </ul>

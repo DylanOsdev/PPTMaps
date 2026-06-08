@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateBlockedRoads } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -50,6 +50,17 @@ export async function loadAccidentsData() {
     trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar datos de accidentes:", err);
+    trackLayer(false);
+  }
+}
+
+export async function loadAccidentZonesData() {
+  try {
+    const geojson = await fetchAccidentZones();
+    updateAccidentZones(geojson);
+    trackLayer(true);
+  } catch (err) {
+    console.warn("[map] No se pudieron cargar zonas de accidentalidad:", err);
     trackLayer(false);
   }
 }
@@ -220,12 +231,12 @@ export async function setupMapLayers() {
   renderComunasList(document.getElementById("comunasList"), data, map);
 
   loadAccidentsData();
+  loadAccidentZonesData();
   loadFloodZonesData(map);
   loadWeatherData();
   startReportsPolling();
   startFatalitiesPolling();
   updateSafeRoutes(map);
-  updateBlockedRoads(map);
 
   let statsTimer;
   map.on("moveend zoomend", () => {

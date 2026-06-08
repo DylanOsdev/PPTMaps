@@ -132,6 +132,14 @@ export async function fetchAccidentsGeoJSON() {
   return res.json();
 }
 
+export async function fetchAccidentZones() {
+  const res = await fetch(`${CONFIG.apiBase}/public/accident-zones`, {  // Sin limit = default 630
+    signal: AbortSignal.timeout(15000),  // Más timeout para 630 zonas
+  });
+  if (!res.ok) throw new Error("Error fetching accident zones");
+  return res.json();
+}
+
 export async function fetchFatalities() {
   const res = await fetch(`${CONFIG.apiBase}/public/fatalities`, {
     signal: AbortSignal.timeout(8000),
@@ -149,10 +157,12 @@ export async function fetchFloodZones() {
 }
 
 export async function fetchRoute(destination, origin = null) {
-  let url = `${CONFIG.apiBase}/routes?destination=${encodeURIComponent(destination)}&_cb=${Date.now()}`;
-  if (origin) {
-    url += `&origin=${encodeURIComponent(origin)}`;
-  }
+  // destination y origin en formato "lat,lng"
+  const [destLat, destLng] = destination.split(",").map(v => parseFloat(v.trim()));
+  const [origLat, origLng] = origin ? origin.split(",").map(v => parseFloat(v.trim())) : [6.2518, -75.5636]; // Default: Centro Medellín
+  
+  const url = `${CONFIG.apiBase}/public/routes?origin_lat=${origLat}&origin_lng=${origLng}&dest_lat=${destLat}&dest_lng=${destLng}&_cb=${Date.now()}`;
+  
   const res = await fetch(url, {
     cache: "no-store",
     signal: AbortSignal.timeout(10000),
@@ -182,6 +192,14 @@ export async function fetchPublicReports() {
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error("Error fetching public reports");
+  return res.json();
+}
+
+export async function fetchTrafficPredictions() {
+  const res = await fetch(`${CONFIG.apiBase}/public/traffic/predictions`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching traffic predictions");
   return res.json();
 }
 

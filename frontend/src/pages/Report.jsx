@@ -3,21 +3,15 @@ import { useNavigate } from 'react-router-dom';
 
 const REPORT_TYPES = [
   { id: 'accidente',  label: 'Accidente de tránsito', desc: 'Choque, volcamiento o atropello' },
-  { id: 'via_cerrada', label: 'Vía cerrada', desc: 'Cierre total o parcial de la calzada' },
+  { id: 'muerte',     label: 'Accidente fatal', desc: 'Incidente con víctimas mortales' },
   { id: 'inundacion', label: 'Inundación',  desc: 'Agua acumulada o desbordamiento' },
-  { id: 'hueco',      label: 'Hueco o bache', desc: 'Hundimiento o daño en el pavimento' },
-  { id: 'semaforo',   label: 'Semáforo dañado', desc: 'Apagado, intermitente o fuera de ciclo' },
-  { id: 'otro',       label: 'Otra novedad', desc: 'Cualquier incidente no listado' },
 ];
 
 // Mapeo de IDs del formulario → ReportType del backend.
 const TYPE_MAP = {
   accidente:  'accident',
-  via_cerrada: 'obstruction',
+  muerte:     'accident',  // Backend procesará por gravedad
   inundacion: 'flood',
-  hueco:      'obstruction',
-  semaforo:   'obstruction',
-  otro:       'other',
 };
 
 const DEFAULT_LAT = 6.2442;
@@ -263,7 +257,7 @@ export default function Report() {
                   <br />
                   <span style={{ fontSize: '0.7rem', color: coords.isGPS ? '#4ade80' : '#fb923c' }}>
                     Precisión: ±{coords.isGPS ? coords.accuracy.toFixed(0) + 'm' : (coords.accuracy/1000).toFixed(1) + 'km'}
-                    {!coords.isGPS && ' ⚠️ Sin GPS (PC/laptop)'}
+                    {!coords.isGPS && ' Sin GPS (PC/laptop)'}
                     {coords.speed > 0 && ` • Velocidad: ${(coords.speed * 3.6).toFixed(1)} km/h`}
                     {' • '}
                     Actualizado: {new Date(coords.timestamp).toLocaleTimeString('es-CO')}
@@ -278,7 +272,7 @@ export default function Report() {
                   )}
                 </>
               )}
-              {geoStatus === 'denied' && '❌ Ubicación bloqueada. Permite el acceso y recarga la página.'}
+              {geoStatus === 'denied' && 'Ubicación bloqueada. Permite el acceso y recarga la página.'}
             </p>
           </div>
         </div>

@@ -24,6 +24,10 @@ celery_app.conf.update(
             "task": "weather.sync",
             "schedule": crontab(minute="*/15"),
         },
+        "weather-alerts-every-15-min": {
+            "task": "weather.generate_alerts",
+            "schedule": crontab(minute="*/15"),
+        },
         "telemetry-flush-every-min": {
             "task": "telemetry.flush",
             "schedule": crontab(minute="*"),
@@ -35,6 +39,10 @@ celery_app.conf.update(
         "cluster-accidents-hourly": {
             "task": "ml.cluster_accident_hotspots",
             "schedule": crontab(minute="0"),
+        },
+        "ml-predictions-every-15-min": {
+            "task": "ml.cache_predictions",
+            "schedule": crontab(minute="*/15"),
         },
     },
 )
