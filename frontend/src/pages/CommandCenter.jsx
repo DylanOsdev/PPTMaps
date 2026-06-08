@@ -13,6 +13,7 @@ import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamat
 import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
+import Chatbot from '../components/Chatbot.jsx';
 
 export default function CommandCenter() {
   const mapRef = useRef(false);
@@ -23,6 +24,7 @@ export default function CommandCenter() {
   const [isSystemOk, setIsSystemOk]     = React.useState(false);
   const { weather, loading: weatherLoading, error: weatherError } = useWeather();
   const [locating, setLocating] = React.useState(false);
+  const [chatbotOpen, setChatbotOpen] = React.useState(false);
 
   const handleLocateMe = () => {
     const m = AppState.map;
@@ -256,25 +258,25 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Contorno ciudad</span>
-                    <input type="checkbox" className="toggle" data-layer="medellin-city" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="medellin-city" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Polígonos y etiquetas (Comunas/CG)</span>
-                    <input type="checkbox" className="toggle" data-layer="medellin-comunas" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="medellin-comunas" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Municipios Área Metro (9)</span>
-                    <input type="checkbox" className="toggle" data-layer="metro-municipios" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="metro-municipios" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span><FaGlobeAmericas size={12} style={{verticalAlign:'middle',marginRight:4}} /> Satelital</span>
-                    <input type="checkbox" className="toggle" data-layer="satellite-base" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="satellite-base" />
                   </label>
                 </li>
                 <li className="sat-opacity-row" id="satOpacityRow" style={{display:'none'}}>
@@ -308,25 +310,25 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Mapa predictivo congestión</span>
-                    <input type="checkbox" className="toggle" data-layer="telemetry-predict" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="telemetry-predict" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Clusters accidentes (DBSCAN)</span>
-                    <input type="checkbox" className="toggle" data-layer="accident-clusters" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="accident-clusters" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>🔥 Zonas calientes (630 hotspots)</span>
-                    <input type="checkbox" className="toggle" data-layer="accident-zones" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="accident-zones" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span><FaSkull size={14} style={{verticalAlign:'middle',marginRight:6,color:'#ef4444'}} /> Muertes en tiempo real</span>
-                    <input type="checkbox" className="toggle" data-layer="fatalities-layer" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="fatalities-layer" />
                   </label>
                 </li>
               </ul>
@@ -344,19 +346,19 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Deprimidos inundables</span>
-                    <input type="checkbox" className="toggle" data-layer="flood-zones" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="flood-zones" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Riesgo lluvia (2h)</span>
-                    <input type="checkbox" className="toggle" data-layer="rain-risk" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="rain-risk" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Alertas meteorológicas</span>
-                    <input type="checkbox" className="toggle" data-layer="weather-alerts" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="weather-alerts" />
                   </label>
                 </li>
               </ul>
@@ -374,13 +376,13 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Accidentes reportados</span>
-                    <input type="checkbox" className="toggle" data-layer="reports-collision" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="reports-collision" />
                   </label>
                 </li>
                 <li>
                   <label className="layer-row">
                     <span>Inundaciones reportadas</span>
-                    <input type="checkbox" className="toggle" data-layer="reports-flood" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="reports-flood" />
                   </label>
                 </li>
               </ul>
@@ -398,7 +400,7 @@ export default function CommandCenter() {
                 <li>
                   <label className="layer-row">
                     <span>Ruta segura activa</span>
-                    <input type="checkbox" className="toggle" data-layer="safe-route" defaultChecked />
+                    <input type="checkbox" className="toggle" data-layer="safe-route" />
                   </label>
                 </li>
               </ul>
@@ -466,7 +468,7 @@ export default function CommandCenter() {
 
         <footer className="bottom-bar">
           <div className="bottom-left">
-            <button type="button" className="icon-btn" id="btnProfile" title="Perfil"><FaUser /></button>
+            <button type="button" className="icon-btn" id="btnProfile" title="Chatbot IA" onClick={() => setChatbotOpen(true)}><FaUser /></button>
             <button type="button" className="icon-btn" id="btnReport" title="Crear Reporte" onClick={() => navigate('/report')}><FaFileAlt /></button>
             <span className="metro-label">Valle del Aburrá</span>
           </div>
@@ -522,6 +524,9 @@ export default function CommandCenter() {
         <Link to="/report" className="dock-item">Reportar</Link>
         <Link to="/map" className="dock-item dock-active">Comando</Link>
       </nav>
+
+      {/* Chatbot IA */}
+      {chatbotOpen && <Chatbot isOpen={chatbotOpen} onClose={() => setChatbotOpen(false)} />}
     </>
   );
 }
