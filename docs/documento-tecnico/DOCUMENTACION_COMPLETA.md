@@ -945,5 +945,4 @@ El sistema incluye datos semilla para funcionar sin conexión a APIs externas:
 
 ---
 
-*Documentación generada para el Hackathon HackData CTGI SENA 2026*
 *Medellín, Colombia 🇨🇴*
