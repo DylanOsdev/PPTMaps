@@ -66,7 +66,7 @@ if [ "$PG_READY" -eq 1 ]; then
     echo "  ✅ PostgreSQL activo — BD 'movimed' lista."
 elif [ "$PG_AVAILABLE" -eq 1 ]; then
     echo "  ⚠️  PostgreSQL accesible pero falta la BD 'movimed'."
-    echo "     Ejecuta: sudo bash backend/setup_db.sh"
+    echo "     Ejecuta: sudo bash backend/scripts/setup/setup_db.sh"
 else
     echo "  ℹ️  PostgreSQL no está corriendo."
     echo "     La BD se necesita solo para el backend (conductores, reportes, etc.)."
