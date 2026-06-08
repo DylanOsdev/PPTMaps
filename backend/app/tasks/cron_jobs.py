@@ -113,4 +113,12 @@ async def _run_cache_predictions() -> int:
 @celery_app.task(name="ml.cache_predictions")
 def cache_traffic_predictions_task() -> int:
     """Cachea predicciones ML de congestión en Redis cada 15 minutos."""
-    return asyncio.run(_run_cache_predictions())
+    import nest_asyncio
+    nest_asyncio.apply()
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_run_cache_predictions())
+    finally:
+        loop.close()
