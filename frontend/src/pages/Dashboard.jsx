@@ -7,6 +7,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import { useAccidentStats } from '../hooks/useAccidentStats.js';
+import { useWeatherStats } from '../hooks/useWeatherStats.js';
 
 ChartJS.register(ArcElement, BarElement, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -58,6 +59,7 @@ function KPI({ value, label, color }) {
 
 export default function Dashboard() {
   const { stats, loading, error } = useAccidentStats();
+  const { stats: weatherStats, loading: weatherLoading } = useWeatherStats();
 
   const wrap = {
     minHeight: '100vh', background: '#0f172a', color: '#e2e8f0',
@@ -147,8 +149,86 @@ export default function Dashboard() {
         </Panel>
       </div>
 
+      {/* Sección Lluvia */}
+      {!weatherLoading && weatherStats && (
+        <>
+          <h2 style={{ 
+            fontFamily: '"Orbitron", sans-serif', 
+            fontSize: 18, 
+            color: '#67e8f9', 
+            marginTop: 40, 
+            marginBottom: 16,
+            letterSpacing: '0.1em'
+          }}>
+            🌧 PRECIPITACIÓN HISTÓRICA
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            <Panel title="LLUVIA ANUAL (2008-2025)">
+              <Bar
+                data={{
+                  labels: weatherStats.by_year.map(d => d.year),
+                  datasets: [{
+                    label: 'Precipitación (mm)',
+                    data: weatherStats.by_year.map(d => d.total_mm),
+                    backgroundColor: '#3b82f6'
+                  }],
+                }}
+                options={baseOpts()}
+              />
+            </Panel>
+
+            <Panel title="LLUVIA PROMEDIO POR MES">
+              <Line
+                data={{
+                  labels: weatherStats.by_month.map(d => d.month),
+                  datasets: [{
+                    label: 'Precipitación promedio (mm)',
+                    data: weatherStats.by_month.map(d => d.avg_mm),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.12)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3
+                  }],
+                }}
+                options={baseOpts()}
+              />
+            </Panel>
+
+            <Panel title="ESTADÍSTICAS CLIMA">
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center', 
+                height: '100%',
+                gap: 16 
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: '#3b82f6', fontFamily: '"Orbitron", sans-serif' }}>
+                    {fmt(weatherStats.total_mm_18years)} mm
+                  </div>
+                  <div style={{ fontSize: 10, color: TICK, marginTop: 4 }}>LLUVIA TOTAL (18 AÑOS)</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, fontWeight: 600, color: '#67e8f9', fontFamily: '"Orbitron", sans-serif' }}>
+                    {weatherStats.avg_hourly_mm} mm/h
+                  </div>
+                  <div style={{ fontSize: 10, color: TICK, marginTop: 4 }}>PROMEDIO HORARIO</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 500, color: '#a78bfa', fontFamily: '"Orbitron", sans-serif' }}>
+                    {fmt(weatherStats.total_hours)} hrs
+                  </div>
+                  <div style={{ fontSize: 10, color: TICK, marginTop: 4 }}>REGISTROS HISTÓRICOS</div>
+                </div>
+              </div>
+            </Panel>
+          </div>
+        </>
+      )}
+
       <footer style={{ fontSize: 9, color: TICK, marginTop: 24, opacity: 0.6 }}>
-        Fuente: Secretaría de Movilidad de Medellín · Dataset abierto (Mendeley r6g5dfnpgh, CC BY 4.0)
+        Fuente: Secretaría de Movilidad de Medellín · Dataset abierto (Mendeley r6g5dfnpgh, CC BY 4.0) • Clima: Open-Meteo Historical Weather API
       </footer>
     </div>
   );

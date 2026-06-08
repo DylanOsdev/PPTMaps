@@ -1,6 +1,6 @@
 import { AppState } from "../core/state.js";
 import { escapeHtml } from "../core/utils.js";
-import { onWsEvent, fetchRoute, fetchAccidentsGeoJSON, fetchAlerts } from "../services/api.js";
+import { onWsEvent, fetchRoute, fetchAccidentsGeoJSON, fetchAlerts, fetchTrafficPredictions } from "../services/api.js";
 import { getAccidentSvg } from "../icons/react-icons.js";
 
 const driverIconCache = new Map();
@@ -98,6 +98,7 @@ export function createDemoLayers(map) {
     maxClusterRadius: 60,
     spiderfyOnMaxZoom: true,
   });
+  groups["accident-zones"]    = L.layerGroup();
   groups["fatalities-layer"]  = L.layerGroup();
   groups["flood-zones"]       = L.layerGroup();
   groups["telemetry-gps"]     = L.layerGroup();
@@ -117,29 +118,11 @@ export function createDemoLayers(map) {
     maxClusterRadius: 50,
   });
 
-  // Heatmap de congestión
+  // Heatmap de congestión con predicciones ML reales
   const predictGroup = groups["telemetry-predict"];
-  const predictionPoints = [
-    [6.2100, -75.5680, 0.85],
-    [6.2460, -75.5960, 0.65],
-    [6.2518, -75.5636, 0.90],
-    [6.2330, -75.5890, 0.50],
-    [6.2756, -75.5387, 0.70],
-    [6.2850, -75.5580, 0.60],
-    [6.2650, -75.5880, 0.55],
-    [6.1750, -75.6080, 0.40],
-    [6.3350, -75.5580, 0.45],
-  ];
-
-  if (typeof L.heatLayer === 'function') {
-    const heat = L.heatLayer(predictionPoints, {
-      radius: 45, blur: 35, maxZoom: 14,
-      gradient: { 0.4: 'blue', 0.6: 'cyan', 0.8: 'yellow', 1.0: 'red' }
-    });
-    predictGroup.addLayer(heat);
-  } else {
-    console.warn("[map] Leaflet.heat no está cargado.");
-  }
+  
+  // Cargar predicciones ML reales del backend
+  updateTrafficPredictions(map, predictGroup);
 
   // Vías bloqueadas demo
   const blockedGroup = groups["blocked-roads"];
@@ -451,6 +434,7 @@ export async function updateSafeRoutes(map) {
   }
 }
 
+/* FUNCIÓN DESHABILITADA - Vías bloqueadas removidas (accidentes históricos no reflejan bloqueos actuales)
 export async function updateBlockedRoads(map) {
   const group = AppState.layerGroups["blocked-roads"];
   if (!group) return;
@@ -512,6 +496,7 @@ export async function updateBlockedRoads(map) {
     console.warn("[blocked-roads] No se pudieron obtener accidentes:", e);
   }
 }
+*/
 
 function weatherCodeLabel(code) {
   if (code == null) return "\u2014";
@@ -720,4 +705,127 @@ export function addSingleReport(r) {
   group.addLayer(marker);
   reportsMarkers.set(reportId, marker);
   console.log('[Reports] Nuevo reporte agregado:', reportId);
+}
+
+
+export function updateAccidentZones(geojson) {
+  const group = AppState.layerGroups["accident-zones"];
+  if (!group) return;
+  
+  group.clearLayers();
+  
+  if (!geojson || !geojson.features) return;
+  
+  geojson.features.forEach(feature => {
+    const { properties } = feature;
+    const severity = properties.severity || 3;
+    const count = properties.incident_count || 0;
+    
+    // Color según severity (1-5)
+    const color = severity >= 5 ? "#dc2626" 
+                : severity >= 4 ? "#ea580c"
+                : severity >= 3 ? "#f59e0b"
+                : severity >= 2 ? "#eab308"
+                : "#84cc16";
+    
+    const layer = L.geoJSON(feature, {
+      style: {
+        color: color,
+        weight: 2,
+        opacity: 0.8,
+        fillColor: color,
+        fillOpacity: 0.25
+      }
+    });
+    
+    layer.bindPopup(`
+      <div class="popup-accident">
+        <div class="popup-accident-title">🔥 ${escapeHtml(properties.name)}</div>
+        <div class="popup-accident-sev">
+          <strong>${count.toLocaleString()}</strong> accidentes históricos
+        </div>
+        <div class="popup-accident-coords">
+          Nivel de peligro: ${severity}/5
+        </div>
+      </div>
+    `, { className: "popup-dark" });
+    
+    group.addLayer(layer);
+  });
+  
+  console.log(`[accident-zones] ${geojson.features.length} zonas cargadas`);
+}
+
+
+export async function updateTrafficPredictions(map, group) {
+  if (!group) return;
+  
+  group.clearLayers();
+  
+  try {
+    const data = await fetchTrafficPredictions();
+    const predictions = data.predictions || [];
+    
+    if (!predictions.length) {
+      console.warn("[traffic-predictions] No hay predicciones disponibles");
+      return;
+    }
+    
+    // Convertir a formato de heatmap: [lat, lng, intensity]
+    const heatPoints = predictions.map(p => [
+      p.lat,
+      p.lng,
+      p.risk_score / 100 // Normalizar 0-100 a 0-1
+    ]);
+    
+    // Crear heatmap con Leaflet.heat
+    if (typeof L.heatLayer === 'function') {
+      const heat = L.heatLayer(heatPoints, {
+        radius: 45,
+        blur: 35,
+        maxZoom: 14,
+        gradient: { 0.4: 'blue', 0.6: 'cyan', 0.8: 'yellow', 1.0: 'red' }
+      });
+      group.addLayer(heat);
+      
+      console.log(`[traffic-predictions] ${predictions.length} predicciones ML cargadas (${data.model})`);
+    } else {
+      console.warn("[traffic-predictions] Leaflet.heat no está cargado");
+    }
+    
+    // Agregar markers con tooltips para las zonas de mayor riesgo (top 5)
+    const topRisk = predictions.slice(0, 5);
+    topRisk.forEach(p => {
+      const marker = L.circleMarker([p.lat, p.lng], {
+        radius: 8,
+        fillColor: p.risk_score >= 70 ? '#dc2626' 
+                  : p.risk_score >= 50 ? '#f59e0b'
+                  : '#eab308',
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.6
+      });
+      
+      marker.bindPopup(`
+        <div class="popup-accident">
+          <div class="popup-accident-title">🚦 ${escapeHtml(p.comuna)}</div>
+          <div class="popup-accident-sev">
+            Riesgo de congestión: <strong>${p.risk_score}/100</strong>
+          </div>
+          <div class="popup-accident-coords">
+            ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}
+          </div>
+          <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">
+            Predicción ML · ${new Date(p.timestamp).toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'})}
+          </div>
+        </div>
+      `, { className: "popup-dark" });
+      
+      group.addLayer(marker);
+    });
+    
+  } catch (e) {
+    console.error("[traffic-predictions] Error cargando predicciones:", e);
+  }
 }

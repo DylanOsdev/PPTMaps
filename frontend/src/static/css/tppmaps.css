@@ -139,6 +139,20 @@ html.page-landing body {
   text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
 }
 
+.badge-soon {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 3px;
+  background: rgba(251, 191, 36, 0.08);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
 .status-cluster {
   display: flex;
   flex-wrap: wrap;

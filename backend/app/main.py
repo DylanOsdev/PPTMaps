@@ -132,6 +132,14 @@ if _frontend is not None:
             return FileResponse(file_path)
         
         # Todas las demás rutas sirven el index.html (React Router)
-        return FileResponse(_frontend / "index.html")
+        # Headers de no-cache para prevenir que el navegador cachee el HTML
+        return FileResponse(
+            _frontend / "index.html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
 else:
     logger.warning("Frontend no montado: falta frontend/dist. Corré 'npm run build' en frontend/.")

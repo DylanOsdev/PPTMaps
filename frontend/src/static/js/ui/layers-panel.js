@@ -4,10 +4,10 @@ const STORAGE_KEY = "tppmaps_layer_state";
 
 const LAYER_GROUPS = {
   comunas:   ["medellin-city", "medellin-comunas", "metro-municipios", "satellite-base"],
-  telemetry: ["telemetry-gps", "telemetry-predict", "accident-clusters", "fatalities-layer"],
+  telemetry: ["telemetry-predict", "accident-clusters", "accident-zones", "fatalities-layer"],
   climate:   ["flood-zones", "rain-risk", "weather-alerts"],
-  reports:   ["reports-collision", "reports-flood", "reports-obstacle"],
-  routes:    ["safe-route", "blocked-roads"],
+  reports:   ["reports-collision", "reports-flood"],
+  routes:    ["safe-route"],
 };
 
 function saveLayerState() {
@@ -58,9 +58,9 @@ export function initLayersPanel() {
     btnPresetAll: Object.values(LAYER_GROUPS).flat(),
     btnPresetNavigation: [
       "medellin-city", "medellin-comunas",
-      "telemetry-gps", "accident-clusters",
+      "accident-clusters",
       "flood-zones",
-      "safe-route", "blocked-roads",
+      "safe-route",
     ],
     btnPresetWeather: [
       "medellin-city", "medellin-comunas",
