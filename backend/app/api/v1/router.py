@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     vehicles,
     telemetry,
     public,
+    chatbot,
 )
 
 api_router = APIRouter()
@@ -19,6 +20,7 @@ api_router.include_router(reports.router, prefix="/reports", tags=["📍 Reporte
 api_router.include_router(vehicles.router, prefix="/vehicles", tags=["🚑 Vehículos"])
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["📡 Telemetría"])
 api_router.include_router(public.router, prefix="/public", tags=["🌐 Público"])
+api_router.include_router(chatbot.router, prefix="/chatbot", tags=["🤖 Chatbot IA"])
 api_router.include_router(accident_zones.router, prefix="/accident-zones", tags=["🚗 Zonas de Accidentalidad"])
 api_router.include_router(flood_hazards.router,  prefix="/flood-hazards",  tags=["🌊 Riesgos de Inundación"])
 api_router.include_router(routes.router,  prefix="/routes",  tags=["🗺️ Rutas"])

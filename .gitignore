@@ -50,3 +50,17 @@ logs/
 node_modules/
 # Local Pi runtime state
 .atl/
+
+# Logs temporales
+*.log
+pptmaps_start.log
+frontend.log
+
+# Cachés
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+
+# Entornos virtuales
+venv/
+env/
