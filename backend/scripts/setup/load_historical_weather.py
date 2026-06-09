@@ -36,9 +36,9 @@ async def load_historical_weather(csv_path: str):
             for row in reader:
                 records.append({
                     'timestamp': row['timestamp'],
-                    'temperature_c': float(row['temperature_c']) if row['temperature_c'] else None,
-                    'precipitation_mm': float(row['precipitation_mm']) if row['precipitation_mm'] else None,
-                    'humidity': int(row['humidity']) if row['humidity'] else None
+                    'temperature_c': float(row['temp']) if row.get('temp') else None,
+                    'precipitation_mm': float(row['lluvia']) if row.get('lluvia') else None,
+                    'humidity': None
                 })
         
         print(f"📊 Insertando {len(records)} registros...")
