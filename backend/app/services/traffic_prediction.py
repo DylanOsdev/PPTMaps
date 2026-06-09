@@ -183,6 +183,99 @@ class TrafficPredictionService:
             }
         except ValueError:
             return None
+    
+    def predict_sync(self, db) -> List[Dict]:
+        """Versión síncrona de predict_current para usar en Celery tasks.
+        
+        Args:
+            db: Sesión SQLAlchemy síncrona (no async)
+        
+        Returns:
+            Lista de dicts con predicciones por comuna
+        """
+        now = datetime.now()
+        hora = now.hour
+        dia_semana = now.weekday()
+        mes = now.month
+        
+        # Features temporales
+        es_hora_pico = 1 if (6 <= hora <= 9) or (17 <= hora <= 20) else 0
+        es_fin_semana = 1 if dia_semana in (5, 6) else 0
+        
+        # Clima promedio para este mes+hora
+        try:
+            import pandas as pd
+            from pathlib import Path
+            clima_path = Path(__file__).parent.parent.parent / "data" / "processed" / "clima_historico_medellin.csv"
+            if clima_path.exists():
+                df_clima = pd.read_csv(clima_path)
+                df_clima['timestamp'] = pd.to_datetime(df_clima['timestamp'])
+                df_clima['mes'] = df_clima['timestamp'].dt.month
+                df_clima['hora'] = df_clima['timestamp'].dt.hour
+                clima_mes_hora = df_clima[(df_clima['mes'] == mes) & (df_clima['hora'] == hora)]
+                temp_avg = float(clima_mes_hora['temp'].mean()) if len(clima_mes_hora) > 0 else 21.0
+                lluvia_avg = float(clima_mes_hora['lluvia'].mean()) if len(clima_mes_hora) > 0 else 0.1
+            else:
+                temp_avg, lluvia_avg = 21.0, 0.1
+        except Exception:
+            temp_avg, lluvia_avg = 21.0, 0.1
+        
+        # Deprimidos en riesgo (SIATA)
+        from sqlalchemy import text
+        deprimidos_result = db.execute(text("""
+            SELECT COUNT(*) as count
+            FROM flood_hazards
+            WHERE status IN ('watch', 'flooded')
+        """))
+        deprimidos_riesgo = int(deprimidos_result.scalar() or 0)
+        
+        # Obtener comunas
+        result = db.execute(text("""
+            SELECT DISTINCT
+                name AS comuna,
+                ST_Y(ST_Centroid(geom)) as lat,
+                ST_X(ST_Centroid(geom)) as lng
+            FROM zones
+            WHERE kind = 'comuna'
+        """))
+        
+        comunas = result.fetchall()
+        predictions = []
+        
+        for comuna_row in comunas:
+            comuna = comuna_row.comuna
+            lat = float(comuna_row.lat)
+            lng = float(comuna_row.lng)
+            
+            try:
+                comuna_encoded = self.encoder.transform([comuna])[0]
+            except ValueError:
+                comuna_encoded = len(self.encoder.classes_) // 2
+            
+            X = pd.DataFrame([[
+                hora, dia_semana, mes, comuna_encoded,
+                lat, lng, 2.0,
+                es_hora_pico, es_fin_semana,
+                temp_avg, lluvia_avg,
+                deprimidos_riesgo
+            ]], columns=[
+                'h', 'd', 'm', 'ce', 'lat', 'lng', 'g', 'hp', 'fs', 'temp', 'lluvia', 'deprimidos_riesgo'
+            ])
+            
+            risk_score = int(self.model.predict(X)[0])
+            
+            predictions.append({
+                'comuna': comuna,
+                'lat': lat,
+                'lng': lng,
+                'risk_score': max(0, min(100, risk_score)),
+                'hora': hora,
+                'dia_semana': dia_semana,
+                'timestamp': now.isoformat()
+            })
+        
+        predictions.sort(key=lambda x: x['risk_score'], reverse=True)
+        return predictions
 
 
 # Singleton instance
