@@ -49,16 +49,43 @@ print(asyncio.run(check()))
 
 if [ "$COUNT" -eq 0 ]; then
     echo "⚠️  accident_incidents vacío. Cargando dataset oficial..."
-    if [ -f "/repo/backend/Fatal_Road_Traffic.xlsx" ]; then
+    if [ -f "/repo/backend/data/raw/Fatal_Road_Traffic.xlsx" ]; then
         echo "📥 Ingesta iniciada (702,540 registros)..."
-        python -m scripts.ingest_accidents /repo/backend/Fatal_Road_Traffic.xlsx
-        echo "✅ Datos cargados exitosamente"
+        python -m scripts.ingest_accidents /repo/backend/data/raw/Fatal_Road_Traffic.xlsx
+        echo "✅ Datos de accidentes cargados exitosamente"
     else
         echo "❌ Fatal_Road_Traffic.xlsx no encontrado. Saltando ingesta."
-        echo "   Ejecutá manualmente: python -m scripts.ingest_accidents /ruta/al/archivo.xlsx"
+        echo "   Ubicación esperada: /repo/backend/data/raw/Fatal_Road_Traffic.xlsx"
     fi
 else
     echo "✅ accident_incidents ya contiene $COUNT registros. Saltando ingesta."
+fi
+
+echo "🌦️  Verificando datos históricos de clima..."
+WEATHER_COUNT=$(python -c "
+import asyncio
+from app.db.database import async_session_maker
+from sqlalchemy import text
+
+async def check():
+    async with async_session_maker() as db:
+        result = await db.execute(text('SELECT COUNT(*) FROM historical_weather_medellin'))
+        return result.scalar()
+
+print(asyncio.run(check()))
+")
+
+if [ "$WEATHER_COUNT" -eq 0 ]; then
+    echo "⚠️  historical_weather_medellin vacío. Cargando clima histórico..."
+    if [ -f "/repo/backend/data/processed/clima_historico_medellin.csv" ]; then
+        echo "📥 Cargando 157,800 registros de clima (2008-2025)..."
+        python scripts/setup/load_historical_weather.py /repo/backend/data/processed/clima_historico_medellin.csv
+        echo "✅ Clima histórico cargado exitosamente"
+    else
+        echo "⚠️  clima_historico_medellin.csv no encontrado. Las estadísticas de clima no estarán disponibles."
+    fi
+else
+    echo "✅ historical_weather_medellin ya contiene $WEATHER_COUNT registros. Saltando carga."
 fi
 
 echo "🚀 Iniciando API..."

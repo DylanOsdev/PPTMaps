@@ -21,6 +21,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
+# Copiar dataset de accidentes (702,540 registros 2008-2025)
+COPY backend/data/raw/Fatal_Road_Traffic.xlsx /repo/backend/data/raw/Fatal_Road_Traffic.xlsx
+
+# Copiar datos históricos de clima (157,800 registros 2008-2025)
+COPY backend/data/processed/clima_historico_medellin.csv /repo/backend/data/processed/clima_historico_medellin.csv
+
 # Copiar entrypoint y dataset
 RUN chmod +x /repo/backend/scripts/docker/docker-entrypoint.sh
 
