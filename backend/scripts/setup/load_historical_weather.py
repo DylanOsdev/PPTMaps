@@ -3,6 +3,7 @@ import asyncio
 import sys
 from pathlib import Path
 import csv
+from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -35,7 +36,7 @@ async def load_historical_weather(csv_path: str):
             reader = csv.DictReader(f)
             for row in reader:
                 records.append({
-                    'timestamp': row['timestamp'],
+                    'timestamp': datetime.strptime(row['timestamp'], '%Y-%m-%d %H:%M:%S'),
                     'temperature_c': float(row['temp']) if row.get('temp') else None,
                     'precipitation_mm': float(row['lluvia']) if row.get('lluvia') else None,
                     'humidity': None
