@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <strong>Plataforma de Movilidad Inteligente para Medellín · HackData CTGI SENA 2026</strong>
+  <strong>Plataforma de Inteligencia Climática y Seguridad Ciudadana para Medellín · HackData CTGI SENA 2026</strong>
 </p>
 
 <br>
