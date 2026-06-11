@@ -9,9 +9,11 @@ from app.db.redis import get_redis
 from app.services.alert_broadcaster import publish_alert
 
 async def create_report(db: AsyncSession, report_in: ReportCreate, reporter_id: Optional[int] = None) -> Report:
+    """Crea un reporte ciudadano anónimo. reporter_id se mantiene por compatibilidad pero es ignorado."""
     point = ST_SetSRID(ST_MakePoint(report_in.longitude, report_in.latitude), 4326)
     db_report = Report(
-        reporter_id=reporter_id,
+        reporter_name=report_in.reporter_name,
+        reporter_email=report_in.reporter_email,
         report_type=report_in.report_type,
         description=report_in.description,
         geom=point,
