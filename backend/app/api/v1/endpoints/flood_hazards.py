@@ -3,10 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role
 from app.crud import crud_flood_hazard
 from app.db.database import get_db
-from app.models.user import User, UserRole
 from app.schemas.flood_hazard import FloodHazard, FloodHazardCreate, FloodHazardUpdate
 
 router = APIRouter()
@@ -30,22 +28,22 @@ async def get_hazard(hazard_id: int, db: AsyncSession = Depends(get_db)):
     return hazard
 
 
-@router.post("/", response_model=FloodHazard, status_code=201, summary="Crear riesgo de inundación")
+@router.post("/", response_model=FloodHazard, status_code=201, summary="Crear riesgo de inundación (público)")
 async def create_hazard(
     hazard_in: FloodHazardCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.authority)),
 ):
+    """Crea un riesgo de inundación. Endpoint público."""
     return await crud_flood_hazard.create_flood_hazard(db, hazard_in=hazard_in)
 
 
-@router.put("/{hazard_id}", response_model=FloodHazard, summary="Actualizar estado de inundación")
+@router.put("/{hazard_id}", response_model=FloodHazard, summary="Actualizar estado de inundación (público)")
 async def update_hazard(
     hazard_id: int,
     hazard_in: FloodHazardUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.authority)),
 ):
+    """Actualiza un riesgo de inundación. Endpoint público."""
     hazard = await crud_flood_hazard.update_flood_hazard(db, hazard_id=hazard_id, hazard_in=hazard_in)
     if not hazard:
         raise HTTPException(status_code=404, detail="Riesgo no encontrado")

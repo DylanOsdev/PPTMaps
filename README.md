@@ -73,8 +73,11 @@ PPTMaps/
 │   │   ├── api/
 │   │   │   └── v1/
 │   │   │       ├── endpoints/
-│   │   │       │   ├── auth.py             # Login / Registro JWT
-│   │   │       │   ├── users.py            # CRUD de usuarios
+│   │   │       │   ├── public.py             # Endpoints públicos (geográficos)
+│   │   │       │   ├── reports.py            # Reportes ciudadanos
+│   │   │       │   ├── weather.py            # Clima y pronósticos
+│   │   │       │   └── chatbot.py            # Asistente IA
+│   │   │       └── router.py
 │   │   │       │   ├── reports.py          # Reportes ciudadanos
 │   │   │       │   ├── public.py           # Endpoints públicos (geográficos)
 │   │   │       │   ├── vehicles.py         # Gestión de vehículos
@@ -155,14 +158,36 @@ Método  Ruta                              Descripción
 GET     /health                           Health check
 GET     /health/db                        Verificación de base de datos
 
-                    -- Autenticación --
-POST    /api/v1/auth/register             Registrar nuevo usuario
-POST    /api/v1/auth/login                Iniciar sesión (JWT)
+                    -- Reportes Ciudadanos (Público) --
+POST    /api/v1/reports/                  Crear reporte anónimo
+GET     /api/v1/reports/                  Listar reportes
+GET     /api/v1/reports/{id}              Reporte por ID
+PUT     /api/v1/reports/{id}              Actualizar reporte
 
-                    -- Usuarios --
-GET     /api/v1/users/                    Listar usuarios (auth)
-GET     /api/v1/users/me                  Mi perfil
-GET     /api/v1/users/{id}                Usuario por ID
+                    -- Endpoints Públicos --
+GET     /api/v1/public/reports            Reportes públicos geolocalizados
+GET     /api/v1/public/accidents          Accidentes históricos
+GET     /api/v1/public/accident-zones     Zonas de accidentalidad
+GET     /api/v1/public/fatalities         Incidentes fatales
+GET     /api/v1/public/flood-zones        Zonas de inundación
+GET     /api/v1/public/nearby             Búsqueda geográfica cercana
+GET     /api/v1/public/stats              Estadísticas generales
+
+                    -- Clima --
+GET     /api/v1/weather/forecast          Pronóstico Open-Meteo (proxy con caché)
+GET     /api/v1/weather/stats             Estadísticas climáticas históricas
+
+                    -- Chatbot IA --
+POST    /api/v1/chatbot/query             Consulta al asistente geoespacial
+
+                    -- WebSockets --
+WS      /api/v1/ws/telemetry              Streaming de datos en tiempo real
+WS      /api/v1/ws/alerts                 ★ Alertas en vivo (broadcast)
+```
+
+**Nota**: Todos los endpoints son públicos — no requieren autenticación.
+
+Documentación interactiva: `http://localhost:8000/docs` (Swagger UI)
 PUT     /api/v1/users/{id}                Actualizar usuario
 
                     -- Reportes Ciudadanos --
@@ -320,9 +345,9 @@ npm run dev
 -  **Mapa interactivo en vivo** con Leaflet — capas de accidentes, zonas de inundación y reportes
 -  **Alertas en tiempo real** via WebSockets con broadcast automático (`alert_broadcaster.py`)
 -  **Widget de clima** integrado con datos de Open-Meteo (proxy backend + caché Redis)
--  **Reportes ciudadanos** geolocalizados con formulario público
+-  **Reportes ciudadanos anónimos** geolocalizados con formulario público
 -  **Dashboard de comando** con estadísticas y telemetría en tiempo real
--  **Autenticación JWT** con roles y permisos
+-  **Rate limiting** — protección anti-spam (5 reportes/hora por IP)
 -  **ML en desarrollo**: clustering DBSCAN de zonas de accidentalidad + predicción de tráfico XGBoost
 
 ---
@@ -356,11 +381,6 @@ POSTGRES_PORT=5432
 
 # Redis / Celery
 REDIS_URL=redis://localhost:6379/0
-
-# JWT
-SECRET_KEY=cambia_esta_clave_en_produccion
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # CORS
 BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]

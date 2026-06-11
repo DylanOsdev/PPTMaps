@@ -576,11 +576,13 @@ export function updateReportsLayers(reports) {
     const dateStr = r.created_at
       ? new Date(r.created_at).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
       : "";
+    const reporterName = r.reporter_name ? `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: #22d3ee;">👤 Reportado por: <strong>${escapeHtml(r.reporter_name)}</strong></div>` : "";
     marker.bindPopup(`
       <div class="popup-accident">
         <div class="popup-accident-title">${cfg.svg} ${escapeHtml(cfg.label)}</div>
         <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
         <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
+        ${reporterName}
       </div>
     `, { className: "popup-dark" });
     
@@ -628,11 +630,13 @@ export function addSingleReport(r) {
   const dateStr = r.created_at
     ? new Date(r.created_at).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
     : "";
+  const reporterName = r.reporter_name ? `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: #22d3ee;">👤 Reportado por: <strong>${escapeHtml(r.reporter_name)}</strong></div>` : "";
   marker.bindPopup(`
     <div class="popup-accident">
       <div class="popup-accident-title">${cfg.svg} ${escapeHtml(cfg.label)}</div>
       <div class="popup-accident-sev">${escapeHtml(r.description || "Sin descripción")}</div>
       <div class="popup-accident-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}${dateStr ? " · " + dateStr : ""}</div>
+      ${reporterName}
     </div>
   `);
   

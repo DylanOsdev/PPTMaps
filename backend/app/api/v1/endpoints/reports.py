@@ -1,13 +1,17 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.crud.crud_report import create_report, get_reports, get_report, update_report
 from app.db.database import get_db
 from app.models.report import ReportType
 from app.schemas.report import Report, ReportCreate, ReportUpdate
+from app.core.config import settings
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/", response_model=List[Report], summary="Listar reportes ciudadanos (público)")
@@ -22,11 +26,17 @@ async def list_reports(
 
 
 @router.post("/", response_model=Report, status_code=201, summary="Crear reporte de incidente (público)")
+@limiter.limit(settings.RATE_LIMIT_REPORTS)
 async def create_report_endpoint(
+    request: Request,
     report_in: ReportCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Crea un reporte ciudadano anónimo. No requiere autenticación."""
+    """
+    Crea un reporte ciudadano anónimo. No requiere autenticación.
+    
+    Protección anti-spam: Límite de 5 reportes por hora por dirección IP.
+    """
     return await create_report(db, report_in=report_in, reporter_id=None)
 
 
