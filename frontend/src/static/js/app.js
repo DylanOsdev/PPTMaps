@@ -2,7 +2,7 @@
  * tppmaps — Punto de entrada (ES modules)
  */
 import { initMap, setupMapLayers, updateMapStats } from "./map/map-service.js";
-import { pingHealth, fetchTelemetry } from "./services/api.js";
+import { pingHealth } from "./services/api.js";
 import { initAlerts } from "./ui/alerts.js";
 import { initClock, initTicker, initThroughput } from "./ui/clock.js";
 import { initLayersPanel } from "./ui/layers-panel.js";
@@ -39,12 +39,6 @@ async function boot() {
       }
     } catch {
       // Ignored for presentation
-    }
-
-    try {
-      await fetchTelemetry();
-    } catch {
-      /* demo sin backend */
     }
   } catch (err) {
     console.error("[tppmaps]", err);

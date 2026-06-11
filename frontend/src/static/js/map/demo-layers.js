@@ -5,10 +5,8 @@ import { getAccidentSvg } from "../icons/react-icons.js";
 
 const driverIconCache = new Map();
 const accidentIconCache = {};
-let telemetryMarkers = new Map();
 let fatalitiesMarkers = new Map();
 let accidentsMarkers = new Map();
-let pendingTelemetry = null;
 let rafScheduled = false;
 
 function makeDriverIcon(id, routeLabel = "") {
@@ -101,12 +99,10 @@ export function createDemoLayers(map) {
   groups["accident-zones"]    = L.layerGroup();
   groups["fatalities-layer"]  = L.layerGroup();
   groups["flood-zones"]       = L.layerGroup();
-  groups["telemetry-gps"]     = L.layerGroup();
   groups["reports-collision"] = L.markerClusterGroup({
     disableClusteringAtZoom: 16,
     maxClusterRadius: 50,
   });
-  groups["telemetry-predict"] = L.layerGroup();
   groups["rain-risk"]         = L.layerGroup();
   groups["weather-alerts"]    = L.layerGroup();
   groups["reports-flood"]     = L.markerClusterGroup({
@@ -117,12 +113,6 @@ export function createDemoLayers(map) {
     disableClusteringAtZoom: 16,
     maxClusterRadius: 50,
   });
-
-  // Heatmap de congestión con predicciones ML reales
-  const predictGroup = groups["telemetry-predict"];
-  
-  // Cargar predicciones ML reales del backend
-  updateTrafficPredictions(map, predictGroup);
 
   // Vías bloqueadas demo
   const blockedGroup = groups["blocked-roads"];
@@ -156,63 +146,7 @@ export function createDemoLayers(map) {
   connectRealTimeLayer(map, groups);
 }
 
-function applyTelemetryBatch() {
-  rafScheduled = false;
-  if (!pendingTelemetry) return;
-  const { map, groups, items } = pendingTelemetry;
-  pendingTelemetry = null;
-
-  const telemetryGroup = groups["telemetry-gps"];
-  if (!telemetryGroup) return;
-
-  const incomingIds = new Set();
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const id = item.id || item.vehicle_id || item.device_id || `v-${item.lat}-${item.lng}`;
-    const lat = item.lat ?? (item.location?.coordinates?.[1] ?? item.latitude);
-    const lng = item.lng ?? (item.location?.coordinates?.[0] ?? item.longitude);
-    if (lat == null || lng == null) continue;
-    incomingIds.add(id);
-
-    if (telemetryMarkers.has(id)) {
-      const m = telemetryMarkers.get(id);
-      m.setLatLng([lat, lng]);
-    } else {
-      const route = item.route || item.route_id || "";
-      const marker = L.marker([lat, lng], { icon: makeDriverIcon(id, route) });
-      marker.bindPopup(`
-        <div class="popup-driver">
-          <div class="popup-driver-id">Conductor <strong>${escapeHtml(String(id))}</strong></div>
-          <div class="popup-driver-route">Ruta: <span>${escapeHtml(String(route))}</span></div>
-          <div class="popup-driver-status"><span class="dot-green"></span> En servicio</div>
-          <div class="popup-driver-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
-        </div>
-      `, { className: "popup-dark" });
-      telemetryGroup.addLayer(marker);
-      telemetryMarkers.set(id, marker);
-    }
-  }
-
-  for (const [id, marker] of telemetryMarkers) {
-    if (!incomingIds.has(id)) {
-      telemetryGroup.removeLayer(marker);
-      telemetryMarkers.delete(id);
-    }
-  }
-}
-
 function connectRealTimeLayer(map, groups) {
-  onWsEvent("telemetry", (data) => {
-    const items = Array.isArray(data) ? data : (data.positions || data.vehicles || [data]);
-    if (items.length === 0) return;
-    pendingTelemetry = { map, groups, items };
-    if (!rafScheduled) {
-      rafScheduled = true;
-      requestAnimationFrame(applyTelemetryBatch);
-    }
-  });
-
   onWsEvent("accidents", (data) => {
     updateAccidents(data);
   });
