@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from geoalchemy2.shape import to_shape
 from app.models.report import ReportType
 
@@ -11,14 +11,14 @@ class ReportCreate(BaseModel):
     latitude: float
     longitude: float
     reporter_name: Optional[str] = None
-    reporter_email: Optional[EmailStr] = None
+    reporter_email: Optional[str] = None  # Sin validación especial
 
 
 class ReportUpdate(BaseModel):
     report_type: Optional[ReportType] = None
     description: Optional[str] = None
     reporter_name: Optional[str] = None
-    reporter_email: Optional[EmailStr] = None
+    reporter_email: Optional[str] = None
 
 
 class Report(BaseModel):
