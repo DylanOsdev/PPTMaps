@@ -38,7 +38,6 @@ async def seed_initial_data() -> None:
         await SiataSyncService(client).sync(db)
 
         await _seed_alerts(db)
-        await _seed_demo_vehicles(db)
 
     _enqueue_startup_syncs()
 

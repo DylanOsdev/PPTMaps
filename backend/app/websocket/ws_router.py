@@ -16,16 +16,6 @@ from app.websocket.connection_manager import manager
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-            "id": str(t.id),
-            "vehicle_id": str(t.vehicle_id),
-            "lat": t.latitude,
-            "lng": t.longitude,
-            "speed": t.speed,
-            "heading": t.heading,
-            "timestamp": t.timestamp.isoformat() if t.timestamp else None,
-        }
-        for t in rows
-    ]
 
 
 async def _unresolved_alerts(db) -> list[dict]:

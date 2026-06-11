@@ -20,6 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Eliminar constraint de alerts que depende de vehicles
+    op.drop_constraint('alerts_vehicle_id_fkey', 'alerts', type_='foreignkey')
+    
+    # Eliminar columna vehicle_id de alerts (ya no se usa)
+    op.drop_column('alerts', 'vehicle_id')
+    
     # Eliminar tablas de tráfico/navegación (pivot a clima + seguridad)
     op.drop_table('telemetry')
     op.drop_table('vehicles')
