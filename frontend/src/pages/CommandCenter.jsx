@@ -203,30 +203,7 @@ export default function CommandCenter() {
       <div className="app-shell">
         <TopBar systemStatus={systemStatus} isSystemOk={isSystemOk} />
 
-        {/* Floating Waze-style Search & Navigation Bar */}
-        <div style={{ position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: '10px', width: '90%', maxWidth: '600px' }}>
-          <input
-            type="text"
-            id="wazeSearch"
-            placeholder="¿A dónde vas? (Ej. Comuna 13)"
-            style={{ flex: 1, padding: '14px 22px', borderRadius: '30px', border: '2px solid rgba(56, 189, 248, 0.6)', backgroundColor: 'rgba(5, 8, 12, 0.95)', color: '#fff', fontSize: '15px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', outline: 'none', fontFamily: '"Orbitron", sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-            onKeyDown={(e) => {
-               if (e.key === "Enter") {
-                 const runBtn = document.getElementById("btnScan");
-                 if (runBtn) runBtn.click();
-               }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            style={{ padding: '0 22px', borderRadius: '30px', border: locating ? '2px solid #ef4444' : '2px solid #0ea5e9', backgroundColor: locating ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)', color: locating ? '#ef4444' : '#0ea5e9', fontSize: '13px', fontWeight: 'bold', boxShadow: locating ? '0 0 20px rgba(239, 68, 68, 0.4)' : '0 4px 20px rgba(14,165,233,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
-            title={locating ? "Detener seguimiento" : "Iniciar seguimiento GPS"}
-          >
-            <FaCrosshairs size={16} />
-            {locating ? "DETENER" : "MI UBICACIÓN"}
-          </button>
-        </div>
+
 
           <aside className="panel panel-left" id="panelLayers" aria-label="Capas de datos">
           <div className="panel-head">
@@ -394,18 +371,52 @@ export default function CommandCenter() {
             </div>
 
             <section className="tool-section">
-              <div className="search-cmd">
-                <span className="search-prefix">⌕</span>
-                <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autoComplete="off" />
-              </div>
               <div className="scan-box">
-                <p className="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
-                <div className="scan-row">
-                  <input type="text" id="geoQuery" placeholder="Ej: Belén, San Cristóbal, Comuna 10" />
-                  <button type="button" className="btn-scan" id="btnScan">ESCANEAR</button>
+                <p className="scan-warn" style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', backgroundColor: 'rgba(5, 8, 12, 0.6)' }}>¿A DÓNDE VAS? // DIRECCIONES</p>
+                <div className="scan-row" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input type="text" id="geoQuery" placeholder="Ej: Comuna 13, Belén, Poblado..." />
+                  <button
+                    type="button"
+                    onClick={handleLocateMe}
+                    id="btnLocateGPS"
+                    style={{
+                      padding: '6px 10px',
+                      fontFamily: 'inherit',
+                      fontSize: '9px',
+                      fontWeight: '600',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.3s',
+                      backgroundColor: locating ? 'rgba(239, 68, 68, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                      border: locating ? '1px solid #ef4444' : '1px solid #38bdf8',
+                      color: locating ? '#ef4444' : '#38bdf8',
+                      boxShadow: locating ? '0 0 10px rgba(239, 68, 68, 0.4)' : 'none'
+                    }}
+                    title={locating ? "Detener seguimiento GPS" : "Iniciar seguimiento GPS"}
+                  >
+                    <FaCrosshairs />
+                    {locating ? "GPS ON" : "UBICACIÓN"}
+                  </button>
                 </div>
-                <span id="scanFeedback" style={{display:'none',fontSize:'9px',color:'#f87171',padding:'4px 0',letterSpacing:'0.05em'}}></span>
-              </div>
+                 <span id="scanFeedback" style={{display:'none',fontSize:'9px',color:'#f87171',padding:'4px 0',letterSpacing:'0.05em'}}></span>
+                 <div id="safetyBriefing" style={{ display: 'none', marginTop: '10px', padding: '10px', backgroundColor: 'rgba(5, 8, 12, 0.85)', border: '1px dashed rgba(56, 189, 248, 0.35)', borderRadius: '4px', fontFamily: '"JetBrains Mono", monospace' }}>
+                   <div style={{ fontSize: '9px', color: '#38bdf8', fontWeight: 'bold', borderBottom: '1px solid rgba(56, 189, 248, 0.15)', paddingBottom: '4px', marginBottom: '6px', letterSpacing: '0.05em' }}>INFORME DE SEGURIDAD DE RUTA</div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '4px' }}>
+                     <span style={{ color: '#94a3b8' }}>PELIGRO DESTINO:</span>
+                     <strong id="briefingDest" style={{ color: '#4ade80' }}>BAJO</strong>
+                   </div>
+                   <div style={{ fontSize: '8.5px', color: '#cbd5e1', marginBottom: '8px', lineHeight: '1.3' }} id="briefingDestDesc">...</div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '4px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '6px' }}>
+                     <span style={{ color: '#94a3b8' }}>PELIGRO RUTA:</span>
+                     <strong id="briefingRoute" style={{ color: '#4ade80' }}>BAJO</strong>
+                   </div>
+                   <div style={{ fontSize: '8.5px', color: '#cbd5e1', lineHeight: '1.3' }} id="briefingRouteDesc">...</div>
+                 </div>
+               </div>
             </section>
 
             <section className="alerts-section">

@@ -431,3 +431,43 @@ async def public_historical_accidents(
         }
         for r in rows
     ]
+
+
+from app.services.routing import compute_route
+from fastapi import Query, HTTPException
+
+DEFAULT_ORIGIN = (6.2518, -75.5636)
+
+def _parse_latlng(value: str) -> tuple[float, float]:
+    try:
+        lat, lng = (float(p) for p in value.split(","))
+        return lat, lng
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=422, detail="Coordenada inválida; usar 'lat,lng'")
+
+
+@router.get("/routes", summary="Ruta resiliente que esquiva zonas de riesgo activas")
+async def get_route(
+    destination: Optional[str] = Query(None, description="Destino como 'lat,lng'"),
+    origin: Optional[str] = Query(None, description="Origen como 'lat,lng' (default centro Medellín)"),
+    dest_lat: Optional[float] = Query(None, description="Latitud destino"),
+    dest_lng: Optional[float] = Query(None, description="Longitud destino"),
+    origin_lat: Optional[float] = Query(None, description="Latitud origen"),
+    origin_lng: Optional[float] = Query(None, description="Longitud origen"),
+    db: AsyncSession = Depends(get_db),
+):
+    if destination:
+        dest = _parse_latlng(destination)
+    elif dest_lat is not None and dest_lng is not None:
+        dest = (dest_lat, dest_lng)
+    else:
+        raise HTTPException(status_code=422, detail="Se requiere destination o dest_lat y dest_lng")
+
+    if origin:
+        orig = _parse_latlng(origin)
+    elif origin_lat is not None and origin_lng is not None:
+        orig = (origin_lat, origin_lng)
+    else:
+        orig = DEFAULT_ORIGIN
+
+    return await compute_route(db, orig, dest)

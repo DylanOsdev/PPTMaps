@@ -39,6 +39,13 @@ async def seed_initial_data() -> None:
 
         await _seed_alerts(db)
 
+        existing_zones = (await db.execute(text("SELECT COUNT(*) FROM accident_zones"))).scalar_one()
+        if not existing_zones:
+            logger.info("Generando zonas calientes de accidentalidad mediante DBSCAN (PostGIS)...")
+            from app.ml.dbscan_clustering import cluster_accident_hotspots
+            created = await cluster_accident_hotspots(db)
+            logger.info("Se crearon %d zonas calientes de accidentalidad.", created)
+
     _enqueue_startup_syncs()
 
 

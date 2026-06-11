@@ -12,7 +12,6 @@ export function initSearch() {
 
   const runScan = async () => {
     const q =
-      document.getElementById("wazeSearch")?.value ||
       document.getElementById("geoQuery")?.value ||
       document.getElementById("cmdSearch")?.value ||
       "";
@@ -60,7 +59,11 @@ export function initSearch() {
     fetchRoute(destStr, originStr)
       .then((data) => {
         if (data.coordinates?.length) {
-          lastRoutePolyline = L.polyline(data.coordinates, { color: "#4ade80", weight: 5 });
+          const sa = data.safety_assessment || {};
+          const score = sa.route_danger_score || 1;
+          const routeColor = score >= 4 ? "#ef4444" : score >= 3 ? "#fbbf24" : "#4ade80";
+
+          lastRoutePolyline = L.polyline(data.coordinates, { color: routeColor, weight: 5 });
           const safeGroup = AppState.layerGroups["safe-route"];
           if (safeGroup) {
             safeGroup.addLayer(lastRoutePolyline);
@@ -69,6 +72,26 @@ export function initSearch() {
             lastRoutePolyline.addTo(map);
           }
           map.fitBounds(lastRoutePolyline.getBounds(), { padding: [40, 40] });
+
+          const briefing = document.getElementById("safetyBriefing");
+          if (briefing && data.safety_assessment) {
+            const destEl = document.getElementById("briefingDest");
+            const destDescEl = document.getElementById("briefingDestDesc");
+            const routeEl = document.getElementById("briefingRoute");
+            const routeDescEl = document.getElementById("briefingRouteDesc");
+
+            const sa = data.safety_assessment;
+
+            destEl.textContent = sa.dest_danger_level.toUpperCase();
+            destEl.style.color = sa.dest_danger_score >= 4 ? "#ef4444" : sa.dest_danger_score >= 3 ? "#fbbf24" : "#4ade80";
+            destDescEl.textContent = sa.dest_description;
+
+            routeEl.textContent = sa.route_danger_level.toUpperCase();
+            routeEl.style.color = sa.route_danger_score >= 4 ? "#ef4444" : sa.route_danger_score >= 3 ? "#fbbf24" : "#4ade80";
+            routeDescEl.textContent = sa.route_description;
+
+            briefing.style.display = "block";
+          }
         }
       })
       .catch((err) => {
@@ -76,7 +99,6 @@ export function initSearch() {
       });
   };
 
-  document.getElementById("btnScan")?.addEventListener("click", runScan);
   document.getElementById("geoQuery")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") runScan();
   });

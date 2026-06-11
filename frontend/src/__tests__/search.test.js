@@ -8,10 +8,8 @@ describe('search.js - Búsqueda con geocoder y routing', () => {
   beforeEach(() => {
     // Reset DOM
     document.body.innerHTML = `
-      <input id="wazeSearch" />
       <input id="geoQuery" />
       <input id="cmdSearch" />
-      <button id="btnScan"></button>
       <div id="scanFeedback"></div>
     `;
 
@@ -59,8 +57,9 @@ describe('search.js - Búsqueda con geocoder y routing', () => {
 
     initSearch();
 
-    document.getElementById('wazeSearch').value = 'Belén';
-    document.getElementById('btnScan').click();
+    const input = document.getElementById('geoQuery');
+    input.value = 'Belén';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
     // Esperar a que se resuelva geocodeQuery
     await new Promise(resolve => setTimeout(resolve, 50));
@@ -85,8 +84,9 @@ describe('search.js - Búsqueda con geocoder y routing', () => {
 
     initSearch();
 
-    document.getElementById('geoQuery').value = 'Poblado';
-    document.getElementById('btnScan').click();
+    const input = document.getElementById('geoQuery');
+    input.value = 'Poblado';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
     await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -109,8 +109,9 @@ describe('search.js - Búsqueda con geocoder y routing', () => {
 
     initSearch();
 
-    document.getElementById('cmdSearch').value = 'XYZ123InvalidQuery';
-    document.getElementById('btnScan').click();
+    const input = document.getElementById('cmdSearch');
+    input.value = 'XYZ123InvalidQuery';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
     await new Promise(resolve => setTimeout(resolve, 50));
 
