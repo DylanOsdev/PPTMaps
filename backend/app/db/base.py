@@ -12,6 +12,7 @@ from app.models.alert import Alert  # noqa: F401
 from app.models.weather import WeatherSnapshot  # noqa: F401
 from app.models.zone import Zone  # noqa: F401
 from app.models.accident_incident import AccidentIncident  # noqa: F401
+from app.models.air_quality_reading import AirQualityReading  # noqa: F401
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "WeatherSnapshot",
     "Zone",
     "AccidentIncident",
+    "AirQualityReading",
 ]

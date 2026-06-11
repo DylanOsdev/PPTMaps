@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # API key para ingesta de telemetría (dispositivos GPS = máquinas, no users)
     TELEMETRY_API_KEY: str = Field(default=_DEV_TELEMETRY_KEY, repr=False)
     
+    # WAQI API token para calidad del aire
+    WAQI_API_TOKEN: str = Field(default="", repr=False)
+    
     # Groq API para Chatbot IA
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
