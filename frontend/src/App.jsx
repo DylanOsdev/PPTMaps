@@ -2,7 +2,6 @@ import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate, useRouteError } from 'react-router-dom';
 import Landing from './pages/Landing.jsx';
 
-const NavigatePage = lazy(() => import('./pages/Navigate.jsx'));
 const Report = lazy(() => import('./pages/Report.jsx'));
 const CommandCenter = lazy(() => import('./pages/CommandCenter.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
@@ -23,7 +22,6 @@ function SuspenseWrapper({ children }) {
 
 const router = createBrowserRouter([
   { path: "/", element: <Landing />, errorElement: <ErrorFallback /> },
-  { path: "/navigate", element: <SuspenseWrapper><NavigatePage /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
   { path: "/report", element: <SuspenseWrapper><Report /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
   { path: "/map", element: <SuspenseWrapper><CommandCenter /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
   { path: "/dashboard", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper>, errorElement: <ErrorFallback /> },
