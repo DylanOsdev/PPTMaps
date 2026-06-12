@@ -7,7 +7,8 @@
     "test": "vitest",
     "dev": "vite",
     "build": "vite build && (cp -r pages dist/pages 2>/dev/null || true)",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": "",
@@ -22,17 +23,15 @@
     "@vitest/ui": "^4.1.8",
     "autoprefixer": "^10.5.0",
     "happy-dom": "^20.10.2",
+    "patch-package": "^8.0.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "vite": "^8.0.14",
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "@react-spring/three": "^10.1.0",
-    "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "chart.js": "^4.4.1",
-    "d3-geo": "^3.1.1",
     "framer-motion": "^12.40.0",
     "gsap": "^3.15.0",
     "leaflet": "^1.9.4",

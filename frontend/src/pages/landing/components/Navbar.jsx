@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiActivity } from 'react-icons/fi';
-import { motion } from 'framer-motion';
 
 const NAV_LINKS = [
   { id: "hero", label: "CONSOLA" },
@@ -11,13 +11,20 @@ const NAV_LINKS = [
 ];
 
 function scrollToSection(id) {
-  const el = document.getElementById(`section-${id}`);
-  if (el) el.scrollIntoView({ behavior: 'smooth' });
+  const panel = document.getElementById(`section-${id}`);
+  if (!panel) return;
+  const container = document.querySelector('.gsap-container');
+  if (!container) return;
+  const panels = Array.from(container.querySelectorAll('.gsap-panel'));
+  const idx = panels.indexOf(panel);
+  if (idx < 0) return;
+  const totalScroll = container.scrollHeight - window.innerHeight;
+  const targetScroll = (idx / (panels.length - 1)) * totalScroll;
+  window.scrollTo({ top: targetScroll, behavior: 'smooth' });
 }
 
-export default function Navbar() {
+const Clock = memo(function Clock() {
   const [time, setTime] = useState("");
-
   useEffect(() => {
     const updateTime = () => {
       setTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
@@ -26,9 +33,18 @@ export default function Navbar() {
     const t = setInterval(updateTime, 1000);
     return () => clearInterval(t);
   }, []);
+  return (
+    <div className="hidden sm:block text-[11px] text-slate-300 tracking-widest">
+      {time}
+    </div>
+  );
+});
+
+export default function Navbar() {
+  const navigate = useNavigate();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#041327]/80 backdrop-blur-md border-b border-cyan-400/30 shadow-[0_4px_30px_rgba(34,211,238,0.15)] flex items-center justify-between px-6 font-mono">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#041327]/90 border-b border-cyan-400/30 shadow-[0_4px_30px_rgba(34,211,238,0.15)] flex items-center justify-between px-6 font-mono">
       
       <div className="flex items-center gap-6">
         <div className="cursor-default text-xl font-['Space_Grotesk'] font-bold tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]">
@@ -46,7 +62,7 @@ export default function Navbar() {
         {NAV_LINKS.map((link, i) => (
           <button
             key={link.id}
-            onClick={() => link.isRoute ? window.location.href = link.route : scrollToSection(link.id)}
+            onClick={() => scrollToSection(link.id)}
             className="relative group cursor-pointer py-2 bg-transparent border-none"
           >
             <span className="text-[10px] text-cyan-400/50 mr-2">[{String(i + 1).padStart(2, '0')}]</span>
@@ -60,17 +76,15 @@ export default function Navbar() {
 
       <div className="flex items-center gap-6">
         <button
-          onClick={() => { window.location.href = '/dashboard'; }}
+          onClick={() => { navigate('/dashboard'); }}
           className="px-4 py-1.5 border border-cyan-400/40 bg-[#041327]/60 text-cyan-400 text-[9px] font-bold tracking-widest uppercase cursor-pointer"
           style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))" }}
         >
           Estadísticas
         </button>
-        <div className="hidden sm:block text-[11px] text-slate-300 tracking-widest">
-          {time}
-        </div>
+        <Clock />
         <button
-          onClick={() => { window.location.href = '/map'; }}
+          onClick={() => { navigate('/map'); }}
           className="px-4 py-1.5 border border-cyan-400/40 bg-[#041327]/60 text-cyan-400 text-[9px] font-bold tracking-widest uppercase cursor-pointer"
           style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))" }}
         >
@@ -80,11 +94,7 @@ export default function Navbar() {
           <div className="absolute inset-0 bg-cyan-400/20 blur-[8px] group-hover:blur-[12px] transition-all" />
           <div className="relative px-4 py-1.5 border border-cyan-400/40 bg-[#041327]/60 flex items-center gap-2 overflow-hidden"
                style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))" }}>
-            <motion.div 
-              className="absolute inset-0 w-full h-[200%] bg-gradient-to-b from-transparent via-cyan-400/20 to-transparent pointer-events-none opacity-0 group-hover:opacity-100" 
-              animate={{ y: ["-100%", "100%"] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            />
+            <div className="absolute inset-0 w-full h-[200%] bg-gradient-to-b from-transparent via-cyan-400/20 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 motion-safe:group-hover:animate-scan-line" />
             <FiActivity className="text-cyan-400 text-xs" />
             <span className="text-[9px] text-cyan-400 tracking-widest font-bold">
               SECURE_LINK // CONNECTED

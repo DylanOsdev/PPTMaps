@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useState, lazy, Suspense, memo } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 
 import CustomCursor from './landing/components/CustomCursor.jsx';
 import Navbar from './landing/components/Navbar.jsx';
-import HeroSection from './landing/sections/HeroSection.jsx';
-import WeatherSection from './landing/sections/WeatherSection.jsx';
-import ReportsSection from './landing/sections/ReportsSection.jsx';
-import BackendSection from './landing/sections/BackendSection.jsx';
-import LayersSection from './landing/sections/LayersSection.jsx';
-import FinalCTA from './landing/sections/FinalCTA.jsx';
+
+const HeroSection = lazy(() => import('./landing/sections/HeroSection.jsx'));
+const WeatherSection = lazy(() => import('./landing/sections/WeatherSection.jsx'));
+const ReportsSection = lazy(() => import('./landing/sections/ReportsSection.jsx'));
+const BackendSection = lazy(() => import('./landing/sections/BackendSection.jsx'));
+const LayersSection = lazy(() => import('./landing/sections/LayersSection.jsx'));
+const FinalCTA = lazy(() => import('./landing/sections/FinalCTA.jsx'));
 
 const SECTIONS = [
   { id: 'hero', Component: HeroSection },
@@ -18,94 +22,128 @@ const SECTIONS = [
   { id: 'final', Component: FinalCTA },
 ];
 
-export default function Landing() {
-  const containerRef = useRef(null);
+gsap.registerPlugin(ScrollTrigger);
 
-  useEffect(() => {
+function SectionFallback() {
+  return <div className="w-full h-full bg-[#041327]" />;
+}
+
+function useScrollSetup(reduceMotion) {
+  useLayoutEffect(() => {
+    if (reduceMotion) return;
+
+    window.scrollTo(0, 0);
     document.documentElement.classList.add('page-landing-futuristic');
 
-    let gsap, ScrollTrigger, Lenis, cleanup;
+    const lenis = new Lenis({
+      duration: 1.0,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      wheelMultiplier: 0.8,
+      lerp: 0.06,
+    });
 
-    import('gsap').then(g => {
-      gsap = g.default;
-      return import('gsap/ScrollTrigger');
-    }).then(st => {
-      ScrollTrigger = st.ScrollTrigger;
-      gsap.registerPlugin(ScrollTrigger);
-      return import('lenis');
-    }).then(l => {
-      Lenis = l.default;
+    lenis.on('scroll', ScrollTrigger.update);
 
-      const lenis = new Lenis({
-        duration: 1.0,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smooth: true,
-        smoothTouch: false,
-        normalizeWheel: true,
-        wheelMultiplier: 0.8,
-        lerp: 0.06,
-      });
+    const lenisRaf = (time) => lenis.raf(time * 1000);
+    gsap.ticker.add(lenisRaf);
 
-      lenis.on('scroll', ScrollTrigger.update);
+    const container = document.querySelector('.gsap-container');
+    if (!container) return;
 
-      const lenisRaf = (time) => lenis.raf(time * 1000);
-      gsap.ticker.add(lenisRaf);
+    const panels = Array.from(container.querySelectorAll('.gsap-panel'));
 
-      const ctx = gsap.context(() => {
-        if (!containerRef.current) return;
-        const panels = Array.from(containerRef.current.querySelectorAll('.gsap-panel'));
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: container,
+        start: 'top top',
+        end: `+=${panels.length * 100}%`,
+        pin: true,
+        pinSpacing: true,
+        anticipatePin: 1,
+        scrub: 0.5,
+      },
+    });
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top top",
-            end: `+=${panels.length * 100}%`,
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            scrub: 0.5,
-          }
-        });
+    panels.forEach((panel, i) => {
+      gsap.set(panel, { zIndex: 100 - i });
+      if (i === 0) return;
+      gsap.set(panel, { opacity: 0, scale: 0.95 });
+      tl.to(panels[i - 1], {
+        opacity: 0, scale: 1.05, ease: 'power1.inOut',
+        onStart: () => gsap.set(panels[i - 1], { willChange: 'transform, opacity' }),
+        onComplete: () => gsap.set(panels[i - 1], { willChange: 'auto' }),
+      }, i);
+      tl.to(panel, {
+        opacity: 1, scale: 1, ease: 'power1.inOut',
+        onStart: () => gsap.set(panel, { willChange: 'transform, opacity' }),
+        onComplete: () => gsap.set(panel, { willChange: 'auto' }),
+      }, i);
+    });
 
-        panels.forEach((panel, i) => {
-          gsap.set(panel, { zIndex: 100 - i, willChange: 'transform, opacity' });
-          if (i === 0) return;
-          gsap.set(panel, { opacity: 0, scale: 0.95 });
-          tl.to(panels[i - 1], { opacity: 0, scale: 1.05, ease: "power1.inOut" }, i);
-          tl.to(panel, { opacity: 1, scale: 1, ease: "power1.inOut" }, i);
-        });
-      }, containerRef);
+    tl.progress(0);
+    ScrollTrigger.refresh(true);
+    window.scrollTo(0, 0);
 
-      cleanup = () => {
-        gsap.ticker.remove(lenisRaf);
-        lenis.destroy();
-        ctx.revert();
-        ScrollTrigger.getAll().forEach(t => t.kill());
-      };
+    const raf = requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      tl.progress(0);
     });
 
     return () => {
+      cancelAnimationFrame(raf);
       document.documentElement.classList.remove('page-landing-futuristic');
-      if (cleanup) cleanup();
+      ScrollTrigger.getAll().forEach(t => t.kill());
+      lenis.destroy();
+      gsap.ticker.remove(lenisRaf);
+      panels.forEach(panel => gsap.set(panel, { willChange: 'auto' }));
     };
-  }, []);
+  }, [reduceMotion]);
+}
+
+const MemoizedNavbar = memo(Navbar);
+
+export default function Landing() {
+  const [reduceMotion] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
+
+  useScrollSetup(reduceMotion);
 
   return (
     <div className="bg-[#041327] text-white font-sans selection:bg-cyan-400 selection:text-black">
       <CustomCursor />
-      <Navbar />
-
-      <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
-        {SECTIONS.map(({ id, Component }) => (
-          <div
-            key={id}
-            id={`section-${id}`}
-            className="gsap-panel absolute inset-0 w-full h-screen bg-[#041327]"
-          >
-            <Component />
-          </div>
-        ))}
-      </div>
+      <MemoizedNavbar />
+      {reduceMotion ? (
+        <div className="w-full">
+          {SECTIONS.map(({ id, Component }) => (
+            <div
+              key={id}
+              id={`section-${id}`}
+              className="w-full h-screen"
+            >
+              <Suspense fallback={<SectionFallback />}>
+                <Component />
+              </Suspense>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="gsap-container relative w-full h-screen overflow-hidden">
+          {SECTIONS.map(({ id, Component }) => (
+            <div
+              key={id}
+              id={`section-${id}`}
+              className="gsap-panel absolute inset-0 w-full h-screen bg-[#041327]"
+            >
+              <Suspense fallback={<SectionFallback />}>
+                <Component />
+              </Suspense>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

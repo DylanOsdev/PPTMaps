@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import '../static/css/tppmaps.css';
 import {
   Chart as ChartJS,
   ArcElement, BarElement, LineElement, PointElement,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
 import {
   FiSun, FiCloud, FiCloudRain, FiCloudLightning, FiWind,
   FiDroplet, FiEye, FiThermometer, FiMapPin, FiNavigation,
@@ -81,16 +82,19 @@ function useAnimatedValue(target, duration = 1000) {
   const [display, setDisplay] = useState(target || 0);
   const raf = useRef(null);
   const prevTarget = useRef();
+  const currentVal = useRef(target || 0);
   useEffect(() => {
-    if (target == null || isNaN(target)) { setDisplay(0); return; }
+    if (target == null || isNaN(target)) { setDisplay(0); currentVal.current = 0; return; }
     if (prevTarget.current === target) return;
+    const from = currentVal.current;
     prevTarget.current = target;
     const start = performance.now();
-    const from = display;
     const step = (now) => {
       const t = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(from + (target - from) * eased);
+      const val = from + (target - from) * eased;
+      currentVal.current = val;
+      setDisplay(val);
       if (t < 1) raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
@@ -118,9 +122,9 @@ function MercuryThermometer({ temp, min, max }) {
       <FiThermometer className="text-slate-500 text-lg" />
       <div className="w-2 h-20 md:h-24 bg-white/[0.06] rounded-full relative overflow-hidden">
         <motion.div
-          className="absolute bottom-0 w-full rounded-full"
-          initial={{ height: 0 }}
-          animate={{ height: `${pct}%` }}
+          className="absolute bottom-0 w-full rounded-full origin-bottom"
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: pct / 100 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
           style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
         />
@@ -150,17 +154,23 @@ function Compass({ degrees }) {
 
 /* ─── Heat Waves ─── */
 function HeatWaves({ color }) {
+  const waves = useMemo(() => [1, 2, 3, 4].map((_, i) => ({
+    id: i,
+    size: 100 + i * 80,
+    duration: 3 + i * 0.6,
+    delay: i * 0.8,
+  })), []);
+
   return (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[2] opacity-[0.06]">
-      {[1, 2, 3, 4].map((_, i) => (
-        <div key={i} className="absolute rounded-full border"
-          style={{
-            width: 100 + i * 80,
-            height: 100 + i * 80,
-            borderColor: color,
-            animation: `heat-wave ${3 + i * 0.6}s ease-out infinite`,
-            animationDelay: `${i * 0.8}s`,
-          }} />
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[2] opacity-[0.04]" style={{ willChange: 'transform' }}>
+      {waves.map(w => (
+        <div key={w.id} className="absolute rounded-full border" style={{
+          width: w.size, height: w.size,
+          borderColor: color,
+          animation: `heat-wave ${w.duration}s ease-out infinite`,
+          animationDelay: `${w.delay}s`,
+          willChange: 'transform, opacity',
+        }} />
       ))}
     </div>
   );
@@ -169,18 +179,21 @@ function HeatWaves({ color }) {
 /* ─── Radar ─── */
 function RadarSweep() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1] opacity-[0.04]">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1] opacity-[0.03]" style={{ willChange: 'transform' }}>
       <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-400/20" />
       <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-400/10" />
       <div className="absolute top-1/2 left-1/2 w-1 h-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400 shadow-[0_0_10px_#22D3EE]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px]"
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px]"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
         style={{
-          height: '250px',
-          background: 'linear-gradient(to right, transparent 0%, rgba(34,211,238,0.3) 50%, transparent 100%)',
+          background: 'linear-gradient(to right, transparent 0%, rgba(34,211,238,0.25) 50%, transparent 100%)',
           clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
           transformOrigin: 'center bottom',
-          animation: 'radar-sweep 4s linear infinite',
-        }} />
+          willChange: 'transform',
+        }}
+      />
     </div>
   );
 }
@@ -190,15 +203,28 @@ function LightningFlash({ active }) {
   const [flash, setFlash] = useState(false);
   const flashX = useRef(50);
   const flashY = useRef(50);
+  const boltHeight = useRef(80);
+  const boltRotation = useRef(0);
   useEffect(() => {
     if (!active) { setFlash(false); return; }
-    const interval = setInterval(() => {
-      flashX.current = 20 + Math.random() * 60;
-      flashY.current = 15 + Math.random() * 70;
-      setFlash(true);
-      setTimeout(() => setFlash(false), 80 + Math.random() * 60);
-    }, 2000 + Math.random() * 4000);
-    return () => clearInterval(interval);
+    let timeoutId;
+    let flashTimeout;
+    const scheduleFlash = () => {
+      timeoutId = setTimeout(() => {
+        flashX.current = 20 + Math.random() * 60;
+        flashY.current = 15 + Math.random() * 70;
+        boltHeight.current = 60 + Math.random() * 80;
+        boltRotation.current = -20 + Math.random() * 40;
+        setFlash(true);
+        flashTimeout = setTimeout(() => setFlash(false), 80 + Math.random() * 60);
+        scheduleFlash();
+      }, 2000 + Math.random() * 4000);
+    };
+    scheduleFlash();
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(flashTimeout);
+    };
   }, [active]);
   if (!active) return null;
   return (
@@ -224,9 +250,9 @@ function LightningFlash({ active }) {
             left: `${flashX.current}%`,
             top: `${flashY.current}%`,
             width: '2px',
-            height: `${60 + Math.random() * 80}px`,
+            height: `${boltHeight.current}px`,
             background: 'linear-gradient(to bottom, rgba(255,255,255,0.8), transparent)',
-            transform: `rotate(${-20 + Math.random() * 40}deg)`,
+            transform: `rotate(${boltRotation.current}deg)`,
             filter: 'blur(1px)',
           }}
         />
@@ -237,18 +263,29 @@ function LightningFlash({ active }) {
 
 /* ─── Floating Clouds ─── */
 function DriftingClouds({ cover }) {
-  if (cover < 15) return null;
   const count = Math.min(5, Math.ceil(cover / 20));
+  const clouds = useMemo(() =>
+    Array.from({ length: count }, (_, i) => ({
+      id: i,
+      top: 10 + i * 20 + Math.random() * 10,
+      size: 40 + i * 15,
+      duration: 20 + i * 8,
+      delay: -Math.random() * 20,
+    }))
+  , [count]);
+  if (cover < 15) return null;
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2] opacity-[0.04]">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="absolute text-white"
-          style={{
-            top: `${10 + i * 20 + Math.random() * 10}%`,
-            animation: `cloud-drift ${20 + i * 8}s linear infinite`,
-            animationDelay: `${i * 4}s`,
-          }}>
-          <FiCloud size={40 + i * 15} />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2] opacity-[0.04]" style={{ willChange: 'transform' }}>
+      {clouds.map(c => (
+        <div key={c.id} className="absolute text-white" style={{
+          top: `${c.top}%`,
+          left: `-100px`,
+          animation: `cloud-drift ${c.duration}s linear infinite`,
+          animationDelay: `${c.delay}s`,
+          willChange: 'transform',
+        }}>
+          <FiCloud size={c.size} />
         </div>
       ))}
     </div>
@@ -257,22 +294,32 @@ function DriftingClouds({ cover }) {
 
 /* ─── Wind Streaks ─── */
 function WindStreaks({ speed, dir }) {
-  if (speed < 5) return null;
   const count = Math.min(8, Math.ceil(speed / 4));
+  const streaks = useMemo(() =>
+    Array.from({ length: count }, (_, i) => ({
+      id: i,
+      top: 15 + i * 10 + Math.random() * 5,
+      width: 60 + Math.random() * 120,
+      duration: 3 + i * 0.8,
+      delay: -Math.random() * 5,
+    }))
+  , [count]);
+  if (speed < 5) return null;
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2] opacity-[0.05]">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="absolute h-px"
-          style={{
-            top: `${15 + i * 10 + Math.random() * 5}%`,
-            left: '-10%',
-            width: `${60 + Math.random() * 120}px`,
-            background: `linear-gradient(to right, transparent, rgba(34,211,238,0.5), transparent)`,
-            transform: `rotate(${dir - 180}deg)`,
-            transformOrigin: 'left center',
-            animation: `wind-streak ${3 + i * 0.8}s linear infinite`,
-            animationDelay: `${i * 1.2}s`,
-          }} />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2] opacity-[0.05]" style={{ willChange: 'transform' }}>
+      {streaks.map(s => (
+        <div key={s.id} className="absolute h-px" style={{
+          top: `${s.top}%`,
+          left: '-10%',
+          width: `${s.width}px`,
+          background: 'linear-gradient(to right, transparent, rgba(34,211,238,0.5), transparent)',
+          transform: `rotate(${dir - 180}deg)`,
+          transformOrigin: 'left center',
+          animation: `wind-streak ${s.duration}s linear infinite`,
+          animationDelay: `${s.delay}s`,
+          willChange: 'transform',
+        }} />
       ))}
     </div>
   );
@@ -280,20 +327,32 @@ function WindStreaks({ speed, dir }) {
 
 /* ─── Rain ─── */
 function RainEffect({ active }) {
+  const drops = useMemo(() =>
+    Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: -Math.random() * 50,
+      height: 12 + Math.random() * 25,
+      duration: 0.25 + Math.random() * 0.35,
+      delay: Math.random() * 2.5,
+      opacity: 0.12 + Math.random() * 0.2,
+    }))
+  , []);
   if (!active) return null;
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[3]">
-      {Array.from({ length: 60 }).map((_, i) => (
-        <div key={i} className="absolute w-px"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `-${Math.random() * 50}%`,
-            height: `${12 + Math.random() * 25}px`,
-            background: 'linear-gradient(to bottom, transparent, rgba(103,232,249,0.2))',
-            animation: `rain-drop ${0.25 + Math.random() * 0.35}s linear infinite`,
-            animationDelay: `${Math.random() * 2.5}s`,
-            opacity: 0.12 + Math.random() * 0.2,
-          }} />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[3]" style={{ willChange: 'transform' }}>
+      {drops.map(d => (
+        <div key={d.id} className="absolute w-px" style={{
+          left: `${d.left}%`,
+          top: `${d.top}%`,
+          height: `${d.height}px`,
+          background: 'linear-gradient(to bottom, transparent, rgba(103,232,249,0.2))',
+          animation: `rain-drop ${d.duration}s linear infinite`,
+          animationDelay: `${d.delay}s`,
+          opacity: d.opacity,
+          willChange: 'transform',
+        }} />
       ))}
     </div>
   );
@@ -301,16 +360,24 @@ function RainEffect({ active }) {
 
 /* ─── DataStream ─── */
 function DataStream() {
+  const lines = useMemo(() => [
+    { top: 10, duration: 16, delay: 0 },
+    { top: 34, duration: 22, delay: -8 },
+    { top: 58, duration: 28, delay: -16 },
+    { top: 82, duration: 34, delay: -24 },
+  ], []);
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-[0.025]">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="absolute font-mono text-[7px] text-cyan-400 whitespace-nowrap"
-          style={{
-            top: `${10 + i * 24}%`,
-            animation: `data-scroll ${16 + i * 6}s linear infinite`,
-            animationDelay: `${i * 3}s`,
-          }}>
-          {"{temp:28.4 lat:6.2442 lon:-75.5812 hum:67% wind:12km/h dir:180° cloud:40% dew:18°}".repeat(25)}
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-[0.02]" style={{ willChange: 'transform' }}>
+      {lines.map((l, i) => (
+        <div key={i} className="absolute font-mono text-[7px] text-cyan-400 whitespace-nowrap" style={{
+          top: `${l.top}%`,
+          left: '0',
+          animation: `data-scroll ${l.duration}s linear infinite`,
+          animationDelay: `${l.delay}s`,
+          willChange: 'transform',
+        }}>
+          {"{temp:28.4 lat:6.2442 lon:-75.5812 hum:67% wind:12km/h dir:180° cloud:40% dew:18°}".repeat(20)}
         </div>
       ))}
     </div>
@@ -318,34 +385,35 @@ function DataStream() {
 }
 
 /* ─── Particles ─── */
-function ParticleField({ count = 20, color }) {
+function ParticleField({ count = 15, color }) {
   const particles = useMemo(() =>
     Array.from({ length: count }, (_, i) => ({
       id: i, x: Math.random() * 100, y: Math.random() * 100,
       size: 1 + Math.random() * 2, duration: 3 + Math.random() * 4,
-      delay: Math.random() * 3, drift: Math.random() * 30 - 15,
+      delay: -Math.random() * 5, drift: Math.random() * 30 - 15,
+      opacity: 0.12 + Math.random() * 0.2,
     })), [count]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" style={{ willChange: 'transform' }}>
       {particles.map(p => (
-        <div key={p.id} className="absolute rounded-full"
-          style={{
-            left: `${p.x}%`, top: `${p.y}%`,
-            width: p.size, height: p.size,
-            backgroundColor: color || '#22d3ee',
-            opacity: 0.12 + Math.random() * 0.2,
-            animation: `particle-float ${p.duration}s ease-in-out infinite`,
-            animationDelay: `${p.delay}s`,
-            transform: `translateX(${p.drift}px)`,
-          }} />
+        <div key={p.id} className="absolute rounded-full" style={{
+          left: `${p.x}%`, top: `${p.y}%`,
+          width: p.size, height: p.size,
+          backgroundColor: color || '#22d3ee',
+          opacity: p.opacity,
+          animation: `particle-float ${p.duration}s ease-in-out infinite`,
+          animationDelay: `${p.delay}s`,
+          transform: `translateX(${p.drift}px)`,
+          willChange: 'transform, opacity',
+        }} />
       ))}
     </div>
   );
 }
 
 function StatCard({ children, className = "" }) {
-  return <div className={`rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-2xl ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-white/[0.06] bg-white/[0.04] ${className}`}>{children}</div>;
 }
 
 function Skeleton() {
@@ -360,7 +428,9 @@ function Skeleton() {
   );
 }
 
-function HourCell({ hour, prob, temp, icon: Icon, delay }) {
+function HourCell({ hour, prob, temp, delay }) {
+  const WeatherIcon = prob > 60 ? FiCloudLightning : prob > 30 ? FiCloudRain : prob > 15 ? FiCloud : FiSun;
+  const iconColor = prob > 60 ? '#ef4444' : prob > 30 ? '#eab308' : prob > 15 ? '#94a3b8' : '#fbbf24';
   return (
     <motion.div
       custom={delay}
@@ -369,14 +439,16 @@ function HourCell({ hour, prob, temp, icon: Icon, delay }) {
         hover:bg-white/[0.04] hover:border-white/[0.08] transition-all duration-300 cursor-default group"
     >
       <span className="font-mono text-[9px] text-slate-500">{hour}</span>
+      <div style={{ color: iconColor }} className="text-xs">
+        <WeatherIcon />
+      </div>
       <span className="text-base text-white font-light tabular-nums">{temp}°</span>
       <div className="w-1 h-9 bg-white/[0.05] rounded-full relative overflow-hidden">
-        <motion.div className="absolute bottom-0 w-full rounded-full"
-          initial={{ height: 0 }} animate={{ height: `${prob}%` }}
+        <motion.div className="absolute bottom-0 w-full rounded-full origin-bottom"
+          initial={{ scaleY: 0 }} animate={{ scaleY: prob / 100 }}
           transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
           style={{ backgroundColor: prob > 60 ? '#ef4444' : prob > 30 ? '#eab308' : '#22d3ee' }} />
       </div>
-      {Icon && <Icon className="text-slate-500 text-xs group-hover:text-white transition-colors duration-300" />}
     </motion.div>
   );
 }
@@ -390,7 +462,7 @@ function MiniTempBar({ min, max, current }) {
       <div className="w-16 h-1 bg-white/[0.06] rounded-full overflow-hidden relative">
         <div className="absolute inset-0 rounded-full" style={{ background: 'linear-gradient(to right, #3b82f6, #22d3ee, #fbbf24, #ef4444)', opacity: 0.5 }} />
         <motion.div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-          initial={{ left: 0 }} animate={{ left: `${pct}%` }} transition={{ duration: 1.2, ease: "easeOut" }} />
+          initial={{ left: '0%' }} animate={{ left: `${pct}%` }} transition={{ duration: 1.2, ease: "easeOut" }} />
       </div>
       <span className="font-mono text-[9px] text-orange-400">{Math.round(max)}°</span>
       <FiArrowUp size={8} className="text-orange-400" />
@@ -401,6 +473,7 @@ function MiniTempBar({ min, max, current }) {
 export default React.memo(function WeatherSection() {
   const weather = useWeatherData();
   const ac = useWeatherStyle(weather);
+  const { tier } = useDevicePerformance();
 
   const mouseX = useMotionValue(0.5);
   const mouseY = useMotionValue(0.5);
@@ -416,12 +489,21 @@ export default React.memo(function WeatherSection() {
   const isLoading = weather.loading;
   const fmt = useCallback((v, d = 0) => (isLoading || v == null) ? "--" : Number(v).toFixed(d), [isLoading]);
 
-  if (isLoading || weather.error) return <Skeleton />;
+  const forecastData = useMemo(() => {
+    if (isLoading || weather.error) return [];
+    const baseProb = weather.precipProb;
+    const baseTemp = weather.temp;
+    return Array.from({ length: 8 }, (_, i) => {
+      const hh = (new Date().getHours() + i) % 24;
+      return {
+        hour: `${String(hh).padStart(2, '0')}:00`,
+        prob: Math.max(0, Math.min(100, baseProb + (i * 3) + Math.floor(Math.sin(i * 1.5) * 3))),
+        temp: baseTemp + Math.floor(Math.cos(i * 1.2) * 1.5),
+      };
+    });
+  }, [isLoading, weather.error, weather.precipProb, weather.temp]);
 
-  const hours = Array.from({ length: 8 }, (_, i) => {
-    const hh = (new Date().getHours() + i) % 24;
-    return `${String(hh).padStart(2, '0')}:00`;
-  });
+  if (isLoading || weather.error) return <Skeleton />;
 
   const isStorm = weather.precipProb > 40 || weather.windGusts > 35;
   const isRaining = weather.precipProb > 25;
@@ -437,23 +519,33 @@ export default React.memo(function WeatherSection() {
     { id: "PRESIÓN",  value: weather.pressure,      unit: "hPa",  max: 1050, min: 950, color: "#c084fc", icon: FiCompass },
   ];
 
+  const particleCount = tier === 'HIGH' ? 20 : tier === 'MEDIUM' ? 12 : 8;
+  const showHeatWaves = tier !== 'LOW';
+  const showClouds = tier !== 'LOW' && weather.cloudCover >= 15;
+  const showWindStreaks = tier !== 'LOW' && weather.windSpeed >= 5;
+  const showRain = tier !== 'LOW' && isRaining;
+  const showLightning = tier !== 'LOW' && isStorm;
+
+  // MEDIUM tier: cap to max 3 optional effects to avoid overload
+  let optionalCount = 0;
+  const maxOptional = tier === 'HIGH' ? 99 : 3;
+  const canShow = (show) => { if (show && optionalCount < maxOptional) { optionalCount++; return true; } return false; };
+
   return (
     <div className="absolute inset-0 bg-[#041327] overflow-hidden" onMouseMove={handleMouseMove}>
       <DataStream />
       <RadarSweep />
-      <ParticleField count={30} color={ac.hex} />
-      <HeatWaves color={ac.hex} />
-      <DriftingClouds cover={weather.cloudCover} />
-      <WindStreaks speed={weather.windSpeed} dir={weather.windDir} />
-      <LightningFlash active={isStorm} />
-      <RainEffect active={isRaining} />
+      <ParticleField count={particleCount} color={ac.hex} />
+      {showHeatWaves && <HeatWaves color={ac.hex} />}
+      {canShow(showClouds) && <DriftingClouds cover={weather.cloudCover} />}
+      {canShow(showWindStreaks) && <WindStreaks speed={weather.windSpeed} dir={weather.windDir} />}
+      {canShow(showLightning) && <LightningFlash active={isStorm} />}
+      {canShow(showRain) && <RainEffect active={isRaining} />}
 
-      <motion.div className="absolute -top-[30%] -right-[20%] w-[100vmin] h-[100vmin]"
-        animate={{ background: `radial-gradient(circle, rgba(${ac.rgb},0.08) 0%, transparent 60%)` }}
-        transition={{ duration: 1.5 }} />
-      <motion.div className="absolute -bottom-[30%] -left-[20%] w-[80vmin] h-[80vmin]"
-        animate={{ background: `radial-gradient(circle, rgba(${ac.rgb},0.05) 0%, transparent 60%)` }}
-        transition={{ duration: 1.5 }} />
+      <div className="absolute -top-[30%] -right-[20%] w-[100vmin] h-[100vmin] transition-all duration-1500"
+        style={{ background: `radial-gradient(circle, rgba(${ac.rgb},0.08) 0%, transparent 60%)` }} />
+      <div className="absolute -bottom-[30%] -left-[20%] w-[80vmin] h-[80vmin] transition-all duration-1500"
+        style={{ background: `radial-gradient(circle, rgba(${ac.rgb},0.05) 0%, transparent 60%)` }} />
       <div className="absolute inset-0 cartographic-grid opacity-[0.03]" />
 
       <div className="absolute inset-0 flex flex-col px-6 md:px-12 lg:px-20 pt-20 pb-8 z-10">
@@ -496,13 +588,13 @@ export default React.memo(function WeatherSection() {
                 <div className="flex gap-6">
                   <div className="flex-1">
                     <span className="font-mono text-[10px] text-slate-500 tracking-[0.15em] uppercase mb-1 block">Temperatura</span>
-                    <div className="flex items-baseline gap-1 -ml-1">
+                    <div className="flex items-baseline gap-1 -ml-1 relative">
                       <motion.span className="text-8xl md:text-9xl font-light text-white leading-none tracking-tight tabular-nums"
                         key={weather.temp} initial={{ scale: 1.2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.5 }}>
                         <AnimatedNumber value={weather.temp} />
                       </motion.span>
-                      <span className="text-xl text-white/30 font-light">°C</span>
+                      <span className="absolute top-2 right-[-20px] text-xl text-white/40 font-light">°C</span>
                     </div>
                     <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.04]">
                       <div>
@@ -535,14 +627,14 @@ export default React.memo(function WeatherSection() {
                 </div>
                 <div className="relative h-16 flex items-center gap-4">
                   <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <motion.div className="h-full rounded-full"
-                      initial={{ width: 0 }} animate={{ width: `${Math.min(100, weather.windSpeed * 2.5)}%` }}
+                    <motion.div className="h-full rounded-full origin-left"
+                      initial={{ scaleX: 0 }} animate={{ scaleX: Math.min(1, weather.windSpeed * 0.025) }}
                       transition={{ duration: 1.2, ease: "easeOut" }}
                       style={{ backgroundColor: ac.hex }} />
                   </div>
                   <motion.div animate={{ rotate: weather.windDir }}
                     transition={{ duration: 1.5, ease: [0.25, 0.1, 0.25, 1] }}>
-                    <FiNavigation size={16} className="text-slate-400 shrink-0" />
+                    <FiNavigation size={16} className="text-cyan-400 shrink-0 drop-shadow-[0_0_8px_#22d3ee]" />
                   </motion.div>
                 </div>
                 <div className="flex items-center justify-between mt-2">
@@ -558,25 +650,84 @@ export default React.memo(function WeatherSection() {
           {/* ─── CENTER ─── */}
           <div className="w-full lg:w-[46%] flex items-center">
             <motion.div custom={1.5} variants={CARD_VARIANTS} initial="hidden" animate="visible" className="w-full h-full">
-              <StatCard className="w-full h-full flex flex-col items-center justify-center py-10 lg:py-14 px-6 relative overflow-hidden">
-                <motion.div className="absolute w-[280px] h-[280px] md:w-[380px] md:h-[380px] rounded-full border border-white/[0.03]"
-                  style={{ borderTopColor: ac.hex, borderRightColor: ac.hex }}
-                  animate={{ rotate: 360 }} transition={{ duration: 8, repeat: Infinity, ease: "linear" }} />
-                <motion.div className="absolute w-[230px] h-[230px] md:w-[320px] md:h-[320px] rounded-full border border-white/[0.02]"
-                  style={{ borderBottomColor: `${ac.hex}60`, borderLeftColor: `${ac.hex}60` }}
-                  animate={{ rotate: -360 }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} />
-                <motion.div className="absolute w-full max-w-[400px] h-px bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
-                  animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 3, repeat: Infinity }} style={{ top: '30%' }} />
-                <motion.div className="absolute w-full max-w-[400px] h-px bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
-                  animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 3, repeat: Infinity, delay: 1.5 }} style={{ top: '70%' }} />
+              <StatCard className="w-full h-full flex flex-col items-center justify-center gap-6 py-10 lg:py-14 px-6 relative overflow-hidden">
+                <div className="relative w-[260px] h-[260px] md:w-[360px] md:h-[360px] flex items-center justify-center">
+                  <motion.div
+                    className="absolute w-full h-full rounded-full"
+                    animate={{
+                      scale: [1, 1.03, 1],
+                      opacity: [0.12, 0.3, 0.12],
+                      borderColor: ac.hex,
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                      border: '1px solid',
+                      boxShadow: `0 0 60px ${ac.hex}40, inset 0 0 60px ${ac.hex}20`,
+                      willChange: 'transform, opacity',
+                    }}
+                  />
+                  <motion.div
+                    className="absolute w-[85%] h-[85%] rounded-full"
+                    animate={{
+                      scale: [0.85, 0.95, 0.85],
+                      opacity: [0.08, 0.18, 0.08],
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                    style={{
+                      border: '1px solid',
+                      borderColor: `${ac.hex}60`,
+                      boxShadow: `0 0 40px ${ac.hex}30`,
+                      willChange: 'transform, opacity',
+                    }}
+                  />
+                  <motion.svg
+                    className="absolute w-full h-full"
+                    viewBox="0 0 200 200"
+                    style={{ willChange: 'transform' }}
+                  >
+                    <motion.circle
+                      cx="100"
+                      cy="100"
+                      r={85 + Math.min(weather.windSpeed * 2, 30)}
+                      fill="none"
+                      stroke={ac.hex}
+                      strokeWidth="1.5"
+                      strokeDasharray="8 12"
+                      style={{
+                        transformOrigin: '100px 100px',
+                        filter: `drop-shadow(0 0 8px ${ac.hex})`,
+                        willChange: 'transform',
+                      }}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    />
+                    <motion.circle
+                      cx="100"
+                      cy="100"
+                      r={72}
+                      fill="none"
+                      stroke={ac.hex}
+                      strokeWidth="0.5"
+                      strokeDasharray={weather.precipProb > 30 ? "4 8" : "0 100"}
+                      style={{
+                        opacity: weather.precipProb > 30 ? 0.6 : 0.15,
+                        filter: `drop-shadow(0 0 4px ${ac.hex})`,
+                        willChange: 'transform, opacity',
+                      }}
+                      animate={{ scale: weather.precipProb > 30 ? [1, 1.06, 1] : 1 }}
+                      transition={{ duration: 2, repeat: weather.precipProb > 30 ? Infinity : 0, ease: "easeInOut" }}
+                    />
+                  </motion.svg>
 
-                <motion.div className="relative w-36 h-36 md:w-52 md:h-52 mb-8" style={{ x: parallaxX, y: parallaxY }}>
-                  <motion.div className="absolute inset-0 rounded-full"
-                    animate={{ background: `radial-gradient(circle, ${ac.hex}30 0%, transparent 70%)`, filter: "blur(25px)" }}
-                    transition={{ duration: 1.5 }} />
+                  <motion.div className="relative w-32 h-32 md:w-44 md:h-44" style={{ x: parallaxX, y: parallaxY }}>
+                  <div className="absolute inset-0 rounded-full"
+                    style={{ background: `radial-gradient(circle, ${ac.hex}30 0%, transparent 70%)`, filter: 'blur(25px)' }} />
                   {[1, 2, 3].map((_, i) => (
-                    <div key={i} className="absolute inset-0 rounded-full border border-white/[0.03]"
-                      style={{ animation: `ping 3s cubic-bezier(0, 0, 0.2, 1) infinite`, animationDelay: `${i * 0.7}s` }} />
+                    <div key={i} className="absolute inset-0 rounded-full border border-white/[0.04]" style={{
+                      willChange: 'transform, opacity',
+                      animation: `ping-pulse 3s cubic-bezier(0, 0, 0.2, 1) infinite`,
+                      animationDelay: `${i * 0.7}s`,
+                    }} />
                   ))}
                   <div className="relative z-10 w-full h-full rounded-full flex flex-col items-center justify-center"
                     style={{
@@ -595,28 +746,34 @@ export default React.memo(function WeatherSection() {
                     </span>
                   </div>
                 </motion.div>
+                </div>
 
-                <motion.div className={`inline-flex items-center gap-2.5 px-5 py-2 rounded-full border ${ac.border} ${ac.bg} mb-5`}
+                <motion.div className={`inline-flex items-center gap-2.5 px-5 py-2 rounded-full border ${ac.border} ${ac.bg}`}
                   initial={{ scale: 0 }} animate={{ scale: 1 }}
                   transition={{ delay: 0.6, type: "spring", stiffness: 200 }}>
                   <StatusIcon className="text-base" style={{ color: ac.hex }} />
                   <span className={`font-mono text-[10px] tracking-[0.25em] uppercase ${ac.tw}`}>{ac.label}</span>
                 </motion.div>
 
-                <div className="w-full grid grid-cols-4 gap-4 pt-5 border-t border-white/[0.04]">
+                <div className="w-full flex pt-5 border-t border-white/[0.04]">
                   {[
-                    { l: "Riesgo",  v: `${isNaN(weather.windGusts/10) ? "—" : Math.ceil(weather.windGusts/10)}/10` },
-                    { l: "Lluvia",  v: `${fmt(weather.precipProb)}%` },
-                    { l: "Viento",  v: `${fmt(weather.windSpeed)} km/h` },
-                    { l: "Estado",  v: ac.risk },
-                  ].map(({ l, v }, i) => (
-                    <motion.div key={l} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.7 + i * 0.1 }} className="text-center">
-                      <p className={`font-mono text-[7px] tracking-widest uppercase mb-1 opacity-50 ${ac.tw}`}>{l}</p>
-                      <motion.p key={v} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-sm lg:text-base text-white font-light tabular-nums">{v}</motion.p>
-                    </motion.div>
+                    { l: "Riesgo",  v: `${isNaN(weather.windGusts/10) ? "—" : Math.ceil(weather.windGusts/10)}/10`, metric: true },
+                    { l: "Lluvia",  v: `${fmt(weather.precipProb)}%`, metric: true },
+                    { l: "Viento",  v: `${fmt(weather.windSpeed)} km/h`, metric: true },
+                    { l: "Estado",  v: ac.risk, metric: false },
+                  ].map(({ l, v, metric }, i) => (
+                    <div key={l} className="flex-1 flex">
+                      {i > 0 && <div className="w-px bg-white/[0.04] mx-2" />}
+                      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.7 + i * 0.1 }}
+                        className={`flex-1 text-center ${metric ? '' : 'relative'}`}>
+                        <p className={`font-mono text-[7px] tracking-widest uppercase mb-1 ${metric ? 'opacity-50' : 'opacity-70'} ${metric ? '' : ac.tw}`}>{l}</p>
+                        <motion.p key={v} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className={`text-sm lg:text-base font-light tabular-nums ${metric ? 'text-white' : ac.tw}`}>{v}</motion.p>
+                        {!metric && <div className="absolute -top-1 right-2 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ac.hex, boxShadow: `0 0 6px ${ac.hex}` }} />}
+                      </motion.div>
+                    </div>
                   ))}
                 </div>
               </StatCard>
@@ -634,13 +791,13 @@ export default React.memo(function WeatherSection() {
                   transition={{ duration: 1, delay: 0.5 }} />
               </span>
             </motion.div>
-            <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
+            <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto pr-1">
               {metrics.map((m, i) => {
                 const pct = Math.min(100, Math.max(0, ((m.value - (m.min || 0)) / (m.max - (m.min || 0))) * 100));
                 const Icon = m.icon;
                 return (
                   <motion.div key={m.id} custom={2.5 + i * 0.08} variants={CARD_VARIANTS} initial="hidden" animate="visible"
-                    className="rounded-xl border border-white/[0.04] bg-white/[0.02] backdrop-blur-xl px-4 py-3 flex items-center gap-3
+                    className="rounded-xl border border-white/[0.04] bg-white/[0.04] px-4 py-2.5 flex items-center gap-3
                       hover:border-white/[0.08] hover:bg-white/[0.03] transition-all duration-300 cursor-default group relative overflow-hidden"
                   >
                     <div className="absolute -top-4 -right-4 text-3xl text-white/[0.01] group-hover:text-white/[0.03] transition-all duration-500">
@@ -658,11 +815,11 @@ export default React.memo(function WeatherSection() {
                         {m.unit}
                       </p>
                     </div>
-                    <div className="w-12 h-1 bg-white/[0.05] rounded-full overflow-hidden shrink-0 rotate-180">
-                      <motion.div className="h-full rounded-full"
-                        initial={{ width: 0 }} animate={{ width: `${100 - pct}%` }}
+                    <div className="w-14 h-1.5 bg-white/[0.05] rounded-full overflow-hidden shrink-0" style={{ boxShadow: `0 0 4px ${m.color}30` }}>
+                      <motion.div className="h-full rounded-full origin-left"
+                        initial={{ scaleX: 0 }} animate={{ scaleX: (100 - pct) / 100 }}
                         transition={{ duration: 1.2, delay: 0.3 + i * 0.08, ease: "easeOut" }}
-                        style={{ backgroundColor: m.color }} />
+                        style={{ backgroundColor: m.color, boxShadow: `0 0 8px ${m.color}, 0 0 16px ${m.color}40` }} />
                     </div>
                   </motion.div>
                 );
@@ -682,11 +839,10 @@ export default React.memo(function WeatherSection() {
             </div>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
-            {hours.map((hour, i) => (
-              <HourCell key={hour} hour={hour}
-                prob={Math.max(0, Math.min(100, weather.precipProb + (i * 3) + Math.floor(Math.random() * 6 - 3)))}
-                temp={weather.temp + Math.floor(Math.random() * 3 - 1)}
-                icon={weather.precipProb > 40 ? FiCloudRain : weather.precipProb > 20 ? FiCloud : FiSun}
+            {forecastData.map((item, i) => (
+              <HourCell key={item.hour} hour={item.hour}
+                prob={item.prob}
+                temp={item.temp}
                 delay={4.5 + i * 0.06} />
             ))}
           </div>
@@ -708,10 +864,6 @@ export default React.memo(function WeatherSection() {
           50% { transform: translateY(-30px) translateX(5px); opacity: 0.2; }
           75% { transform: translateY(-15px) translateX(-5px); opacity: 0.35; }
         }
-        @keyframes radar-sweep {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
         @keyframes heat-wave {
           0% { transform: scale(0.5); opacity: 0.6; }
           100% { transform: scale(2.5); opacity: 0; }
@@ -727,6 +879,9 @@ export default React.memo(function WeatherSection() {
           20% { opacity: 1; }
           80% { opacity: 1; }
           100% { transform: translateX(120vw) scaleX(0.5); opacity: 0; }
+        }
+        @keyframes ping-pulse {
+          75%, 100% { transform: scale(2); opacity: 0; }
         }
       `}</style>
     </div>

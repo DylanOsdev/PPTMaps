@@ -1,25 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-
-function useCountUp(target, duration = 1000) {
-  const [display, setDisplay] = useState(target);
-  const prev = useRef(target);
-  const raf = useRef(null);
-  useEffect(() => {
-    if (target === prev.current) return;
-    const start = performance.now();
-    const from = prev.current;
-    prev.current = target;
-    const step = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(Math.round(from + (target - from) * eased));
-      if (t < 1) raf.current = requestAnimationFrame(step);
-    };
-    raf.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf.current);
-  }, [target, duration]);
-  return display;
-}
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCountUp } from '../../../hooks/useCountUp';
 
 function CircularGauge({ value, max, size = 32, stroke = 2.5, color }) {
   const r = (size - stroke) / 2;
@@ -63,7 +43,7 @@ function LiveDot() {
   );
 }
 
-function MetricTile({ value, label, color, bg, accent, sparkData, gaugeMax }) {
+function MetricTile({ value, label, color, bg, sparkData, gaugeMax }) {
   const animated = useCountUp(value);
   return (
     <div className={`group relative overflow-hidden rounded-2xl ${bg} backdrop-blur-sm transition-all duration-500 hover:scale-[1.04] hover:shadow-xl cursor-default`}>
@@ -201,17 +181,19 @@ const sparklines = {
   sino: [0, 1, 0, 0, 1, 0, 1, 0, 0, 1],
 };
 
+const MOCK_DATA = {
+  reportes: 245,
+  alerta: 2,
+  sino: 1,
+  municipios: [
+    { name: 'Itagüí', active: true, reports: 62 },
+    { name: 'Envigado', active: true, reports: 45 },
+    { name: 'Sabaneta', active: false, reports: 28 },
+  ],
+};
+
 export default function CityDashboard() {
-  const [data] = useState({
-    reportes: 245,
-    alerta: 2,
-    sino: 1,
-    municipios: [
-      { name: 'Itagüí', active: true, reports: 62 },
-      { name: 'Envigado', active: true, reports: 45 },
-      { name: 'Sabaneta', active: false, reports: 28 },
-    ],
-  });
+  const [data] = useState(MOCK_DATA);
   const [timestamp] = useState(Date.now() - 2500);
   const timeAgo = useTimeAgo(timestamp);
 
@@ -233,7 +215,7 @@ export default function CityDashboard() {
         <div className="absolute -inset-[3px] rounded-3xl bg-gradient-to-b from-cyan-400/10 via-teal-400/5 to-transparent opacity-50 blur-md" />
 
         {/* Card */}
-        <div className="relative rounded-3xl bg-slate-900/50 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.04] overflow-hidden">
+        <div className="relative rounded-3xl bg-slate-900/80 shadow-[0_8px_40px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.04] overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
           <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-cyan-500/4 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-teal-500/3 blur-3xl pointer-events-none" />
@@ -274,13 +256,13 @@ export default function CityDashboard() {
             {/* Metrics */}
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
               <MetricTile value={data.reportes} label="Reportes" color="text-cyan-300"
-                bg="bg-gradient-to-br from-cyan-500/8 to-cyan-500/3" accent="from-cyan-400 to-teal-400"
+                bg="bg-gradient-to-br from-cyan-500/8 to-cyan-500/3"
                 sparkData={sparklines.reportes} gaugeMax={300} />
               <MetricTile value={data.alerta} label="Alertas" color="text-red-400"
-                bg="bg-gradient-to-br from-red-500/8 to-red-500/3" accent="from-red-400 to-red-500"
+                bg="bg-gradient-to-br from-red-500/8 to-red-500/3"
                 sparkData={sparklines.alerta} gaugeMax={5} />
               <MetricTile value={data.sino} label="Sino" color="text-amber-400"
-                bg="bg-gradient-to-br from-amber-500/8 to-amber-500/3" accent="from-amber-400 to-amber-500"
+                bg="bg-gradient-to-br from-amber-500/8 to-amber-500/3"
                 sparkData={sparklines.sino} gaugeMax={5} />
             </div>
 

@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
-@import './static/css/tppmaps.css';
-@import './static/css/movil.css';
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 @import "tailwindcss";
 
 @theme { 
@@ -17,28 +15,6 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-display: "Orbitron", system-ui, sans-serif;
 }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes ticker {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scan {
-  from { top: 0; }
-  to { top: 100%; }
-}
-
-/* ── Landing Page Styles ── */
 
 html.page-landing-futuristic,
 html.page-landing-futuristic body {
@@ -75,171 +51,14 @@ html.page-landing-futuristic body {
   background-position: center center;
 }
 
-.radar-ring {
-  border: 1px solid rgba(34, 211, 238, 0.05);
-  border-radius: 50%;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+@keyframes scan-line {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
 }
 
-.btn-holographic {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.btn-holographic::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.4), transparent);
-  transform: skewX(-20deg);
-  animation: btn-sweep 4s infinite;
-}
-
-@keyframes btn-sweep {
-  0% { left: -100%; }
-  20%, 100% { left: 200%; }
-}
-
-.logo-shimmer {
-  position: relative;
-  display: inline-block;
-}
-
-.logo-shimmer::after {
-  content: "PPTMAPS";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.8), transparent);
-  background-size: 200% auto;
-  color: transparent;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: shimmer-text 3s infinite linear;
-  z-index: 10;
-  pointer-events: none;
-}
-
-@keyframes shimmer-text {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-@keyframes radar-sweep {
-  from { transform: rotate(0deg); -webkit-transform: rotate(0deg); }
-  to { transform: rotate(360deg); -webkit-transform: rotate(360deg); }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); -webkit-transform: translateX(-100%); }
-  100% { transform: translateX(100%); -webkit-transform: translateX(100%); }
-}
-
-@keyframes data-flow {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
-
-@keyframes pulse-ring {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.15); }
-}
-
-.animate-float-up {
-  animation: float-up 4s ease-in-out infinite;
-}
-@keyframes float-up {
-  0%, 100% { opacity: 0; transform: translateY(10px); }
-  50% { opacity: 0.9; transform: translateY(-20px); }
-}
-
-.animate-bar-wave {
-  animation: bar-wave 1.5s ease-in-out infinite;
-}
-@keyframes bar-wave {
-  0%, 100% { transform: scaleY(0.2); }
-  50% { transform: scaleY(1); }
-}
-
-.animate-stream-line {
-  animation: stream-line linear infinite;
-}
-@keyframes stream-line {
-  from { transform: translateX(-300px); }
-  to { transform: translateX(120vw); }
-}
-
-.animate-report-node {
-  animation: report-node 5s ease-in-out infinite;
-}
-@keyframes report-node {
-  0%, 100% { opacity: 0; transform: scale(0.7); }
-  12% { opacity: 1; transform: scale(1); }
-  80% { opacity: 1; transform: scale(1); }
-}
-
-.animate-energy-pulse {
-  animation: energy-pulse 3s ease-in-out infinite;
-}
-@keyframes energy-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.2); opacity: 0.8; }
-}
-
-.animate-ring-expand {
-  animation: ring-expand 3s ease-out infinite;
-}
-@keyframes ring-expand {
-  0% { width: 120px; height: 120px; opacity: 0.8; }
-  100% { width: 800px; height: 800px; opacity: 0; }
-}
-
-.animate-orb-glow {
-  animation: orb-glow 4s ease-in-out infinite;
-}
-@keyframes orb-glow {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-}
-
-.animate-holo-ring {
-  animation: holo-ring 4s ease-in-out infinite;
-}
-@keyframes holo-ring {
-  0%, 100% { opacity: 0.2; border-width: 1.5px; }
-  50% { opacity: 0.5; border-width: 2.5px; }
-}
-
-.animate-sine-wave {
-  animation: sine-wave 1s ease-in-out infinite;
-}
-@keyframes sine-wave {
-  0% { d: path("M 0,20 Q 25,5 50,20 T 100,20 T 150,20 T 200,20"); }
-  50% { d: path("M 0,20 Q 25,35 50,20 T 100,20 T 150,20 T 200,20"); }
-  100% { d: path("M 0,20 Q 25,5 50,20 T 100,20 T 150,20 T 200,20"); }
-}
-
-/* ── Report-specific landing override ── */
-
-html.page-landing,
-html.page-landing body {
-  margin: 0;
-  padding: 0;
-  height: auto;
-  min-height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: #0a1628;
-  color: #e2e8f0;
-  font-size: 15px;
-  line-height: 1.5;
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
 }
 
 /* Fix for Leaflet + Tailwind: prevent tiles from distorting and lagging on zoom */

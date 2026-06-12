@@ -1,97 +1,445 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
-import Particles from '../components/Particles.jsx';
-import AnimatedText from '../components/AnimatedText.jsx';
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
+import Globe3D from '../components/Globe3D.jsx';
+import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
 
-const HERO_STATIC_NODES = [
-  [150,300],[250,150],[400,200],[550,100],[700,250],[850,200],
-  [800,450],[900,600],[750,700],[600,600],[500,800],[350,700],
-  [200,800],[100,600],[250,500]
-];
+function useReducedMotion() {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(mq.matches);
+    const handler = (e) => setReduceMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduceMotion;
+}
 
-const FLOATING_DATA_POINTS = [
-  { text: "6.2442° N, -75.5812° W", delay: 0,   top: "15%", left: "72%", repDelay: 2 },
-  { text: "VALLE DE ABURRÁ",         delay: 1.5, top: "78%", left: "12%", repDelay: 3 },
-  { text: "GPS ACTIVE: [NOMINAL]",   delay: 1,   top: "22%", left: "18%", repDelay: 1 },
-  { text: "DATA STREAM // SYNCED",   delay: 2.5, top: "65%", left: "60%", repDelay: 4 },
-  { text: "LATENCY: 28MS",           delay: 0.5, top: "42%", left: "82%", repDelay: 2 },
-  { text: "TELEMETRY ON",            delay: 3,   top: "88%", left: "35%", repDelay: 3 },
-];
+function useAnimatedCounter(end, duration = 2, delay = 0) {
+  const [count, setCount] = useState(0);
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    let rafId;
+    const timeout = setTimeout(() => {
+      started.current = true;
+      const startTime = Date.now();
+      const animate = () => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.floor(eased * end));
+        if (progress < 1) rafId = requestAnimationFrame(animate);
+      };
+      rafId = requestAnimationFrame(animate);
+    }, delay * 1000);
+    return () => {
+      clearTimeout(timeout);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [end, duration, delay]);
+  return count;
+}
 
-const FloatingData = React.memo(() => (
-  <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-    {FLOATING_DATA_POINTS.map((dp, i) => (
-      <div
-        key={i}
-        className="absolute font-mono text-[9px] md:text-[10px] text-cyan-400/60 tracking-[0.2em] uppercase animate-float-up"
-        style={{ top: dp.top, left: dp.left, animationDelay: `${dp.delay}s`, animationDuration: '4s' }}
-      >
-        {dp.text}
-      </div>
-    ))}
-  </div>
-));
+function useLiveClock() {
+  const [display, setDisplay] = useState({ time: '', date: '' });
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setDisplay({
+        time: now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+        date: now.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase(),
+      });
+    };
+    update();
+    let id = setInterval(update, 1000);
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(id);
+      } else {
+        update();
+        id = setInterval(update, 1000);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+  return display;
+}
 
-const MiniStatusPanel = React.memo(() => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 2.5, duration: 1 }}
-    className="flex flex-wrap items-center justify-center gap-3 md:gap-8 mt-10 py-3 px-6 md:px-10 backdrop-blur-md bg-slate-900/40 border border-cyan-400/30 rounded-full shadow-[0_0_25px_rgba(34,211,238,0.15)] relative overflow-hidden"
-  >
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent animate-[shimmer_3s_infinite]" />
-    
+function StatusIndicator() {
+  return (
     <div className="flex items-center gap-2">
-      <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22D3EE] animate-pulse" />
-      <span className="font-mono text-[9px] md:text-xs text-cyan-400 tracking-widest font-bold">SISTEMA ONLINE</span>
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+      </span>
+      <span className="font-mono text-[10px] text-green-400 tracking-[0.15em] font-bold">SISTEMA ACTIVO</span>
     </div>
-    
-    <span className="text-slate-600 hidden md:block">|</span>
-    <div className="font-mono text-[9px] md:text-xs text-slate-300 tracking-widest"><strong className="text-white">847</strong> GPS ACTIVOS</div>
-    
-    <span className="text-slate-600 hidden md:block">|</span>
-    <div className="font-mono text-[9px] md:text-xs text-slate-300 tracking-widest"><strong className="text-white">16</strong> COMUNAS</div>
-    
-    <span className="text-slate-600 hidden md:block">|</span>
-    <div className="font-mono text-[9px] md:text-xs text-slate-300 tracking-widest"><strong className="text-white">9</strong> CAPAS</div>
-    
-    <span className="text-slate-600 hidden md:block">|</span>
-    <div className="font-mono text-[9px] md:text-xs text-slate-300 tracking-widest">LATENCIA: <strong className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">28ms</strong></div>
-  </motion.div>
-));
+  );
+}
+
+function TopBar({ weather }) {
+  const { time, date } = useLiveClock();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.6 }}
+      className="absolute top-0 left-0 right-0 z-30 px-6 md:px-10 pt-4 md:pt-6"
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <StatusIndicator />
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="hidden sm:flex items-center gap-2 font-mono text-[10px] text-cyan-400/60">
+            <span className="text-cyan-400/40">NODE:</span>
+            <span className="text-white font-bold tracking-wider">MEDELLÍN</span>
+          </div>
+          <div className="w-[1px] h-4 bg-cyan-400/20 hidden sm:block" />
+          <div className="font-mono text-[11px] text-cyan-300 tracking-wider tabular-nums">{time}</div>
+          <div className="w-[1px] h-4 bg-cyan-400/20 hidden sm:block" />
+          <div className="font-mono text-[9px] text-cyan-400/50 tracking-wider hidden md:block">{date}</div>
+          {weather && (
+            <>
+              <div className="w-[1px] h-4 bg-cyan-400/20 hidden md:block" />
+              <div className="hidden md:flex items-center gap-1.5 font-mono text-[11px] text-cyan-300">
+                <span>{weather.condition.icon}</span>
+                <span className="tabular-nums">{weather.temp}°C</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const STAT_CARDS = [
+  { label: 'GPS ACTIVOS', end: 847, suffix: '', icon: 'sat', color: 'from-cyan-400 to-blue-500' },
+  { label: 'COMUNAS', end: 16, suffix: '', icon: 'com', color: 'from-green-400 to-emerald-500' },
+  { label: 'CAPAS', end: 9, suffix: '', icon: 'lay', color: 'from-violet-400 to-purple-500' },
+  { label: 'LATENCIA', end: 28, suffix: 'ms', icon: 'lat', color: 'from-amber-400 to-orange-500' },
+];
+
+function StatIcon({ type }) {
+  if (type === 'sat') return (
+    <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-5.5 3 2-7L3 9h7l2-7z" />
+    </svg>
+  );
+  if (type === 'com') return (
+    <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+  if (type === 'lay') return (
+    <svg className="w-5 h-5 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+    </svg>
+  );
+  return (
+    <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+}
+
+function StatCard({ label, end, suffix, icon, color, delay, duration }) {
+  const count = useAnimatedCounter(end, duration, delay);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: delay + 0.3, duration: 0.5, ease: 'easeOut' }}
+      className="relative group"
+    >
+      <div className="absolute -inset-[1px] bg-gradient-to-br from-white/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative bg-[#0A1A30]/60 backdrop-blur-sm border border-cyan-400/15 rounded-xl px-4 py-3 overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
+        <div className="flex items-center gap-3">
+          <StatIcon type={icon} />
+          <div className="flex flex-col">
+            <span className="font-mono text-xl md:text-2xl font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] tabular-nums">
+              {count}{suffix}
+            </span>
+            <span className="font-mono text-[8px] md:text-[9px] text-cyan-400/50 tracking-[0.2em]">
+              {label}
+            </span>
+          </div>
+        </div>
+        <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r ${color} opacity-30 group-hover:opacity-60 transition-opacity duration-500`} />
+      </div>
+    </motion.div>
+  );
+}
+
+function DataPanel({ config, weather }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
+      className="w-full lg:w-[420px] xl:w-[480px] flex-shrink-0"
+    >
+      <div className="bg-[#0A1A30]/80 border border-cyan-400/20 rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.08),inset_0_0_60px_rgba(34,211,238,0.02)]">
+        <div className="px-5 py-3 border-b border-cyan-400/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-red-500" />
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+          </div>
+          <span className="font-mono text-[9px] text-cyan-400/40 tracking-[0.2em] uppercase">control room · v2.4</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+            <span className="font-mono text-[8px] text-green-400/60 tracking-wider">LINK</span>
+          </div>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {STAT_CARDS.map((stat, i) => (
+              <StatCard
+                key={stat.label}
+                {...stat}
+                delay={0.8 + i * 0.2}
+                duration={config.counterDuration}
+              />
+            ))}
+          </div>
+          <WeatherWidget weather={weather} />
+          <DataStream />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function WeatherWidget({ weather }) {
+  const loading = !weather;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.6, duration: 0.5 }}
+      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl p-3"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.25em] uppercase">Condiciones actuales</span>
+        <span className="font-mono text-[8px] text-cyan-400/30">{weather ? 'LIVE' : '--'}</span>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-cyan-400/10 rounded-full animate-pulse" />
+          <div className="space-y-1.5 flex-1">
+            <div className="h-4 w-16 bg-cyan-400/10 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-cyan-400/10 rounded animate-pulse" />
+          </div>
+        </div>
+      ) : weather ? (
+        <div className="flex items-center gap-3">
+          <div className="text-3xl font-mono font-bold text-cyan-300 w-12 text-center">{weather.condition.icon}</div>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-2xl font-bold text-white tabular-nums">{weather.temp}°</span>
+              <span className="font-mono text-[10px] text-cyan-400/40">ST {weather.feelsLike}°</span>
+            </div>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="font-mono text-[10px] text-cyan-400/70">{weather.condition.label}</span>
+              <span className="text-cyan-400/30">·</span>
+              <span className="font-mono text-[10px] text-cyan-400/50">HUM {weather.humidity}%</span>
+              <span className="text-cyan-400/30">·</span>
+              <span className="font-mono text-[10px] text-cyan-400/50">WND {weather.windSpeed} km/h</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <div className="text-3xl font-mono font-bold text-cyan-300 w-12 text-center">SOL</div>
+          <div>
+            <div className="font-mono text-2xl font-bold text-white">24°</div>
+            <div className="font-mono text-[10px] text-cyan-400/50">Medellín · Parcialmente nublado</div>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function DataStream() {
+  const messages = useMemo(() => [
+    '[SIATA] 1,247 sensores activos en la red',
+    '[METRO] 9.2M viajes este mes',
+    '[CLIMA] Estaciones pluviometricas · 42 reportando',
+    '[TRAF] 316 camaras en linea',
+    '[EMERG] 8 incidentes activos',
+    '[PROC] 2.4K datos/segundo',
+    '[BLOCK] 1,892 transacciones',
+    '[COBERT] 16 comunas monitoreadas',
+  ], []);
+
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    let timeoutId;
+    const interval = setInterval(() => {
+      setVisible(false);
+      timeoutId = setTimeout(() => {
+        setIndex((prev) => (prev + 1) % messages.length);
+        setVisible(true);
+      }, 400);
+    }, 3000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeoutId);
+    };
+  }, [messages.length]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 2, duration: 0.5 }}
+      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl px-3 py-2.5 overflow-hidden"
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.25em] uppercase">Data Stream</span>
+        <span className="flex-1" />
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+        </span>
+      </div>
+      <AnimatePresence mode="wait">
+        {visible && (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="font-mono text-[11px] text-cyan-300/80 tracking-wide"
+          >
+            {messages[index]}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function TypewriterText({ text, delay = 0, baseSpeed = 0.04, className = '' }) {
+  const [progress, setProgress] = useState(0);
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    setProgress(0);
+    setShowCursor(true);
+    let innerInterval = null;
+    let cursorTimeout = null;
+    const startTimeout = setTimeout(() => {
+      let i = 0;
+      innerInterval = setInterval(() => {
+        i++;
+        setProgress(i / text.length);
+        if (i >= text.length) {
+          clearInterval(innerInterval);
+          innerInterval = null;
+          cursorTimeout = setTimeout(() => setShowCursor(false), 2000);
+        }
+      }, baseSpeed * 1000);
+    }, delay * 1000);
+    return () => {
+      clearTimeout(startTimeout);
+      if (innerInterval) clearInterval(innerInterval);
+      if (cursorTimeout) clearTimeout(cursorTimeout);
+    };
+  }, [text.length, delay, baseSpeed]);
+
+  return (
+    <span className="inline-block relative">
+      <span className={className} style={{ clipPath: `inset(0 ${(1 - progress) * 100}% 0 0)` }}>
+        {text}
+      </span>
+      {showCursor && progress < 1 && (
+        <span className="inline-block w-[3px] h-[0.85em] bg-cyan-400 ml-0.5 align-middle animate-pulse shadow-[0_0_8px_#22D3EE]"
+          style={{ position: 'absolute', right: `${(1 - progress) * 100}%` }}
+        />
+      )}
+    </span>
+  );
+}
 
 function HeroCTA() {
   const navigate = useNavigate();
   const [isExpanding, setIsExpanding] = useState(false);
-  const navTimerRef = useRef(null);
+  const timerRef = useRef(null);
 
   const handleClick = () => {
     setIsExpanding(true);
-    navTimerRef.current = setTimeout(() => navigate('/map'), 1200);
+    timerRef.current = setTimeout(() => navigate('/map'), 1200);
   };
 
   useEffect(() => {
-    return () => clearTimeout(navTimerRef.current);
+    return () => clearTimeout(timerRef.current);
   }, []);
 
   return (
     <>
-      <button
-        onClick={handleClick}
-        className="relative px-12 py-4 rounded-full bg-cyan-500/10 border border-cyan-400 text-cyan-400 font-bold text-sm md:text-base tracking-[0.25em] uppercase overflow-hidden group shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:shadow-[0_0_40px_rgba(34,211,238,0.6)] transition-all duration-300 btn-holographic"
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 2.2, duration: 0.6, ease: 'easeOut' }}
       >
-        <span className="relative z-10 group-hover:text-black transition-colors duration-300">          Abrir Panel de Control</span>
-        <div className="absolute inset-0 bg-cyan-400 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out z-0" />
-      </button>
+        <button
+          onClick={handleClick}
+          className="group relative px-8 md:px-10 py-4 md:py-3.5 bg-gradient-to-r from-cyan-500/15 via-cyan-400/25 to-cyan-500/15 border border-cyan-400/40 rounded-xl text-white font-bold text-xs md:text-sm tracking-[0.3em] uppercase overflow-hidden cursor-pointer transition-all duration-500"
+          style={{
+            boxShadow: '0 0 30px rgba(34,211,238,0.12), inset 0 0 30px rgba(34,211,238,0.03)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 50px rgba(34,211,238,0.35), inset 0 0 40px rgba(34,211,238,0.1)';
+            e.currentTarget.style.borderColor = 'rgba(34,211,238,0.7)';
+            e.currentTarget.style.background = 'linear-gradient(to right, rgba(34,211,238,0.25), rgba(34,211,238,0.4), rgba(34,211,238,0.25))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 30px rgba(34,211,238,0.12), inset 0 0 30px rgba(34,211,238,0.03)';
+            e.currentTarget.style.borderColor = 'rgba(34,211,238,0.4)';
+            e.currentTarget.style.background = 'linear-gradient(to right, rgba(34,211,238,0.15), rgba(34,211,238,0.25), rgba(34,211,238,0.15))';
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+          <div className="absolute inset-0 rounded-xl border border-cyan-400/0 group-hover:border-cyan-400/50 transition-all duration-500 scale-90 group-hover:scale-105" />
+          <span className="relative z-10 flex items-center gap-3">
+            Explorar Dashboard
+            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </span>
+        </button>
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.3em]">
+            {`[`}<span className="text-cyan-400/60">ENTER</span>{`]`}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-cyan-400/30" />
+          <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.3em]">
+            ACCEDER AL PANEL
+          </span>
+        </div>
+      </motion.div>
 
       <AnimatePresence>
         {isExpanding && (
-          <motion.div 
+          <motion.div
             className="fixed z-[100] bg-cyan-400 rounded-full pointer-events-none"
             initial={{ scale: 0, opacity: 1 }}
-            animate={{ scale: 5, opacity: 1 }}
-            transition={{ duration: 1.2, ease: "circIn" }}
+            animate={{ scale: 8, opacity: 1 }}
+            transition={{ duration: 1.2, ease: 'circIn' }}
             style={{ top: '50%', left: '50%', width: '100vmax', height: '100vmax', x: '-50%', y: '-50%' }}
           />
         )}
@@ -100,20 +448,101 @@ function HeroCTA() {
   );
 }
 
-export default React.memo(function HeroSection() {
+function ScanLine() {
+  return (
+    <motion.div
+      className="absolute left-0 right-0 h-[2px] pointer-events-none z-10"
+      style={{
+        background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.12) 30%, rgba(34,211,238,0.25) 50%, rgba(34,211,238,0.12) 70%, transparent 100%)',
+      }}
+      animate={{ y: ['-2vh', '102vh'], opacity: [0, 1, 1, 0] }}
+      transition={{ duration: 4, repeat: Infinity, ease: 'linear', times: [0, 0.1, 0.9, 1] }}
+    />
+  );
+}
+
+function StatusBar() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 2.8, duration: 0.6, ease: 'easeOut' }}
+      className="absolute bottom-0 left-0 right-0 z-20 px-4 md:px-8 pb-4 md:pb-5"
+    >
+      <div className="max-w-7xl mx-auto bg-[#041327]/90 border border-cyan-400/15 rounded-xl px-5 py-2.5 shadow-[0_0_25px_rgba(34,211,238,0.06)]">
+        <div className="flex items-center gap-4 md:gap-6 font-mono text-[8px] md:text-[10px] text-cyan-400/50 tracking-[0.15em] uppercase overflow-x-auto">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-cyan-400/30">SYS:</span>
+            <span className="text-white font-bold">PPT-001</span>
+          </div>
+          <span className="w-[1px] h-3 bg-cyan-400/15 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-cyan-400/30">NODE:</span>
+            <span className="text-white font-bold">MEDELLÍN</span>
+          </div>
+          <span className="w-[1px] h-3 bg-cyan-400/15 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-cyan-400/30">UPLINK:</span>
+            <span className="text-green-400 font-bold">STABLE</span>
+          </div>
+          <span className="w-[1px] h-3 bg-cyan-400/15 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-cyan-400/30">GPS:</span>
+            <span className="text-white font-bold">847 ONLINE</span>
+          </div>
+          <span className="w-[1px] h-3 bg-cyan-400/15 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-cyan-400/30">SENSORES:</span>
+            <span className="text-white font-bold">1,247</span>
+          </div>
+          <span className="w-[1px] h-3 bg-cyan-400/15 shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-green-400 animate-pulse">●</span>
+            <span className="text-green-400/70">SISTEMA OPERACIONAL</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function HeroSection() {
+  const reduceMotion = useReducedMotion();
+  const { config, isReady } = useDevicePerformance();
+  const [weather, setWeather] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/v1/public/weather/forecast')
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        if (!mounted) return;
+        const cur = data.current;
+        const WMO = {
+          0: { label: 'Despejado', icon: 'SOL' }, 1: { label: 'Mayormente despejado', icon: 'SOL' },
+          2: { label: 'Parcialmente nublado', icon: 'NUB' }, 3: { label: 'Nublado', icon: 'NUB' },
+          45: { label: 'Niebla', icon: 'NIE' }, 61: { label: 'Lluvia', icon: 'LLU' },
+          63: { label: 'Lluvia', icon: 'LLU' }, 80: { label: 'Chubascos', icon: 'LLU' },
+          95: { label: 'Tormenta', icon: 'TOR' },
+        };
+        const cond = WMO[cur.weather_code] || { label: '--', icon: 'SOL' };
+        setWeather({
+          temp: cur.temperature_2m,
+          condition: cond,
+          humidity: cur.relative_humidity_2m,
+          windSpeed: cur.wind_speed_10m,
+        });
+      })
+      .catch(() => { if (mounted) setWeather(null); });
+    return () => { mounted = false; };
+  }, []);
+
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-
-  const layer1X = useTransform(mouseX, v => v * -10);
-  const layer1Y = useTransform(mouseY, v => v * -10);
-  const layer2X = useTransform(mouseX, v => v * -20);
-  const layer2Y = useTransform(mouseY, v => v * -20);
-  const layer3X = useTransform(mouseX, v => v * -40);
-  const layer3Y = useTransform(mouseY, v => v * -40);
-  const layer4X = useTransform(mouseX, v => v * -15);
-  const layer4Y = useTransform(mouseY, v => v * -15);
-  const layer5X = useTransform(mouseX, v => v * -5);
-  const layer5Y = useTransform(mouseY, v => v * -5);
+  const springX = useSpring(mouseX, { stiffness: 40, damping: 25 });
+  const springY = useSpring(mouseY, { stiffness: 40, damping: 25 });
+  const bgX = useTransform(springX, v => v * -20);
+  const bgY = useTransform(springY, v => v * -20);
 
   const handleMouseMove = useCallback((e) => {
     const { innerWidth, innerHeight } = window;
@@ -121,72 +550,97 @@ export default React.memo(function HeroSection() {
     mouseY.set((e.clientY / innerHeight - 0.5) * 2);
   }, [mouseX, mouseY]);
 
+  if (!isReady) {
+    return (
+      <div className="w-full h-full bg-[#041327]">
+        <div className="absolute inset-0 cartographic-grid opacity-20 pointer-events-none z-0" />
+      </div>
+    );
+  }
+
+  const enableScanLine = config.enableScanLine && !reduceMotion;
+
   return (
-    <div onMouseMove={handleMouseMove} className="w-full h-full flex flex-col items-center justify-center relative bg-[#041327] overflow-hidden">
-      
-      <div className="absolute inset-0 cartographic-grid opacity-50 pointer-events-none" />
+    <div onMouseMove={handleMouseMove} className="w-full h-full flex flex-col bg-[#041327] overflow-hidden selection:bg-cyan-400/30 contain-[layout_style]">
+      <div className="absolute inset-0 cartographic-grid opacity-20 pointer-events-none z-0" />
+      <div className="absolute inset-0" style={{
+        background: 'radial-gradient(ellipse at 30% 50%, rgba(34,211,238,0.04) 0%, transparent 60%), radial-gradient(ellipse at 70% 20%, rgba(59,130,246,0.03) 0%, transparent 50%)',
+      }} />
+      {enableScanLine && <ScanLine />}
 
-      <motion.div className="absolute inset-0 z-0 pointer-events-none" style={{ x: layer1X, y: layer1Y }}>
-        <Particles color="#0B2447" />
-        <Particles color="#22D3EE" />
+      <motion.div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={!reduceMotion ? { x: bgX, y: bgY } : {}}
+      >
+        <Globe3D config={config} />
       </motion.div>
 
-      <motion.div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-80" style={{ x: layer2X, y: layer2Y }}>
-        <div className="w-[80vw] h-[80vw] md:w-[900px] md:h-[900px] radar-ring" />
-        <div className="w-[50vw] h-[50vw] md:w-[600px] md:h-[600px] radar-ring" />
-        <div className="w-[25vw] h-[25vw] md:w-[300px] md:h-[300px] radar-ring border-cyan-400/20" />
-      </motion.div>
+      <TopBar weather={weather} />
+      <StatusBar />
 
-      <motion.div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center opacity-80" style={{ x: layer3X, y: layer3Y }}>
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: '900px', height: '900px',
-            background: 'conic-gradient(from 0deg, transparent 70%, rgba(34,211,238,0.05) 90%, rgba(34,211,238,0.25) 100%)',
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-        />
-        <svg viewBox="0 0 1000 1000" className="w-[90vw] h-[90vw] md:w-[900px] md:h-[900px] opacity-90">
-          <path d="M150,300 L250,150 L400,200 L550,100 L700,250 L850,200 L800,450 L900,600 L750,700 L600,600 L500,800 L350,700 L200,800 L100,600 L250,500 Z M250,150 L250,500 M400,200 L600,600 M700,250 L500,800 M800,450 L350,700 M100,600 L550,100 M250,500 L750,700"
-            fill="none" stroke="rgba(34,211,238,0.15)" strokeWidth="1" />
-          <path
-            d="M150,300 L250,150 L400,200 L550,100 L700,250 L850,200 L800,450 L900,600 L750,700 L600,600 L500,800 L350,700 L200,800 L100,600 L250,500 Z"
-            fill="none" stroke="#22D3EE" strokeWidth="1.5" strokeDasharray="10 40 5 20 2 60"
-            style={{ animation: "data-flow 30s linear infinite" }}
-          />
-          {HERO_STATIC_NODES.map(([cx,cy],i) => (
-            <g key={i}>
-              <circle cx={cx} cy={cy} r="5" fill="none" stroke="rgba(34,211,238,0.4)" strokeWidth="1" />
-              <circle cx={cx} cy={cy} r="2.5" fill="#22D3EE" opacity="0.8" />
-            </g>
-          ))}
-        </svg>
-      </motion.div>
+      <div className="relative z-20 flex-1 flex items-center justify-center px-4 md:px-8 lg:px-12">
+        <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center lg:items-center justify-between gap-8 lg:gap-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="flex flex-col items-center lg:items-start text-center lg:text-left flex-1 max-w-2xl"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22D3EE]" />
+              <span className="font-mono text-[10px] text-cyan-400/50 tracking-[0.25em] uppercase">
+                Plataforma de Inteligencia Urbana
+              </span>
+            </div>
 
-      <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x: layer4X, y: layer4Y }}>
-        <FloatingData />
-      </motion.div>
+            <h1 className="font-['Space_Grotesk'] font-bold leading-none whitespace-nowrap">
+              <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white">
+                <TypewriterText
+                  text="INTELIGENCIA"
+                  delay={0.5}
+                  baseSpeed={config.typewriterSpeed}
+                />
+              </div>
+              <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl mt-1">
+                <TypewriterText
+                  text="URBANA"
+                  delay={1.5}
+                  baseSpeed={config.typewriterSpeed * 1.1}
+                  className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-cyan-400 to-blue-400 drop-shadow-[0_0_40px_rgba(34,211,238,0.4)]"
+                />
+              </div>
+            </h1>
 
-      <motion.div className="relative z-20 flex flex-col items-center" style={{ x: layer5X, y: layer5Y }}>
-        <motion.div initial={{ opacity: 0, filter: "blur(20px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} transition={{ duration: 1.5, ease: "easeOut" }} className="mb-8 logo-shimmer">
-          <h2 className="text-3xl md:text-4xl font-['Space_Grotesk'] font-bold tracking-[0.5em] text-cyan-400 drop-shadow-[0_0_25px_rgba(34,211,238,0.8)]">PPTMAPS</h2>
-        </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.2, duration: 0.8 }}
+              className="font-mono text-[11px] md:text-xs text-slate-400 tracking-[0.25em] uppercase leading-relaxed mt-5 max-w-lg"
+            >
+              Monitoreo geoespacial en tiempo real · Medellín, Colombia
+            </motion.p>
 
-        <div className="text-center mb-4 px-4">
-          <h1 className="text-5xl md:text-8xl font-['Space_Grotesk'] font-bold leading-tight">
-            <AnimatedText text="Inteligencia urbana" delay={0.5} />
-            <br />
-            <AnimatedText text="en tiempo real" className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]" delay={1.2} />
-          </h1>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.5, duration: 0.8 }}
+              className="mt-3 flex items-center gap-4 font-mono text-[9px] text-cyan-400/30 tracking-[0.2em]"
+            >
+              <span>SIATA</span>
+              <span className="w-1 h-1 rounded-full bg-cyan-400/30" />
+              <span>OPEN-METEO</span>
+              <span className="w-1 h-1 rounded-full bg-cyan-400/30" />
+              <span>MEDATA</span>
+            </motion.div>
+
+            <div className="mt-8 md:mt-10">
+              <HeroCTA />
+            </div>
+          </motion.div>
+
+          <DataPanel config={config} weather={weather} />
         </div>
-
-        <MiniStatusPanel />
-        
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3, duration: 1 }} className="mt-16">
-          <HeroCTA />
-        </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
-});
+}

@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate, useRouteError } from 'react-router-dom';
+import { PerformanceProvider } from './hooks/useDevicePerformance.jsx';
 import Landing from './pages/Landing.jsx';
 
 const Report = lazy(() => import('./pages/Report.jsx'));
@@ -29,5 +30,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <PerformanceProvider>
+      <RouterProvider router={router} />
+    </PerformanceProvider>
+  );
 }

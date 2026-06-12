@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import '../static/css/tppmaps.css';
+import '../static/css/movil.css';
 import { initMap, setupMapLayers, updateMapStats, stopFatalitiesPolling, stopReportsPolling } from "../static/js/map/map-service.js";
 import { pingHealth, connectWebSocket, disconnectWebSocket, onWsEvent, offWsEvent } from "../static/js/services/api.js";
 import { initAlerts } from "../static/js/ui/alerts.js";
@@ -155,7 +157,7 @@ export default function CommandCenter() {
 
         AppState.healthTimer = healthTimer;
       } catch (err) {
-        console.error("[tppmaps]", err);
+        if (import.meta.env.DEV) console.error("[tppmaps]", err);
       }
     }
 

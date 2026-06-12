@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiRadio, FiCloud, FiDroplet } from 'react-icons/fi';
+import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
+import { seededRandom } from '../../../utils/random';
+import { useCountUp } from '../../../hooks/useCountUp';
+
+const VOICE_BARS = (() => {
+  const rng = seededRandom(789);
+  return Array.from({ length: 48 }, (_, i) => ({
+    height: 4 + Math.sin(i * 0.5) * 8 + Math.sin(i * 1.2) * 6 + rng() * 4,
+    dur: 0.8 + rng() * 0.6,
+    delay: rng() * 0.5,
+  }));
+})();
 
 const REPORT_ITEMS = [
   { text: "Accidente Múltiple", type: "critical", top: "18%", left: "22%" },
@@ -26,8 +37,8 @@ const COLORS = {
   info:     { bg: "bg-cyan-500/20", text: "text-cyan-400", border: "border-cyan-400/50", shadow: "rgba(34,211,238,0.4)", pulse: "rgba(34,211,238,0.25)", badge: "INFO", hex: "#22d3ee" },
 };
 
-const CHINESE_CHARS = "的一是不了人我在有他这中大为上个国到以说时会也就子可发来生同年们定".split('');
 const CYBER_CHARS = "!<>-_\\/[]{}—=+*^?#________";
+const GLITCH_CHARS = "!@#$%^&*()_+-=[]{}|;:,./<>?~`".split('');
 
 const CITIES = [
   { name: "Medellín",  x: 50, y: 58, type: "critical", data: "234" },
@@ -38,26 +49,6 @@ const CITIES = [
 ];
 
 const RADIAL_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
-
-function useCountUp(target, duration = 1500) {
-  const [display, setDisplay] = useState(target);
-  const prev = useRef(0);
-  useEffect(() => {
-    const start = performance.now();
-    const from = prev.current;
-    let raf;
-    const step = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(Math.round(from + (target - from) * eased));
-      if (t < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    prev.current = target;
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-  return display;
-}
 
 function RadialGrid({ centerX, centerY, radius }) {
   return (
@@ -75,7 +66,7 @@ function RadialGrid({ centerX, centerY, radius }) {
   );
 }
 
-function ConcentricRings({ centerX, centerY, elapsed }) {
+function ConcentricRings({ centerX, centerY }) {
   const rings = [10, 18, 26, 34, 40];
   return (
     <g>
@@ -103,20 +94,17 @@ function PulseWaves({ centerX, centerY }) {
 }
 
 function SpectrumBands({ centerX, centerY, radius, elapsed }) {
-  const bands = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < 36; i++) {
-      const angle = (i / 36) * 2 * Math.PI - Math.PI / 2;
-      const baseR = radius;
-      const h = 1.5 + Math.sin(elapsed * 0.003 + i * 0.8) * 2 + Math.sin(elapsed * 0.005 + i * 0.3) * 1.5;
-      const x1 = centerX + baseR * Math.cos(angle);
-      const y1 = centerY + baseR * Math.sin(angle);
-      const x2 = centerX + (baseR + h) * Math.cos(angle);
-      const y2 = centerY + (baseR + h) * Math.sin(angle);
-      list.push({ x1, y1, x2, y2, opacity: 0.06 + Math.abs(Math.sin(elapsed * 0.003 + i * 0.8)) * 0.08 });
-    }
-    return list;
-  }, [elapsed]);
+  const bands = [];
+  for (let i = 0; i < 36; i++) {
+    const angle = (i / 36) * 2 * Math.PI - Math.PI / 2;
+    const baseR = radius;
+    const h = 1.5 + Math.sin(elapsed * 0.003 + i * 0.8) * 2 + Math.sin(elapsed * 0.005 + i * 0.3) * 1.5;
+    const x1 = centerX + baseR * Math.cos(angle);
+    const y1 = centerY + baseR * Math.sin(angle);
+    const x2 = centerX + (baseR + h) * Math.cos(angle);
+    const y2 = centerY + (baseR + h) * Math.sin(angle);
+    bands.push({ x1, y1, x2, y2, opacity: 0.06 + Math.abs(Math.sin(elapsed * 0.003 + i * 0.8)) * 0.08 });
+  }
 
   return (
     <g>
@@ -307,7 +295,7 @@ function HoloHub({ elapsed }) {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-      <svg viewBox="0 0 100 100" className="w-full h-full max-w-[800px] max-h-[800px]">
+      <svg viewBox="0 0 100 100" className="w-[140%] h-[140%] max-w-none">
         <defs>
           <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.06" />
@@ -336,7 +324,7 @@ function HoloHub({ elapsed }) {
         <RadialGrid centerX={cx} centerY={cy} radius={radius} />
 
         {/* Concentric rings */}
-        <ConcentricRings centerX={cx} centerY={cy} elapsed={elapsed} />
+        <ConcentricRings centerX={cx} centerY={cy} />
 
         {/* Outer orbit ring */}
         <circle cx={cx} cy={cy} r={radius}
@@ -376,7 +364,7 @@ function GlitchTitle({ text, className }) {
   const interval = useRef(null);
 
   const runDecode = useCallback(() => {
-    const totalDuration = 5000;
+    const totalDuration = 4000;
     const chars = text.split('');
     const startTime = performance.now();
     setPhase('decoding');
@@ -386,7 +374,7 @@ function GlitchTitle({ text, className }) {
       const revealCount = Math.floor(progress * chars.length);
       const current = chars.map((c, i) => {
         if (i < revealCount) return c;
-        return CHINESE_CHARS[Math.floor(Math.random() * CHINESE_CHARS.length)];
+        return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
       });
       const r = chars.map((c, i) => {
         if (i < revealCount) return '';
@@ -394,7 +382,7 @@ function GlitchTitle({ text, className }) {
       }).join('');
       const cLayer = chars.map((c, i) => {
         if (i < revealCount) return '';
-        return CHINESE_CHARS[Math.floor(Math.random() * CHINESE_CHARS.length)];
+        return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
       }).join('');
       setDisplay(current.join(''));
       setLayer({ r, c: cLayer });
@@ -403,9 +391,9 @@ function GlitchTitle({ text, className }) {
         setDisplay(text);
         setLayer({ r: '', c: '' });
         setPhase('idle');
-        timer.current = setTimeout(runDecode, 4000 + Math.random() * 4000);
+        timer.current = setTimeout(runDecode, 5000 + Math.random() * 3000);
       }
-    }, 60);
+    }, 50);
     return () => clearInterval(interval.current);
   }, [text]);
 
@@ -417,15 +405,15 @@ function GlitchTitle({ text, className }) {
   const isGlitching = phase === 'decoding';
 
   return (
-    <span className={`${className} relative inline-block`} style={{ minWidth: `${text.length}ch` }}>
+    <span className={`${className} relative inline-block whitespace-nowrap`} style={{ width: `${text.length}ch` }}>
       <span className="relative z-10">{display}</span>
       {isGlitching && (
         <>
-          <span className="absolute inset-0 z-20 pointer-events-none select-none"
+          <span className="absolute inset-0 z-20 pointer-events-none select-none whitespace-nowrap"
             style={{ color: '#ef4444', opacity: 0.35, transform: 'translateX(-2px)', clipPath: 'inset(15% 0 45% 0)', filter: 'blur(0.5px)' }}>
             {layer.r || display}
           </span>
-          <span className="absolute inset-0 z-20 pointer-events-none select-none"
+          <span className="absolute inset-0 z-20 pointer-events-none select-none whitespace-nowrap"
             style={{ color: '#3b82f6', opacity: 0.35, transform: 'translateX(2px)', clipPath: 'inset(55% 0 5% 0)', filter: 'blur(0.5px)' }}>
             {layer.c || display}
           </span>
@@ -445,32 +433,43 @@ function StatusTicker() {
   }, []);
   return (
     <motion.div
-      className="absolute top-0 left-0 right-0 z-30 px-6 py-2 flex items-center justify-between font-mono text-[9px] tracking-widest select-none"
+      className="absolute top-0 left-0 right-0 z-30 px-6 md:px-8 py-2.5 flex items-center justify-between font-mono text-[9px] tracking-widest select-none"
       style={{ background: 'linear-gradient(180deg, rgba(7,27,53,0.95) 0%, transparent 100%)' }}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6, duration: 0.6 }}
     >
-      <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-          <span className="text-emerald-400/80">SISTEMA</span>
-          <span className="text-emerald-400">ONLINE</span>
+      <div className="flex items-center gap-4 md:gap-6">
+        <span className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          </span>
+          <span className="text-emerald-400/80 hidden sm:inline">SISTEMA</span>
+          <span className="text-emerald-400 font-bold">ONLINE</span>
         </span>
-        <span className="text-slate-600">|</span>
-        <span className="text-slate-400">
-          <FiDroplet size={9} className="inline mr-1 text-cyan-400/60" />
-          <span className="text-cyan-400">234</span> REPORTES
+        <span className="text-slate-600/50">|</span>
+        <span className="text-slate-300">
+          <span className="text-cyan-400 font-bold tabular-nums">234</span>
+          <span className="text-slate-400 ml-1">REPORTES</span>
         </span>
-        <span className="text-slate-600 hidden md:inline">|</span>
+        <span className="text-slate-600/50 hidden md:inline">|</span>
         <span className="text-slate-400 hidden md:inline">
-          <FiCloud size={8} className="inline mr-1 text-slate-500" />
-          <span className="text-red-400">2</span> CRÍTICOS
+          <span className="text-red-400 font-bold tabular-nums">2</span>
+          <span className="text-slate-500 ml-1">CRITICOS</span>
+        </span>
+        <span className="text-slate-600/50 hidden lg:inline">|</span>
+        <span className="text-slate-400 hidden lg:inline">
+          <span className="text-amber-400 font-bold tabular-nums">5</span>
+          <span className="text-slate-500 ml-1">ALERTAS</span>
         </span>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-cyan-400/60">{time}</span>
-        <span className="flex items-center gap-1 text-cyan-400/40"><FiRadio size={10} /><span className="hidden sm:inline">LIVE</span></span>
+      <div className="flex items-center gap-3 md:gap-4">
+        <span className="text-slate-400 tabular-nums">{time}</span>
+        <span className="flex items-center gap-1.5 text-cyan-400/50">
+          <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="hidden sm:inline text-[8px] tracking-[0.2em]">LIVE</span>
+        </span>
       </div>
     </motion.div>
   );
@@ -479,22 +478,24 @@ function StatusTicker() {
 function DataTicker() {
   return (
     <motion.div
-      className="absolute bottom-0 left-0 right-0 z-30 overflow-hidden h-8 border-t border-cyan-400/10"
+      className="absolute bottom-0 left-0 right-0 z-30 overflow-hidden h-10 border-t border-cyan-400/10"
       style={{ background: 'linear-gradient(0deg, rgba(7,27,53,0.95) 0%, transparent 100%)' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.8, duration: 0.6 }}
     >
-      <div className="flex items-center h-full gap-8 font-mono text-[8px] text-cyan-400/25 tracking-wider whitespace-nowrap"
+      <div className="flex items-center h-full gap-8 font-mono text-[9px] text-cyan-400/30 tracking-wider whitespace-nowrap px-4"
         style={{ animation: 'ticker 30s linear infinite' }}>
-        <span>⏹ SYS::REPORT_STREAM [234 ACTIVOS]</span>
-        <span>⏹ MEDELLÍN: 234</span>
-        <span>⏹ BELLO: 87</span>
-        <span>⏹ ENVIGADO: 45</span>
-        <span>⏹ ITAGÜÍ: 62</span>
-        <span>⏹ SABANETA: 28</span>
-        <span>⏹ LATENCY: 28MS</span>
-        <span>⏹ UPTIME: 99.97%</span>
+        <span className="text-cyan-400/50">◆ SYS::REPORT_STREAM [234 ACTIVOS]</span>
+        <span>◇ MEDELLIN: 234</span>
+        <span>◇ BELLO: 87</span>
+        <span>◇ ENVIGADO: 45</span>
+        <span>◇ ITAGUE: 62</span>
+        <span>◇ SABANETA: 28</span>
+        <span>◇ LATENCY: 28MS</span>
+        <span>◇ UPTIME: 99.97%</span>
+        <span>◇ SENSORS: 1,247</span>
+        <span>◇ COVERAGE: 100%</span>
       </div>
     </motion.div>
   );
@@ -508,27 +509,30 @@ function SeverityBar() {
   }), []);
   return (
     <motion.div
-      className="flex items-center gap-3 mt-5"
+      className="flex items-center gap-4"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.6 }}
     >
-      <span className="font-mono text-[8px] text-slate-500 tracking-widest uppercase">Estado</span>
-      <div className="flex gap-1.5">
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 border border-red-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_4px_rgba(239,68,68,0.6)]" />
-          <span className="font-mono text-[9px] text-red-400 tabular-nums">{counts.critical}</span>
-          <span className="font-mono text-[7px] text-red-400/50 uppercase hidden sm:inline">crítico</span>
+      <span className="font-mono text-[8px] text-slate-500 tracking-[0.25em] uppercase">Severidad</span>
+      <div className="flex gap-2">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 backdrop-blur-sm">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-50" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+          </span>
+          <span className="font-mono text-[11px] text-red-400 font-bold tabular-nums">{counts.critical}</span>
+          <span className="font-mono text-[7px] text-red-400/50 uppercase tracking-wider hidden sm:inline">critico</span>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.6)]" />
-          <span className="font-mono text-[9px] text-yellow-400 tabular-nums">{counts.warning}</span>
-          <span className="font-mono text-[7px] text-yellow-400/50 uppercase hidden sm:inline">alerta</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-sm">
+          <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(234,179,8,0.6)]" />
+          <span className="font-mono text-[11px] text-yellow-400 font-bold tabular-nums">{counts.warning}</span>
+          <span className="font-mono text-[7px] text-yellow-400/50 uppercase tracking-wider hidden sm:inline">alerta</span>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.6)]" />
-          <span className="font-mono text-[9px] text-cyan-400 tabular-nums">{counts.info}</span>
-          <span className="font-mono text-[7px] text-cyan-400/50 uppercase hidden sm:inline">info</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-sm">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
+          <span className="font-mono text-[11px] text-cyan-400 font-bold tabular-nums">{counts.info}</span>
+          <span className="font-mono text-[7px] text-cyan-400/50 uppercase tracking-wider hidden sm:inline">info</span>
         </div>
       </div>
     </motion.div>
@@ -547,9 +551,8 @@ function RippleWave({ x, y, color }) {
 
 function CollidingDots({ hoveredIndex, setHoveredIndex }) {
   const [ripples, setRipples] = useState([]);
-  const [positions, setPositions] = useState(
-    () => REPORT_ITEMS.map(r => ({ x: parseFloat(r.left), y: parseFloat(r.top) }))
-  );
+  const dotsRef = useRef([]);
+  const containerRef = useRef(null);
   const particlesRef = useRef(
     REPORT_ITEMS.map((r, i) => {
       const n = REPORT_ITEMS.length;
@@ -570,15 +573,23 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
   const rippleId = useRef(0);
   const frameRef = useRef(null);
   const ripplesRef = useRef([]);
+  const rippleTimeouts = useRef(new Set());
 
   useEffect(() => {
     const COLLIDE_DIST = 5;
     const MAX_SPEED = 1.0;
+    let lastTime = 0;
+    let lastRippleUpdate = 0;
+    const RIPPLE_THROTTLE = 100;
 
-    const step = () => {
+    const step = (now) => {
+      if (now - lastTime < 32) {
+        frameRef.current = requestAnimationFrame(step);
+        return;
+      }
+      lastTime = now;
       const parts = particlesRef.current;
 
-      // Center repulsion — pushes particles away from radar core
       for (const p of parts) {
         let dx = p.x - 50;
         let dy = p.y - 50;
@@ -589,7 +600,6 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
         p.vy += (dy / dist) * repel;
       }
 
-      // Vortex — gentle rotational push around center for orbital motion
       for (const p of parts) {
         let dx = p.x - 50;
         let dy = p.y - 50;
@@ -600,7 +610,6 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
         p.vy += (dx / dist) * vortex;
       }
 
-      // Move & clamp speed
       for (const p of parts) {
         p.x += p.vx * 0.15;
         p.y += p.vy * 0.15;
@@ -617,7 +626,7 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
         if (p.y > 98) { p.y = 98; p.vy = -Math.abs(p.vy) * 0.5; }
       }
 
-      // Collision detection
+      let hasNewRipple = false;
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j < parts.length; j++) {
           const a = parts[i], b = parts[j];
@@ -625,7 +634,6 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
           const dy = b.y - a.y;
           const dist = Math.hypot(dx, dy);
           const key = `${i}-${j}`;
-          const now = performance.now();
           const last = lastCollision.current[key] || 0;
 
           if (dist < COLLIDE_DIST && now - last > 700) {
@@ -634,48 +642,61 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
             const nx = dx / dist || 1;
             const ny = dy / dist || 0;
 
-            // Strong repel
             const repelForce = 1.2;
             a.vx -= nx * repelForce;
             a.vy -= ny * repelForce;
             b.vx += nx * repelForce;
             b.vy += ny * repelForce;
 
-            // Scatter
             const scatter = 0.6 + Math.random() * 0.6;
             a.vx += (Math.random() - 0.5) * scatter;
             a.vy += (Math.random() - 0.5) * scatter;
             b.vx += (Math.random() - 0.5) * scatter;
             b.vy += (Math.random() - 0.5) * scatter;
 
-            // Separate
             const overlap = COLLIDE_DIST - dist + 0.5;
             a.x -= nx * overlap / 2;
             a.y -= ny * overlap / 2;
             b.x += nx * overlap / 2;
             b.y += ny * overlap / 2;
 
-            // Ripple wave at midpoint
             const midX = (a.x + b.x) / 2;
             const midY = (a.y + b.y) / 2;
             const id = rippleId.current++;
             const hex = COLORS[REPORT_ITEMS[i].type].hex;
             ripplesRef.current = [...ripplesRef.current, { id, x: midX, y: midY, hex }];
-            setRipples([...ripplesRef.current]);
-            setTimeout(() => {
+            hasNewRipple = true;
+            const tid = setTimeout(() => {
+              rippleTimeouts.current.delete(tid);
               ripplesRef.current = ripplesRef.current.filter(r => r.id !== id);
               setRipples([...ripplesRef.current]);
             }, 950);
+            rippleTimeouts.current.add(tid);
           }
         }
       }
 
-      setPositions(parts.map(p => ({ x: p.x, y: p.y })));
+      if (hasNewRipple && now - lastRippleUpdate > RIPPLE_THROTTLE) {
+        lastRippleUpdate = now;
+        setRipples([...ripplesRef.current]);
+      }
+
+      for (let i = 0; i < parts.length; i++) {
+        const el = dotsRef.current[i];
+        if (el) {
+          el.style.transform = `translate(${parts[i].x}%, ${parts[i].y}%) translate(-50%, -50%)`;
+        }
+      }
+
       frameRef.current = requestAnimationFrame(step);
     };
 
     frameRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameRef.current);
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      rippleTimeouts.current.forEach(tid => clearTimeout(tid));
+      rippleTimeouts.current.clear();
+    };
   }, []);
 
   return (
@@ -683,43 +704,46 @@ function CollidingDots({ hoveredIndex, setHoveredIndex }) {
       {ripples.map(r => (
         <RippleWave key={r.id} x={r.x} y={r.y} color={r.hex} />
       ))}
-      {REPORT_ITEMS.map((report, i) => {
-        const c = COLORS[report.type];
-        const isHovered = hoveredIndex === i;
-        const pos = positions[i];
-        return (
-          <div key={`m-${i}`} className="absolute z-10"
-            style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: 'translate(-50%, -50%)' }}
-            onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
-            <div className={`relative cursor-pointer transition-all duration-200 ${isHovered ? 'scale-125' : ''}`}>
-              <div className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: c.hex, boxShadow: `0 0 8px ${c.hex}80` }}>
-                {isHovered && (
-                  <span className="absolute -inset-2 rounded-full border" style={{ borderColor: `${c.hex}80` }} />
-                )}
+      <div ref={containerRef}>
+        {REPORT_ITEMS.map((report, i) => {
+          const c = COLORS[report.type];
+          const isHovered = hoveredIndex === i;
+          return (
+            <div key={`m-${i}`} className="absolute z-10"
+              ref={el => { dotsRef.current[i] = el; }}
+              style={{ left: 0, top: 0, transform: `translate(${particlesRef.current[i].x}%, ${particlesRef.current[i].y}%) translate(-50%, -50%)` }}
+              onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
+              <div className={`relative cursor-pointer transition-all duration-200 ${isHovered ? 'scale-125' : ''}`}>
+                <div className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: c.hex, boxShadow: `0 0 8px ${c.hex}80` }}>
+                  {isHovered && (
+                    <span className="absolute -inset-2 rounded-full border" style={{ borderColor: `${c.hex}80` }} />
+                  )}
+                </div>
+              </div>
+              <div className="absolute left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap pointer-events-none">
+                <AnimatePresence>
+                  {isHovered && (
+                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                      transition={{ duration: 0.12 }}
+                      className="bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/50 shadow-lg">
+                      <span className={`text-[7px] font-mono tracking-widest px-1.5 py-0.5 rounded ${c.bg} ${c.text} border ${c.border} mr-1.5`}>{c.badge}</span>
+                      <span className="font-mono text-[11px] text-slate-200">{report.text}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap pointer-events-none">
-              <AnimatePresence>
-                {isHovered && (
-                  <motion.div initial={{ opacity: 0, y: -4, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                    transition={{ duration: 0.12 }}
-                    className="bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/50 shadow-lg">
-                    <span className={`text-[7px] font-mono tracking-widest px-1.5 py-0.5 rounded ${c.bg} ${c.text} border ${c.border} mr-1.5`}>{c.badge}</span>
-                    <span className="font-mono text-[11px] text-slate-200">{report.text}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </>
   );
 }
 
 export default React.memo(function ReportsSection() {
+  const { config } = useDevicePerformance();
   const [reportCount, setReportCount] = useState(234);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [elapsed, setElapsed] = useState(0);
@@ -730,13 +754,18 @@ export default React.memo(function ReportsSection() {
     return () => clearInterval(t);
   }, []);
 
-  const startRef = useRef(0);
   useEffect(() => {
-    startRef.current = performance.now();
+    const start = performance.now();
+    const throttleMs = 50;
     let raf;
-    const step = () => {
-      setElapsed(performance.now() - startRef.current);
-      requestAnimationFrame(step);
+    let lastUpdate = 0;
+    const step = (now) => {
+      const t = now - start;
+      if (t - lastUpdate > throttleMs) {
+        lastUpdate = t;
+        setElapsed(t);
+      }
+      raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
@@ -753,38 +782,63 @@ export default React.memo(function ReportsSection() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+        @keyframes voiceBar {
+          0%, 100% { transform: scaleY(0.3); opacity: 0.15; }
+          50% { transform: scaleY(1); opacity: 0.5; }
+        }
       `}</style>
       <StatusTicker />
       <DataTicker />
 
-      <div className="absolute inset-0 cartographic-grid opacity-[0.06] pointer-events-none" />
-      <div className="absolute inset-0 pointer-events-none opacity-[0.015]"
+      <div className="absolute inset-0 cartographic-grid opacity-[0.08] pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.02]"
         style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(34,211,238,0.06) 2px, rgba(34,211,238,0.06) 4px)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse at 50% 40%, rgba(34,211,238,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.03) 0%, transparent 50%), radial-gradient(ellipse at 20% 30%, rgba(20,184,166,0.02) 0%, transparent 40%)'
+      }} />
 
       <HoloHub elapsed={elapsed} />
 
-      <CollidingDots hoveredIndex={hoveredIndex} setHoveredIndex={setHoveredIndex} />
+      {config.collidingDots && <CollidingDots hoveredIndex={hoveredIndex} setHoveredIndex={setHoveredIndex} />}
+
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-30">
+        <div className="flex items-end justify-center gap-[3px] h-16 w-64">
+          {VOICE_BARS.map((bar, i) => (
+            <div key={i} className="w-[3px] rounded-full bg-gradient-to-t from-cyan-500/40 to-cyan-300/60"
+              style={{
+                height: `${bar.height}px`,
+                animation: `voiceBar ${bar.dur}s ease-in-out ${bar.delay}s infinite alternate`,
+                transformOrigin: 'bottom',
+              }}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="z-20 pointer-events-none text-center px-6 flex flex-col items-center">
-        <motion.h2 className="text-5xl md:text-7xl font-['Space_Grotesk'] font-bold mb-4"
+        <motion.h2 className="text-6xl md:text-8xl lg:text-9xl font-['Space_Grotesk'] font-bold mb-4 drop-shadow-[0_0_40px_rgba(34,211,238,0.15)]"
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}>
           <GlitchTitle text="La ciudad habla" />
         </motion.h2>
-        <motion.p className="text-slate-400 text-lg md:text-xl max-w-lg mx-auto font-light mb-6"
+        <motion.p className="text-slate-400 text-lg md:text-xl lg:text-2xl max-w-2xl mx-auto font-light mb-6 tracking-wide"
           initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.8 }}>
           Valle de Aburrá — transmisiones en tiempo real.
         </motion.p>
-        <motion.div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-xl bg-slate-900/50 border border-cyan-400/20"
-          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+      </div>
+
+      <div className="absolute bottom-14 md:bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 md:gap-6">
+        <motion.div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0A1A30]/80 border border-cyan-400/10"
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 150, damping: 15 }}>
-          <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]">
-            <motion.span className="block w-full h-full rounded-full bg-red-500"
-              animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
           </span>
-          <span className="font-mono text-sm text-slate-300 tracking-widest">
-            <strong className="text-white tabular-nums">{displayCount.toLocaleString()}</strong> reportes hoy
+          <span className="font-mono text-xs md:text-sm text-slate-300 tracking-widest">
+            <strong className="text-white text-base md:text-lg tabular-nums font-bold">{displayCount.toLocaleString()}</strong>
+            <span className="ml-1.5 text-slate-400">reportes hoy</span>
           </span>
         </motion.div>
         <SeverityBar />

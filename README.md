@@ -11,10 +11,11 @@
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat&logo=vite&logoColor=white">
   <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat&logo=tailwindcss&logoColor=white">
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-R3F-ffffff?style=flat&logo=threedotjs&logoColor=white">
+  <img alt="GSAP" src="https://img.shields.io/badge/GSAP-3-88CE02?style=flat&logo=greensock&logoColor=white">
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat&logo=postgresql&logoColor=white">
   <img alt="PostGIS" src="https://img.shields.io/badge/PostGIS-3.5-4169E1?style=flat&logo=postgresql&logoColor=white">
   <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white">
-  <img alt="Celery" src="https://img.shields.io/badge/Celery-5.4-37814A?style=flat&logo=celery&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat">
 </p>
 
@@ -28,7 +29,7 @@
 
 ## ¿Qué es PPTMaps?
 
-**PPTMaps** es una plataforma de inteligencia geoespacial que integra datos oficiales de movilidad de Medellín con reportes ciudadanos en tiempo real. Consume fuentes gubernamentales (SIATA, MEData, Open-Meteo), los cachea y optimiza en PostGIS, y los expone mediante una API REST + WebSockets a un dashboard interactivo construido en React.
+**PPTMaps** es una plataforma de inteligencia geoespacial que integra datos oficiales de movilidad de Medellín con reportes ciudadanos en tiempo real. Consume fuentes gubernamentales (SIATA, MEData, Open-Meteo), los cachea y optimiza en PostGIS, y los expone mediante una API REST + WebSockets a un dashboard interactivo construido en React con un **motor de rendimiento adaptativo** que detecta la GPU del usuario y ajusta los efectos visuales automáticamente.
 
 ### Problemas que resuelve
 
@@ -39,27 +40,125 @@
 | Sin alertas en tiempo real para incidentes viales | WebSockets + Celery + `alert_broadcaster` para notificaciones push |
 | Reportes ciudadanos no digitalizados | Formulario público con geolocalización y soporte multimedia |
 | Sin información climática integrada | Proxy Open-Meteo con caché Redis y widget en el dashboard |
+| Dashboards lentos en PCs de bajos recursos | Motor de rendimiento adaptativo que detecta GPU y ajusta efectos |
 
 ---
 
 ## Stack Tecnológico
 
 ```
-FRONTEND                     BACKEND                        BASE DE DATOS
-+-----------------+        +---------------------+        +------------------+
-|   React 19      |        |   FastAPI           |        |   PostgreSQL 16+ |
-|   Vite 8        | -----> |   Uvicorn           | -----> |   PostGIS 3.5    |
-|   Tailwind 4    |  HTTP  |   Pydantic v2       |  SQL   |   Redis 7        |
-|   Leaflet       | <----  |   SQLAlchemy 2.0    | <----  |                  |
-|   React Router  |  REST  |   AsyncPG           |        +------------------+
-|   React Icons   |   WS   |   Celery + Beat     |
-|   GSAP          |        |   WebSockets        |        +------------------+
-+-----------------+        |   Alembic           |        |   APIs Externas  |
-                           |   JWT / OAuth2      | -----> |   SIATA          |
-                           +---------------------+        |   MEData         |
-                                                          |   Open-Meteo     |
-                                                          +------------------+
+FRONTEND                          BACKEND                        BASE DE DATOS
++---------------------------+    +---------------------+        +------------------+
+|   React 19                |    |   FastAPI           |        |   PostgreSQL 16+ |
+|   Vite 8                  |    |   Uvicorn           | -----> |   PostGIS 3.5    |
+|   Tailwind 4              | -> |   Pydantic v2       |  SQL   |   Redis 7        |
+|   Three.js / R3F          |    |   SQLAlchemy 2.0    | <----  |                  |
+|   GSAP (ScrollTrigger)    | HTTP|   AsyncPG           |        +------------------+
+|   Framer Motion 12        | <-> |   Celery + Beat     |
+|   Leaflet                 | REST|   WebSockets        |        +------------------+
+|   React Router            |  WS |   Alembic           |        |   APIs Externas  |
+|   Lenis (smooth scroll)   |    |   JWT / OAuth2      | -----> |   SIATA          |
++---------------------------+    +---------------------+        |   MEData         |
+                                                                |   Open-Meteo     |
+                                                                +------------------+
 ```
+
+---
+
+## Motor de Rendimiento Adaptativo
+
+PPTMaps incluye un sistema de detección de hardware en tiempo real que ajusta automáticamente la calidad visual según el dispositivo del usuario.
+
+### Detección de GPU
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. Detectar GPU via WebGL debug renderer               │
+│  2. Clasificar: Dedicada / Integrada / Móvil            │
+│  3. Benchmark: renderizar 500 triángulos (100ms)        │
+│  4. Score combinado: CPU (30%) + GPU (40%) + HW (30%)   │
+│  5. Asignar tier: HIGH / MEDIUM / LOW                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+| GPU Detectada | Clasificación | Bonus |
+|---|---|---|
+| NVIDIA GeForce RTX / GTX | Dedicada | +25 pts |
+| AMD Radeon RX | Dedicada | +25 pts |
+| Apple M1/M2/M3/M4 | Dedicada | +45 pts |
+| Intel Iris Xe / Arc | Dedicada | +25 pts |
+| Intel UHD / HD | Integrada | -10 pts |
+| Qualcomm Adreno | Móvil Dedicada | +25 pts |
+| Mali / PowerVR | Móvil Integrada | +10 pts |
+
+### Tiers de Renderizado
+
+| Tier | Score | Partículas | Globe Cities | Globe Arcs | Efectos Weather | Max Pixel Ratio |
+|---|---|---|---|---|---|---|
+| **HIGH** | >60 | 60 | 15 | 10 | Todos | 3.0 |
+| **MEDIUM** | 30-60 | 30 | 10 | 7 | Max 3 simultáneos | 2.0 |
+| **LOW** | <30 | 15 | 6 | 4 | Básicos | 1.0 |
+
+### Auto-downgrade / Auto-upgrade
+
+- Si FPS < 25 por 2 muestras consecutivas → degradar tier
+- Si FPS > 50 por 5 muestras consecutivas → mejorar tier
+- Monitoreo continuo con `requestAnimationFrame`
+
+---
+
+## Optimizaciones de Rendimiento
+
+### Globe3D (Three.js / React Three Fiber)
+
+| Optimización | Detalle |
+|---|---|
+| **InstancedMesh** | 15 ciudades + 15 glows → 2 draw calls (antes 30) |
+| **Visibility Observer** | `IntersectionObserver` detiene rendering cuando off-screen |
+| **frameloop="never"** | Canvas deja de renderizar cuando invisible |
+| **Buffer disposal** | `geometry.dispose()` + `material.dispose()` en unmount |
+| **Imperative geometry** | `THREE.BufferAttribute` en `useMemo` (no JSX reconciler) |
+
+### Animaciones (GSAP + Framer Motion)
+
+| Optimización | Detalle |
+|---|---|
+| **will-change lifecycle** | Aplicado solo durante transición GSAP, removido al completar |
+| **CSS > Framer Motion** | DigitalRain, Dust, Scanline, GlitchBars → CSS `@keyframes` |
+| **clip-path typewriter** | 2 nodos DOM (antes 18 nodos por carácter) |
+| **Reduced motion** | Fallback vertical scroll para `prefers-reduced-motion` |
+| **Lenis smooth scroll** | Scroll suave con `scrub: 0.5` en GSAP |
+
+### TelemetrySection (CSS Animations)
+
+| Optimización | Detalle |
+|---|---|
+| **LightRays** | CSS `@keyframes` con transform/opacity (antes RAF + gradient strings) |
+| **CausticFloor** | CSS `@keyframes` con translateX/scaleY (antes RAF + radial-gradient) |
+| **SurfaceWave** | CSS `@keyframes` mask-position (antes RAF + SVG data URI reconstruido) |
+| **AnimatedBars** | CSS `@keyframes` (antes Framer Motion controller) |
+
+### ReportsSection
+
+| Optimización | Detalle |
+|---|---|
+| **HoloHub isolated RAF** | Elapsed time management interno, parent no re-renderiza |
+| **CollidingDots** | `transform: translate()` en vez de `left/top` (no layout thrashing) |
+| **Ripple throttle** | `setRipples` throttled a 100ms (antes cada frame) |
+| **Seeded random** | `seededRandom()` para voice bars (sin `Math.random()` en useMemo) |
+
+### CSS Containment
+
+| Sección | Propiedad |
+|---|---|
+| HeroSection | `contain: layout style` |
+| TelemetrySection | `contain: layout style` |
+| BackendSection | `contain: layout style` |
+| FinalCTA | `contain: layout style paint` + `content-visibility: auto` |
+
+### Backdrop Filter
+
+Se eliminó `backdrop-filter: blur()` de 13+ elementos animados (Navbar, DataPanel, StatCards, StatusBar). Se reemplazó con backgrounds semi-transparentes (`bg-[#041327]/90`).
 
 ---
 
@@ -126,21 +225,38 @@ PPTMaps/
 │   ├── public/
 │   └── src/
 │       ├── components/             # Componentes reutilizables de UI
-│       ├── hooks/                  # Custom React hooks
+│       │   ├── Globe3D.jsx         # ★ Globo 3D con Three.js/R3F
+│       │   ├── Navbar.jsx          # Navegación con reloj memoizado
+│       │   └── CustomCursor.jsx    # Cursor personalizado
+│       ├── hooks/
+│       │   ├── useDevicePerformance.jsx  # ★ Motor de rendimiento adaptativo
+│       │   └── useCountUp.js             # Hook de counter animado
+│       ├── utils/
+│       │   └── random.js           # seededRandom compartido
 │       ├── pages/
-│       │   ├── Landing.jsx         # ★ Landing page con mapa en vivo
+│       │   ├── Landing.jsx         # ★ Landing con GSAP scroll + Lenis
 │       │   ├── CommandCenter.jsx   # Dashboard de comando geoespacial
 │       │   ├── Report.jsx          # Formulario de reporte ciudadano
 │       │   └── Navigate.jsx        # Navegación y rutas
+│       │   └── landing/
+│       │       ├── sections/
+│       │       │   ├── HeroSection.jsx      # Globe 3D + typewriter
+│       │       │   ├── TelemetrySection.jsx # Animaciones CSS puras
+│       │       │   ├── WeatherSection.jsx   # Clima con efectos adaptativos
+│       │       │   ├── ReportsSection.jsx   # Colisión de dots + SVG hub
+│       │       │   ├── BackendSection.jsx   # Code rain + counters
+│       │       │   ├── LayersSection.jsx    # Capas 3D CSS
+│       │       │   └── FinalCTA.jsx         # Campo de estrellas
+│       │       └── components/
+│       │           └── Globe3D.jsx
 │       ├── static/
 │       │   ├── css/tppmaps.css     # Estilos del mapa Leaflet
 │       │   └── js/ui/alerts.js     # ★ Lógica WebSocket de alertas en vivo
-│       ├── App.jsx
-│       ├── main.jsx
+│       ├── App.jsx                 # PerformanceProvider wrapper
+│       ├── main.jsx                # THREE.Clock warning suppression
 │       └── index.css
 │   ├── index.html
 │   ├── package.json
-│   ├── tailwind.config.js
 │   └── vite.config.js
 │
 ├── start.sh                        # Script de inicio Linux (backend + frontend)
@@ -349,6 +465,16 @@ npm run dev
 -  **Dashboard de comando** con estadísticas y telemetría en tiempo real
 -  **Rate limiting** — protección anti-spam (5 reportes/hora por IP)
 -  **ML en desarrollo**: clustering DBSCAN de zonas de accidentalidad + predicción de tráfico XGBoost
+
+---
+
+## Rendimiento por Dispositivo
+
+| Dispositivo | Tier | FPS esperado | Efectos visuales |
+|---|---|---|---|
+| PC Gaming / Workstation | HIGH | 60 fps | Globe 3D completo, todas las partículas, todos los efectos weather |
+| Laptop integrada / Mac | MEDIUM | 30-45 fps | Globe reducido, partículas limitadas, max 3 efectos weather |
+| PC viejo / Notebook básico | LOW | 20-30 fps | Globe mínimo, sin partículas, efectos básicos |
 
 ---
 

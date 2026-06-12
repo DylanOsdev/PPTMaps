@@ -65,14 +65,14 @@ export default function Report() {
         setGeoStatus('granted');
         
         if (isGPSDevice) {
-          console.log('[Report] 📡 GPS satelital:', {
+          if (import.meta.env.DEV) console.log('[Report] 📡 GPS satelital:', {
             lat: newCoords.lat.toFixed(6),
             lng: newCoords.lng.toFixed(6),
             accuracy: '±' + accuracy.toFixed(0) + 'm',
             speed: newCoords.speed ? (newCoords.speed * 3.6).toFixed(1) + ' km/h' : '0 km/h'
           });
         } else {
-          console.log('[Report] 📶 WiFi/Red (sin GPS):', {
+          if (import.meta.env.DEV) console.log('[Report] 📶 WiFi/Red (sin GPS):', {
             lat: newCoords.lat.toFixed(6),
             lng: newCoords.lng.toFixed(6),
             accuracy: '±' + (accuracy/1000).toFixed(1) + ' km'
@@ -81,7 +81,7 @@ export default function Report() {
       },
       (err) => {
         if (!isMounted.current) return;
-        console.error('[Report] ❌ Error ubicación:', err);
+        if (import.meta.env.DEV) console.error('[Report] ❌ Error ubicación:', err);
         setGeoStatus('denied');
         
         let errorMsg = 'Error de ubicación: ';
@@ -101,10 +101,9 @@ export default function Report() {
 
     // Cleanup: detener seguimiento al desmontar componente
     return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-        console.log('[Report] 🛑 Seguimiento detenido');
-      }
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+        }
       isMounted.current = false;
     };
   }, []);
@@ -136,7 +135,7 @@ export default function Report() {
       reporter_name: reporterName.trim(),
     };
 
-    console.log('[Report] Enviando reporte con coordenadas exactas:', body);
+    if (import.meta.env.DEV) console.log('[Report] Enviando reporte con coordenadas exactas:', body);
 
     try {
       const API_BASE = window.TPPMAPS_API || '/api/v1';

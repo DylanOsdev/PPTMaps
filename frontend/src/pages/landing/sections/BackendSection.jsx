@@ -1,18 +1,40 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
+import { seededRandom } from '../../../utils/random';
+
+const BACKEND_CSS = `
+  @keyframes rainFall {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(200vh); }
+  }
+  @keyframes dustFloat {
+    0% { opacity: 0; transform: translate(0, 0); }
+    30% { opacity: 0.3; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)); }
+  }
+@keyframes scanlineMove {
+  from { transform: translateY(-5vh); }
+  to { transform: translateY(105vh); }
+}
+  @keyframes glitchFlicker {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 0.08; }
+  }
+`;
 
 // ── Digital Rain ──────────────────────────────────────────────────────
 const CHARS = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789";
 
-function createRainDrop() {
-  const len = 6 + Math.floor(Math.random() * 12);
-  const chars = Array.from({ length: len }, () => CHARS[Math.floor(Math.random() * CHARS.length)]);
+function createRainDrop(rng) {
+  const len = 6 + Math.floor(rng() * 12);
+  const chars = Array.from({ length: len }, () => CHARS[Math.floor(rng() * CHARS.length)]);
   return {
-    x: Math.random() * 100,
-    delay: Math.random() * 4,
-    speed: 0.3 + Math.random() * 0.5,
+    x: rng() * 100,
+    delay: rng() * 4,
+    speed: 0.3 + rng() * 0.5,
     chars,
-    head: Math.floor(Math.random() * len),
+    head: Math.floor(rng() * len),
   };
 }
 
@@ -22,15 +44,10 @@ function RainColumn({ drop }) {
       className="absolute top-0"
       style={{ left: `${drop.x}%`, width: 14, overflow: 'visible' }}
     >
-      <motion.div
+      <div
         className="flex flex-col items-center"
-        initial={{ y: '-100%' }}
-        animate={{ y: '200vh' }}
-        transition={{
-          duration: 8 / drop.speed,
-          repeat: Infinity,
-          delay: drop.delay,
-          ease: 'linear',
+        style={{
+          animation: `rainFall ${8 / drop.speed}s linear ${drop.delay}s infinite`,
         }}
       >
         {drop.chars.map((ch, i) => (
@@ -38,7 +55,7 @@ function RainColumn({ drop }) {
             key={i}
             className="font-mono text-[7px] md:text-[9px] leading-none"
             style={{
-              color: i === drop.head ? '#67e8f9' : i > drop.head - 3 ? '#22D3EE' : '#22D3EE',
+              color: '#22D3EE',
               opacity: i === drop.head ? 1 : i > drop.head - 3 ? 0.6 : 0.15 + (drop.chars.length - i) / drop.chars.length * 0.2,
               textShadow: i === drop.head ? '0 0 8px #22D3EE, 0 0 20px #22D3EE' : '0 0 4px #22D3EE',
             }}
@@ -46,14 +63,16 @@ function RainColumn({ drop }) {
             {ch}
           </span>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
 
-function DigitalRain() {
-  const drops = useMemo(() =>
-    Array.from({ length: 30 }, () => createRainDrop()), []);
+function DigitalRain({ count }) {
+  const drops = useMemo(() => {
+    const rng = seededRandom(123);
+    return Array.from({ length: count }, () => createRainDrop(rng));
+  }, [count]);
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {drops.map((drop, i) => (
@@ -64,21 +83,28 @@ function DigitalRain() {
 }
 
 // ── Particles ─────────────────────────────────────────────────────────
-function Dust() {
-  const p = useMemo(() =>
-    Array.from({ length: 30 }, () => ({
-      x: Math.random() * 100, y: Math.random() * 100,
-      size: 0.5 + Math.random() * 1.5,
-      dur: 6 + Math.random() * 6, delay: Math.random() * 5,
-      dx: (Math.random() - 0.5) * 15, dy: -(Math.random() * 10 + 3),
-    })), []);
+function Dust({ count }) {
+  const p = useMemo(() => {
+    const rng = seededRandom(456);
+    return Array.from({ length: count }, () => ({
+      x: rng() * 100, y: rng() * 100,
+      size: 0.5 + rng() * 1.5,
+      dur: 6 + rng() * 6, delay: rng() * 5,
+      dx: (rng() - 0.5) * 15, dy: -(rng() * 10 + 3),
+    }));
+  }, [count]);
+  if (count === 0) return null;
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {p.map((pt, i) => (
-        <motion.div key={i} className="absolute rounded-full"
-          style={{ left: `${pt.x}%`, top: `${pt.y}%`, width: pt.size, height: pt.size, backgroundColor: '#22D3EE' }}
-          animate={{ opacity: [0, 0.3, 0], x: [0, pt.dx], y: [0, pt.dy] }}
-          transition={{ duration: pt.dur, repeat: Infinity, delay: pt.delay, ease: 'easeOut' }}
+        <div key={i} className="absolute rounded-full"
+          style={{
+            left: `${pt.x}%`, top: `${pt.y}%`,
+            width: pt.size, height: pt.size,
+            backgroundColor: '#22D3EE',
+            '--dx': `${pt.dx}px`, '--dy': `${pt.dy}px`,
+            animation: `dustFloat ${pt.dur}s ease-out ${pt.delay}s infinite`,
+          }}
         />
       ))}
     </div>
@@ -89,14 +115,14 @@ function Dust() {
 function Scanline() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <motion.div
+      <div
         className="absolute left-0 right-0 h-[1px]"
         style={{
+          top: 0,
           background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.08) 30%, rgba(34,211,238,0.15) 50%, rgba(34,211,238,0.08) 70%, transparent 100%)',
           filter: 'blur(1px)',
+          animation: 'scanlineMove 5s linear infinite',
         }}
-        animate={{ top: ['-5%', '105%'] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
       />
     </div>
   );
@@ -104,22 +130,25 @@ function Scanline() {
 
 // ── Horizontal glitch bars ────────────────────────────────────────────
 function GlitchBars() {
-  const bars = useMemo(() =>
-    Array.from({ length: 8 }, (_, i) => ({
-      top: Math.random() * 100,
-      height: 1 + Math.random() * 3,
-      delay: Math.random() * 5,
-      dur: 0.1 + Math.random() * 0.3,
-    })), []);
+  const bars = useMemo(() => {
+    const rng = seededRandom(789);
+    return Array.from({ length: 8 }, () => ({
+      top: rng() * 100,
+      height: 1 + rng() * 3,
+      delay: rng() * 5,
+      dur: 0.1 + rng() * 0.3,
+    }));
+  }, []);
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {bars.map((b, i) => (
-        <motion.div
+        <div
           key={i}
           className="absolute left-0 right-0 bg-[#22D3EE]"
-          style={{ top: `${b.top}%`, height: b.height, opacity: 0.04 }}
-          animate={{ opacity: [0, 0.08, 0] }}
-          transition={{ duration: b.dur, repeat: Infinity, delay: b.delay, ease: 'steps(2)' }}
+          style={{
+            top: `${b.top}%`, height: b.height, opacity: 0.04,
+            animation: `glitchFlicker ${b.dur}s steps(2) ${b.delay}s infinite`,
+          }}
         />
       ))}
     </div>
@@ -133,15 +162,15 @@ function Typewriter({ text, delay = 0, className = "", style = {} }) {
 
   useEffect(() => {
     let i = 0;
+    let interval = null;
     const t = setTimeout(() => {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setDisplayed(text.slice(0, i + 1));
         i++;
-        if (i >= text.length) { clearInterval(interval); setDone(true); }
-      }, 30);
-      return () => clearInterval(interval);
+        if (i >= text.length) { clearInterval(interval); interval = null; setDone(true); }
+      }, 50);
     }, delay * 1000);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); if (interval) clearInterval(interval); };
   }, [text, delay]);
 
   return (
@@ -159,12 +188,12 @@ function Counter({ to, suffix = "", label, delay = 0 }) {
   useEffect(() => {
     const t = setTimeout(() => {
       let start = 0;
-      const step = Math.ceil(to / 40);
+      const step = Math.ceil(to / 30);
       const interval = setInterval(() => {
         start += step;
         if (start >= to) { setV(to); clearInterval(interval); }
         else setV(start);
-      }, 40);
+      }, 100);
       return () => clearInterval(interval);
     }, delay * 1000);
     return () => clearTimeout(t);
@@ -182,10 +211,12 @@ function Counter({ to, suffix = "", label, delay = 0 }) {
 
 // ── Main ──────────────────────────────────────────────────────────────
 export default React.memo(function BackendSection() {
+  const { config } = useDevicePerformance();
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden select-none"
+    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden select-none contain-[layout_style]"
       style={{ backgroundColor: '#041327' }}
     >
+      <style>{BACKEND_CSS}</style>
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none"
         style={{
@@ -197,10 +228,10 @@ export default React.memo(function BackendSection() {
         }}
       />
 
-      <DigitalRain />
-      <Dust />
+      <DigitalRain count={config.digitalRainCount} />
+      <Dust count={config.dustCount} />
       <Scanline />
-      <GlitchBars />
+      {config.enableGlitch && <GlitchBars />}
 
       {/* CRT scan lines overlay */}
       <div className="absolute inset-0 pointer-events-none"
