@@ -81,7 +81,6 @@ CRITICAL_FILES=(
     "backend/scripts/ml/train_traffic_model.py"
     "backend/scripts/setup/seed_demo.py"
     "backend/scripts/docker/docker-entrypoint.sh"
-    "backend/tests/e2e/test_chatbot_e2e.py"
     "backend/data/raw/Fatal_Road_Traffic.xlsx"
     "backend/Dockerfile"
     "backend/docker-compose.pptmaps.yml"
@@ -221,23 +220,6 @@ for endpoint in "${PUBLIC_ENDPOINTS[@]}"; do
     fi
 done
 
-print_test "4.3" "Chatbot endpoint"
-RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/chatbot/ask \
-    -H "Content-Type: application/json" \
-    -d '{"question": "¿Qué zonas evitar ahora?"}')
-
-if echo "$RESPONSE" | grep -q '"intent"'; then
-    pass "Chatbot responde con intent"
-else
-    fail "Chatbot no responde correctamente"
-fi
-
-if echo "$RESPONSE" | grep -q '"predictions"'; then
-    pass "Chatbot incluye predicciones ML"
-else
-    fail "Chatbot no incluye predicciones ML"
-fi
-
 print_test "4.4" "Documentación Swagger"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/docs)
 if [ "$HTTP_CODE" = "200" ]; then
@@ -374,7 +356,7 @@ fi
 print_header "TEST 9: SCRIPT DE UTILIDAD"
 
 print_test "9.1" "Script pptmaps.sh ayuda"
-if ./pptmaps.sh help | grep -q "test:e2e-chatbot"; then
+if ./pptmaps.sh help | grep -q "test:docker"; then
     pass "Script muestra comandos de ayuda"
 else
     fail "Script help no funciona"
@@ -387,19 +369,7 @@ else
     fail "Script info no funciona"
 fi
 
-# ============================================================
-# TEST 10: TEST E2E CHATBOT
-# ============================================================
-print_header "TEST 10: TEST E2E CHATBOT"
 
-print_test "10.1" "Ejecutar test E2E completo"
-cd backend
-if source venv/bin/activate && python tests/e2e/test_chatbot_e2e.py 2>&1 | grep -q "✓ TODOS LOS TESTS PASARON"; then
-    pass "Test E2E chatbot 6/6 pasando"
-else
-    fail "Test E2E chatbot falló"
-fi
-cd ..
 
 # ============================================================
 # RESUMEN FINAL

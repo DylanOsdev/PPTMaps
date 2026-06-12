@@ -40,12 +40,12 @@ async def test_create_accident_zone(client: AsyncClient, auth_headers: dict):
     assert data["geometry"]["type"] == "MultiPolygon"
 
 
-async def test_create_requires_auth(client: AsyncClient):
+async def test_create_accident_zone_public(client: AsyncClient):
     resp = await client.post(
         "/api/v1/accident-zones/",
         json={"severity": 1, "coordinates": _multipolygon(MED_LNG, MED_LAT)},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 201  # Endpoint público
 
 
 async def test_list_accident_zones(client: AsyncClient, auth_headers: dict):

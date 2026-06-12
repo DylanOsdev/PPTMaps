@@ -8,7 +8,7 @@ const LAYER_GROUPS = {
   "air-quality": ["air-quality-stations"],
   climate:   ["flood-zones", "rain-risk", "weather-alerts"],
   reports:   ["reports-collision", "reports-flood"],
-  routes:    ["safe-route"],
+  risk:      ["accident-risk"],
 };
 
 function saveLayerState() {
@@ -22,7 +22,16 @@ function saveLayerState() {
 export function applySavedLayerState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      // Capas activadas por defecto en primera carga
+      const defaultLayers = ["medellin-city", "medellin-comunas", "metro-municipios"];
+      document.querySelectorAll(".toggle[data-layer]").forEach(t => {
+        if (defaultLayers.includes(t.dataset.layer)) {
+          t.checked = true;
+        }
+      });
+      return;
+    }
     const state = JSON.parse(raw);
     document.querySelectorAll(".toggle[data-layer]").forEach(t => {
       if (typeof state[t.dataset.layer] === "boolean") {
@@ -61,7 +70,6 @@ export function initLayersPanel() {
       "medellin-city", "medellin-comunas",
       "accident-clusters",
       "flood-zones",
-      "safe-route",
     ],
     btnPresetWeather: [
       "medellin-city", "medellin-comunas",

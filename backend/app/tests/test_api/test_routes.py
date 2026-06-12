@@ -4,7 +4,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_routes_returns_coordinates(client):
-    resp = await client.get("/api/v1/routes", params={"destination": "6.28,-75.56"})
+    resp = await client.get("/api/v1/public/routes", params={"destination": "6.28,-75.56"})
     assert resp.status_code == 200
     data = resp.json()
     # Contrato frontend (search.js): data.coordinates = [[lat,lng], ...]
@@ -17,7 +17,7 @@ async def test_routes_returns_coordinates(client):
 
 async def test_routes_accepts_explicit_origin(client):
     resp = await client.get(
-        "/api/v1/routes", params={"origin": "6.20,-75.58", "destination": "6.28,-75.56"}
+        "/api/v1/public/routes", params={"origin": "6.20,-75.58", "destination": "6.28,-75.56"}
     )
     assert resp.status_code == 200
     # OSRM real devuelve coordenadas con mayor precisión
@@ -26,5 +26,5 @@ async def test_routes_accepts_explicit_origin(client):
 
 
 async def test_routes_invalid_destination_returns_422(client):
-    resp = await client.get("/api/v1/routes", params={"destination": "no-es-coordenada"})
+    resp = await client.get("/api/v1/public/routes", params={"destination": "no-es-coordenada"})
     assert resp.status_code == 422

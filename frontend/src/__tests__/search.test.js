@@ -27,12 +27,7 @@ describe('search.js - Búsqueda con geocoder y routing', () => {
       addLayer: vi.fn(),
       fitBounds: vi.fn(),
     };
-    AppState.layerGroups = {
-      'safe-route': {
-        addLayer: vi.fn(),
-        removeLayer: vi.fn(),
-      },
-    };
+    AppState.layerGroups = {};
     AppState.userLocation = null;
 
     // Mock Leaflet global

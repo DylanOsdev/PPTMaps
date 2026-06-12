@@ -1,12 +1,12 @@
 # 2. Tecnologías Utilizadas
 
-
 ## 2.1 Backend (Python)
 
 | Categoría | Paquete | Versión (requirements.txt) |
 |-----------|---------|----------------------------|
 | Framework | `fastapi` | `>=0.115.0` |
 | Servidor ASGI | `uvicorn[standard]` | `>=0.34.0` |
+| Rate limiting | `slowapi` | `>=0.1.9` |
 | Multipart | `python-multipart` | `>=0.0.12` |
 | Validación | `pydantic` | `>=2.10.0` |
 | Configuración | `pydantic-settings` | `>=2.6.0` |
@@ -15,16 +15,15 @@
 | Driver PostgreSQL | `asyncpg` | `>=0.30.0` |
 | Geoespacial | `GeoAlchemy2[shapely]` | `>=0.15.0` |
 | Migraciones | `alembic` | `>=1.14.0` |
-| Hashing | `passlib[bcrypt]` / `bcrypt` | `>=1.7.4` / `>=4.2.0` |
-| JWT | `python-jose[cryptography]` | `>=3.3.0` |
 | Tiempo real | `websockets` | `>=14.0` |
 | Cola de tareas | `celery` | `>=5.4.0` |
 | Cache / broker | `redis` | `>=5.2.0` |
+| Async compat | `nest-asyncio` | `>=1.6.0` |
 
 **Testing:** `pytest>=8.3`, `pytest-asyncio>=0.24`, `httpx>=0.28`, `anyio>=4.7`,
 `fakeredis>=2.26`.
 
-**Dependencias adicionales presentes en el código** (vía extras o transitively):
+**Dependencias adicionales presentes en el código** (vía extras o transitivamente):
 `shapely` (geometría en `routing.py`, `siata_sync.py`), `openpyxl` (lectura del XLSX de
 accidentes en `scripts/ingest_accidents.py`).
 
@@ -91,4 +90,3 @@ El objeto global `L` queda disponible para el servicio de mapas
   (issue `vite-pwa/vite-plugin-pwa#923`), documentado en el propio `sw.js`.
 
 ---
-

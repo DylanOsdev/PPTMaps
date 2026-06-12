@@ -21,7 +21,6 @@ docker ps --format '{{.Names}}' | grep backend-db && echo "  ✓ backend-db runn
 echo "✓ TEST 3: Backend API"
 curl -s http://localhost:8000/health | grep -q "ok" && echo "  ✓ Health endpoint OK"
 curl -s http://localhost:8000/api/v1/public/stats | grep -q "total" && echo "  ✓ Stats endpoint OK"
-curl -s -X POST http://localhost:8000/api/v1/chatbot/ask -H "Content-Type: application/json" -d '{"question":"test"}' | grep -q "intent" && echo "  ✓ Chatbot endpoint OK"
 
 # Test 4: Frontend
 echo "✓ TEST 4: Frontend"

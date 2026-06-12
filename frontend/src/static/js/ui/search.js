@@ -29,9 +29,7 @@ export function initSearch() {
     }
 
     if (lastRoutePolyline) {
-      const safeGroup = AppState.layerGroups["safe-route"];
-      if (safeGroup) safeGroup.removeLayer(lastRoutePolyline);
-      else map.removeLayer(lastRoutePolyline);
+      map.removeLayer(lastRoutePolyline);
       lastRoutePolyline = null;
     }
 
@@ -60,15 +58,52 @@ export function initSearch() {
     fetchRoute(destStr, originStr)
       .then((data) => {
         if (data.coordinates?.length) {
-          lastRoutePolyline = L.polyline(data.coordinates, { color: "#4ade80", weight: 5 });
-          const safeGroup = AppState.layerGroups["safe-route"];
-          if (safeGroup) {
-            safeGroup.addLayer(lastRoutePolyline);
-            if (!map.hasLayer(safeGroup)) map.addLayer(safeGroup);
-          } else {
-            lastRoutePolyline.addTo(map);
-          }
+          const sa = data.safety_assessment || {};
+          const score = sa.route_danger_score || 1;
+          const routeColor = score >= 4 ? "#ef4444" : score >= 3 ? "#fbbf24" : "#4ade80";
+
+          lastRoutePolyline = L.polyline(data.coordinates, { color: routeColor, weight: 5 });
+          lastRoutePolyline.addTo(map);
           map.fitBounds(lastRoutePolyline.getBounds(), { padding: [40, 40] });
+
+          const briefing = document.getElementById("safetyBriefing");
+          if (briefing && data.safety_assessment) {
+            const destEl = document.getElementById("briefingDest");
+            const destDescEl = document.getElementById("briefingDestDesc");
+            const destContainer = document.getElementById("briefingDestContainer");
+            const routeEl = document.getElementById("briefingRoute");
+            const routeDescEl = document.getElementById("briefingRouteDesc");
+            const routeContainer = document.getElementById("briefingRouteContainer");
+
+            const sa = data.safety_assessment;
+
+            // Colores según score
+            const destColor = sa.dest_danger_score >= 4 ? "#ef4444" : sa.dest_danger_score >= 3 ? "#fbbf24" : "#4ade80";
+            const destBg = sa.dest_danger_score >= 4 ? "rgba(239, 68, 68, 0.08)" : sa.dest_danger_score >= 3 ? "rgba(251, 191, 36, 0.08)" : "rgba(74, 222, 128, 0.08)";
+            const destBorder = sa.dest_danger_score >= 4 ? "rgba(239, 68, 68, 0.3)" : sa.dest_danger_score >= 3 ? "rgba(251, 191, 36, 0.3)" : "rgba(74, 222, 128, 0.3)";
+
+            const routeColor = sa.route_danger_score >= 4 ? "#ef4444" : sa.route_danger_score >= 3 ? "#fbbf24" : "#4ade80";
+            const routeBg = sa.route_danger_score >= 4 ? "rgba(239, 68, 68, 0.08)" : sa.route_danger_score >= 3 ? "rgba(251, 191, 36, 0.08)" : "rgba(74, 222, 128, 0.08)";
+            const routeBorder = sa.route_danger_score >= 4 ? "rgba(239, 68, 68, 0.3)" : sa.route_danger_score >= 3 ? "rgba(251, 191, 36, 0.3)" : "rgba(74, 222, 128, 0.3)";
+
+            destEl.textContent = sa.dest_danger_level.toUpperCase();
+            destEl.style.color = destColor;
+            destDescEl.textContent = sa.dest_description;
+            if (destContainer) {
+              destContainer.style.backgroundColor = destBg;
+              destContainer.style.border = `1px solid ${destBorder}`;
+            }
+
+            routeEl.textContent = sa.route_danger_level.toUpperCase();
+            routeEl.style.color = routeColor;
+            routeDescEl.textContent = sa.route_description;
+            if (routeContainer) {
+              routeContainer.style.backgroundColor = routeBg;
+              routeContainer.style.border = `1px solid ${routeBorder}`;
+            }
+
+            briefing.style.display = "block";
+          }
         }
       })
       .catch((err) => {

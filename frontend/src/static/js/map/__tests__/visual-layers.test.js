@@ -3,7 +3,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDemoLayers } from '../demo-layers.js';
+import { createDemoLayers, updateAccidentRiskHeatmap } from '../demo-layers.js';
 import { AppState } from '../../core/state.js';
 
 // Mock de dependencias
@@ -61,6 +61,10 @@ describe('Features Visuales Leaflet', () => {
       marker: vi.fn(() => ({
         addTo: vi.fn().mockReturnThis(),
         bindPopup: vi.fn().mockReturnThis()
+      })),
+      circleMarker: vi.fn(() => ({
+        bindPopup: vi.fn().mockReturnThis(),
+        addTo: vi.fn().mockReturnThis(),
       })),
       divIcon: vi.fn((opts) => opts)
     };
@@ -138,38 +142,60 @@ describe('Features Visuales Leaflet', () => {
     });
   });
 
-  describe('Heatmap de predicción', () => {
-    it('debe crear heatLayer con 9 puntos de predicción', () => {
-      createDemoLayers(mockMap);
+  describe('Heatmap de predicción (accident-risk)', () => {
+    beforeEach(() => {
+      // Crear el grupo accident-risk (normalmente lo crea createDemoLayers)
+      AppState.layerGroups['accident-risk'] = mockLayerGroup;
+      // Mock global.fetch para que updateAccidentRiskHeatmap funcione
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          points: [
+            { lat: 6.25, lng: -75.56, risk_score: 0.8 },
+            { lat: 6.26, lng: -75.57, risk_score: 0.3 },
+            { lat: 6.24, lng: -75.55, risk_score: 0.6 },
+          ]
+        })
+      });
+    });
+
+    it('debe crear heatLayer con puntos de riesgo', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
       expect(L.heatLayer).toHaveBeenCalled();
-      
       const heatCall = L.heatLayer.mock.calls[0];
       const points = heatCall[0];
       
-      expect(points).toHaveLength(9);
+      expect(points.length).toBeGreaterThan(0);
+      // Verificar formato [lat, lng, risk_score]
+      points.forEach(point => {
+        expect(point).toHaveLength(3);
+        expect(typeof point[0]).toBe('number');
+        expect(typeof point[1]).toBe('number');
+        expect(typeof point[2]).toBe('number');
+      });
     });
 
-    it('debe configurar radius: 45', () => {
-      createDemoLayers(mockMap);
+    it('debe configurar radius: 40', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
       const heatCall = L.heatLayer.mock.calls[0];
       const options = heatCall[1];
       
-      expect(options.radius).toBe(45);
+      expect(options.radius).toBe(40);
     });
 
-    it('debe configurar blur: 35', () => {
-      createDemoLayers(mockMap);
+    it('debe configurar blur: 30', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
       const heatCall = L.heatLayer.mock.calls[0];
       const options = heatCall[1];
       
-      expect(options.blur).toBe(35);
+      expect(options.blur).toBe(30);
     });
 
-    it('debe configurar maxZoom: 14', () => {
-      createDemoLayers(mockMap);
+    it('debe configurar maxZoom: 14', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
       const heatCall = L.heatLayer.mock.calls[0];
       const options = heatCall[1];
@@ -177,57 +203,37 @@ describe('Features Visuales Leaflet', () => {
       expect(options.maxZoom).toBe(14);
     });
 
-    it('debe configurar gradiente de colores', () => {
-      createDemoLayers(mockMap);
+    it('debe configurar gradiente de colores', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
       const heatCall = L.heatLayer.mock.calls[0];
       const options = heatCall[1];
       
       expect(options.gradient).toEqual({
-        0.4: 'blue',
-        0.6: 'cyan',
-        0.8: 'yellow',
-        1.0: 'red'
+        0.2: '#22c55e',
+        0.4: '#eab308',
+        0.6: '#f97316',
+        0.8: '#ef4444',
+        1.0: '#7f1d1d'
       });
     });
 
-    it('debe incluir puntos con coordenadas y valores de intensidad', () => {
-      createDemoLayers(mockMap);
+    it('debe agregar heatmap al grupo accident-risk', async () => {
+      await updateAccidentRiskHeatmap(mockMap);
 
-      const heatCall = L.heatLayer.mock.calls[0];
-      const points = heatCall[0];
-      
-      // Verificar formato [lat, lng, intensity]
-      points.forEach(point => {
-        expect(point).toHaveLength(3);
-        expect(typeof point[0]).toBe('number'); // lat
-        expect(typeof point[1]).toBe('number'); // lng
-        expect(typeof point[2]).toBe('number'); // intensity
-        expect(point[2]).toBeGreaterThan(0);
-        expect(point[2]).toBeLessThanOrEqual(1);
-      });
+      const riskGroup = AppState.layerGroups['accident-risk'];
+      expect(riskGroup).toBeDefined();
+      expect(riskGroup.addLayer).toHaveBeenCalled();
     });
 
-    it('debe agregar heatmap al grupo telemetry-predict', () => {
-      createDemoLayers(mockMap);
-
-      const predictGroup = AppState.layerGroups['telemetry-predict'];
-      expect(predictGroup).toBeDefined();
-      expect(predictGroup.addLayer).toHaveBeenCalled();
-    });
-
-    it('debe manejar ausencia de L.heatLayer gracefully', () => {
-      // Simular que leaflet-heat no está cargado
+    it('debe usar círculos como fallback si L.heatLayer no existe', async () => {
       delete global.L.heatLayer;
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      createDemoLayers(mockMap);
+      await updateAccidentRiskHeatmap(mockMap);
 
-      expect(consoleWarn).toHaveBeenCalledWith(
-        expect.stringContaining('Leaflet.heat no está cargado')
-      );
-      
-      consoleWarn.mockRestore();
+      const riskGroup = AppState.layerGroups['accident-risk'];
+      expect(L.circleMarker).toHaveBeenCalled();
+      expect(riskGroup.addLayer).toHaveBeenCalled();
     });
   });
 
@@ -368,14 +374,14 @@ describe('Features Visuales Leaflet', () => {
       createDemoLayers(mockMap);
 
       const expectedGroups = [
-        'safe-route',
         'blocked-roads',
         'accident-clusters',
+        'accident-zones',
         'fatalities-layer',
+        'air-quality-stations',
         'flood-zones',
-        'telemetry-gps',
         'reports-collision',
-        'telemetry-predict',
+        'accident-risk',
         'rain-risk',
         'weather-alerts',
         'reports-flood',

@@ -25,12 +25,12 @@ async def test_create_report(client: AsyncClient, auth_headers: dict):
     assert data["longitude"] == pytest.approx(MED_LNG)
 
 
-async def test_create_report_requires_auth(client: AsyncClient):
+async def test_create_report_public(client: AsyncClient):
     resp = await client.post(
         "/api/v1/reports/",
         json={"report_type": "flood", "latitude": MED_LAT, "longitude": MED_LNG},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 201  # Endpoint público, no requiere auth
 
 
 async def test_list_and_get_report(client: AsyncClient, auth_headers: dict):

@@ -1,264 +1,259 @@
-# PPTMaps — Backend & Base de Datos
+# PPTMaps — Backend
 
-> **Plataforma unificada de movilidad inteligente para el Valle de Aburrá (Medellín)**
+> Unified mobility platform for the Valle de Aburrá (Medellín, Colombia)
 > FastAPI (async) · PostgreSQL + PostGIS · Redis · Celery · WebSockets
-> Hackatón **HackData CTGI SENA 2026**
+> Hackathon **HackData CTGI SENA 2026**
 
-El backend ingiere datos oficiales de movilidad (accidentalidad, niveles SIATA, clima
-Open-Meteo) y reportes ciudadanos, los normaliza y optimiza en **PostGIS**, y los expone
-vía **API REST + WebSocket** a la PWA en React. También sirve el frontend compilado
-(`frontend/dist`), por lo que todo corre como una sola unidad.
+The backend ingests official mobility data (702k accident records, SIATA flood levels, Open-Meteo weather, WAQI air quality) and citizen reports, normalizes and optimizes them in **PostGIS**, and exposes everything via **REST API + WebSocket** to the PWA frontend. It also serves the compiled frontend (`frontend/dist`) with SPA fallback — everything runs as a single unit.
 
-> Este README fue verificado contra el código fuente. Donde algo está implementado a
-> medias o sembrado para demo, se indica explícitamente.
+All endpoints are **public** (no auth). Rate limiting via slowapi (5/h per IP for citizen reports).
 
 ---
 
-## 🏛️ Arquitectura
+## Architecture
 
 ```
 backend/app/
-├── api/
-│   ├── deps.py            # Dependencias: JWT, API key, roles
-│   └── v1/
-│       ├── router.py      # Monta todos los routers bajo /api/v1
-│       └── endpoints/     # auth, users, reports, vehicles, telemetry,
-│                          #   public, accident_zones, flood_hazards, routes
-├── core/                  # config (pydantic-settings), security (JWT/bcrypt), exceptions
-├── crud/                  # Acceso a datos (Repository): user, report, vehicle, alert,
-│                          #   accident_zone, flood_hazard
-├── db/                    # Motor async (asyncpg), sesiones, Base declarativa, Redis
-├── models/                # 10 modelos SQLAlchemy 2.0 (PostGIS via GeoAlchemy2)
-├── schemas/               # Contratos Pydantic v2 (entrada/salida)
-├── services/              # Lógica de dominio e integraciones externas
-├── tasks/                 # Celery: celery_app, worker, cron_jobs (beat)
-├── websocket/             # ConnectionManager (singleton) + ws_router
-├── ml/                    # dbscan_clustering (PostGIS nativo); predict_traffic (vacío)
-└── main.py                # App FastAPI + lifespan + montaje del frontend (SPA)
+├── api/v1/endpoints/     # reports, public, air_quality, accident_zones, flood_hazards
+├── core/                 # config (pydantic-settings), security (unused), exceptions, startup
+├── crud/                 # crud_accident_zone, crud_air_quality, crud_alert, crud_flood_hazard, crud_report, crud_user
+├── db/                   # database.py (async), base.py, base_class.py, redis.py
+├── models/               # 11 SQLAlchemy 2.0 models + PostGIS via GeoAlchemy2
+├── schemas/              # Pydantic v2 contracts
+├── services/             # 11 service modules (hexagonal integrations)
+├── tasks/                # celery_app.py, cron_jobs.py (no worker.py)
+├── ml/                   # dbscan_clustering.py (weather event clustering via ST_ClusterDBSCAN)
+├── websocket/            # connection_manager.py, ws_router.py
+├── tests/                # conftest.py + test_api, test_services, test_frontend_mount, test_spa_fallback, test_startup_enqueue
+└── main.py               # lifespan + routers + SPA fallback
 ```
-
-### Servicios (`app/services/`)
-
-| Servicio | Rol |
-|----------|-----|
-| `ingestion.py` | Siembra accidentes/zonas (con fallback a datos demo) |
-| `siata_sync.py` | SIATA → `flood_hazards` (arquitectura hexagonal) |
-| `weather.py` | Clima multipunto + pronóstico Open-Meteo (hexagonal) |
-| `routing.py` | Ruteo resiliente que esquiva zonas de riesgo activas |
-| `telemetry.py` | CQRS: encolar pings en Redis / drenar a Postgres |
-| `notification.py` | Crear y difundir alertas |
-| `alert_broadcaster.py` | Puente Redis pub/sub → WebSocket (cruza procesos Celery↔FastAPI) |
-| `zones_seed.py` | Importa comunas/municipios (GeoJSON) a PostGIS |
-
-### Decisiones de diseño
-
-- **CQRS en telemetría**: el endpoint `POST /telemetry` encola en Redis (responde `202`)
-  y un worker Celery (`telemetry.flush`) drena el buffer a Postgres en lotes. Separa la
-  escritura rápida de la persistencia.
-- **Hexagonal en integraciones**: el dominio depende de interfaces (`SiataGaugeClient`,
-  `WeatherClient`, `ForecastClient`), no de fuentes concretas. Hay adaptador HTTP real y
-  adaptador *seed* de respaldo, intercambiables sin tocar la lógica.
-- **Clustering en la BD**: `ST_ClusterDBSCAN` (PostGIS nativo) en vez de scikit-learn —
-  el cómputo espacial vive donde están los datos.
-- **Pub/Sub para tiempo real**: los workers Celery viven en otro proceso, así que
-  publican alertas en Redis (`alerts:live`) y un listener en el `lifespan` las reenvía a
-  los clientes WebSocket.
 
 ---
 
-## 🧰 Stack (versiones reales)
+## Stack
 
-| Capa | Tecnología |
-|------|-----------|
+| Layer | Technology |
+|-------|-----------|
 | API | FastAPI `>=0.115` (async) · Uvicorn `>=0.34` |
-| Base de datos | PostgreSQL 16 + **PostGIS 3.4** |
+| Database | PostgreSQL 16 + **PostGIS 3.4** |
 | ORM / geo | SQLAlchemy 2.0 (async) + GeoAlchemy2 · driver **asyncpg** |
-| Migraciones | Alembic |
-| Cola / cache | Redis 7 |
-| Tareas async | Celery 5.4 (worker + beat) |
-| Tiempo real | WebSockets |
-| Auth | JWT (python-jose) + bcrypt (passlib) |
-| Tests | pytest + pytest-asyncio + httpx + fakeredis |
-
-> El badge "FastAPI 0.111" del README raíz está desactualizado; el requisito real es
-> `fastapi>=0.115.0` (`requirements.txt`).
+| Migrations | Alembic |
+| Queue / cache | Redis 7 |
+| Async tasks | Celery 5.4 (worker + beat) |
+| Real-time | WebSockets (Redis pub/sub bridge) |
+| Rate limiting | slowapi |
+| Tests | pytest + pytest-asyncio + httpx |
 
 ---
 
-## 🗄️ Base de Datos (PostGIS)
+## Database (12 tables)
 
-- **CRS único:** EPSG:4326 (WGS84) en todas las geometrías. Índices **GiST** en cada `geom`.
-- La extensión PostGIS se crea en la primera migración (`CREATE EXTENSION IF NOT EXISTS postgis`).
+CRS: EPSG:4326 (WGS84) on all geometries. GiST indexes on every `geom` column.
 
-### Tablas (10)
+| Table | PK | Geometry | Role |
+|-------|----|-----------|------|
+| `users` | Integer | — | Schema only, unused |
+| `reports` | Integer | POINT | Citizen reports |
+| `accident_zones` | Integer | MULTIPOLYGON | DBSCAN accident hotspot clusters |
+| `flood_hazards` | Integer | POLYGON | SIATA flood risk zones |
+| `alerts` | UUID | — | System alerts |
+| `weather_snapshots` | Integer | POINT | Open-Meteo weather per point |
+| `zones` | Integer | GEOMETRY | Comunas (polygon) + municipios (point) |
+| `accident_incidents` | Integer | POINT | **702,540** official incidents (2008–2025) |
+| `air_quality_readings` | Integer | POINT | WAQI air quality data (unique constraint) |
+| `weather_hazard_zones` | Integer | — | Weather danger zones (from DBSCAN clustering) |
+| `weather_events` | Integer | POINT | Weather events (rainfall, lightning, hail, storm) |
+| `historical_weather_medellin` | — | — | Historical precipitation (2008–2025, raw table) |
 
-| Tabla | PK | Geometría | Rol |
-|-------|----|-----------|-----|
-| `users` | Integer | — | Usuarios, credenciales, rol |
-| `reports` | Integer | POINT | Reportes ciudadanos |
-| `accident_zones` | Integer | MULTIPOLYGON | Zonas calientes (DBSCAN) |
-| `flood_hazards` | Integer | POLYGON | Zonas de inundación (SIATA) |
-| `vehicles` | UUID | — | Flota (ambulancia, patrulla, bombero) |
-| `telemetry` | UUID | POINT | Pings GPS de la flota |
-| `alerts` | UUID | — | Alertas (tráfico, SIATA, overspeed) |
-| `weather_snapshots` | Integer | POINT | Último snapshot de clima por punto |
-| `zones` | Integer | GEOMETRY | Comunas (polígono) + municipios (punto) |
-| `accident_incidents` | Integer | POINT | **702.540** incidentes oficiales (2008–2025) |
+Dropped via migration `d85cbb436027`: `vehicles`, `telemetry`.
 
-### Enums
+---
 
-`user_role` (citizen/authority/admin) · `report_type` (accident/flood/obstruction/other) ·
-`flood_status` (dry/watch/flooded) · `vehiclestatus` (ACTIVE/INACTIVE/IN_MAINTENANCE/ON_MISSION) ·
-`alertseverity` (INFO/WARNING/CRITICAL).
-
-### Migraciones Alembic (en orden)
+## Alembic Migrations (12 total)
 
 ```
-d617cc424b41  initial (users, reports, accident_zones, flood_hazards + PostGIS)
-b1a2c3d4e5f6  vehicles
-c2b3d4e5f6a7  telemetry
-d3c4e5f6a7b8  alerts
-e4d5f6a7b8c9  weather_snapshots
-f5a6b7c8d9e0  zones
-a6b7c8d9e0f1  accident_incidents  (escrita a mano)
+d617cc424b41  initial (PostGIS + users, reports, accident_zones, flood_hazards)
+b1a2c3d4e5f6  add vehicles
+c2b3d4e5f6a7  add telemetry
+d3c4e5f6a7b8  add alerts
+e4d5f6a7b8c9  add weather_snapshots
+f5a6b7c8d9e0  add zones
+a6b7c8d9e0f1  add accident_incidents
+g6h7i8j9k0l1  add historical_weather
+d85cbb436027  drop vehicles, telemetry
+h8i9j0k1l2m3  remove auth, make reports public
+n4o5p6q7r8s9  add air_quality_readings
+o6p7q8r9s0t1  add weather_hazard_zones + weather_events
 ```
 
-`alembic/env.py` corre en modo **online async** y excluye las tablas internas de PostGIS
-(`spatial_ref_sys`, tiger, topology) del autogenerate.
-
-### ⚠️ Gotcha de la BD de demo
-
-`run.sh` y pytest usan la **misma base `movimed_test`** (puerto 5433). Cada corrida de
-`pytest` hace `drop_all` → **borra los 702k accidentes y las zonas**. Antes de una demo,
-reaplicá:
-
-```bash
-POSTGRES_DB=movimed_test alembic upgrade head
-POSTGRES_DB=movimed_test python -m scripts.ingest_accidents /ruta/al/dataset.xlsx
-```
+Alembic `env.py` runs in **online async** mode and excludes PostGIS internal tables from autogenerate.
 
 ---
 
-## 🔌 API
+## API Endpoints (all public, no auth)
 
-Base `/api/v1`. Swagger: `http://localhost:8000/docs`.
+Swagger: `http://localhost:8000/docs`
 
-| Recurso | Endpoints | Auth |
-|---------|-----------|------|
-| **Auth** | `POST /auth/register`, `POST /auth/login` | — |
-| **Usuarios** | CRUD `/users` | JWT |
-| **Reportes** | CRUD `/reports` | **JWT** |
-| **Vehículos** | CRUD `/vehicles` | JWT/roles |
-| **Telemetría** | `POST /telemetry` | **API key** (`X-API-Key`) |
-| **Rutas** | `GET /routes?destination=lat,lng` | — |
-| **Zonas accid.** | `/accident-zones` (proximidad `ST_DWithin`) | JWT |
-| **Inundación** | `/flood-hazards` | JWT |
-| **Público (mapa/dashboard)** | `/public/comunas`, `/public/comunas/stats`, `/public/telemetry/latest`, `/public/alerts`, `/public/accidents/geojson`, `/public/accidents/stats`, `/public/fatalities`, `/public/flood-zones`, `/public/weather`, `/public/weather/forecast`, `/public/rain-risk` | — |
-| **Tiempo real** | `WS /ws/telemetry?channel=global` | — |
+### Router mounts
+| Route | Module |
+|-------|--------|
+| `/reports` | CRUD citizen reports |
+| `/public` | 17 geo endpoints (see below) |
+| `/public/air-quality` | 4 air quality endpoints |
+| `/accident-zones` | Accident hotspots |
+| `/flood-hazards` | Flood risk zones |
 
-### Tiempo real (WebSocket)
+### Public endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/public/alerts` | Active alerts |
+| `GET` | `/public/accidents/geojson` | Incident GeoJSON |
+| `GET` | `/public/fatalities` | Fatal incidents |
+| `GET` | `/public/flood-zones` | Flood risk zones |
+| `GET` | `/public/weather` | Current weather multi-point |
+| `GET` | `/public/weather/forecast` | Detailed forecast (Medellín) |
+| `GET` | `/public/weather/stats` | Historical rain stats (2008–2025) |
+| `GET` | `/public/accidents/stats` | Aggregated accident stats |
+| `GET` | `/public/rain-risk` | Rain risk next 2h |
+| `GET` | `/public/comunas` | Comunas + municipios |
+| `GET` | `/public/comunas/stats` | Stats per comuna |
+| `GET` | `/public/reports` | Public citizen reports |
+| `POST` | `/public/reports` | Create citizen report (rate-limited 5/h) |
+| `GET` | `/public/accident-zones` | DBSCAN hotspots (GeoJSON) |
+| `GET` | `/public/accidents/historical` | 702k incidents |
+| `GET` | `/public/routes/safe-weather` | Safe route avoiding weather |
+| `GET` | `/public/routes` | Alias for safe-weather |
 
-`/ws/telemetry` envía al conectar la última posición de cada vehículo y las alertas no
-resueltas:
+### Air Quality
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/public/air-quality/current` | Latest per station |
+| `GET` | `/public/air-quality/station/{id}` | Station history |
+| `GET` | `/public/air-quality/map` | GeoJSON for map |
+| `GET` | `/public/air-quality/by-comuna` | AQI grouped by comuna |
 
-```json
-{ "type": "telemetry", "data": [{ "vehicle_id": "...", "lat": 6.25, "lng": -75.56, "speed": 42, "heading": 180 }] }
-{ "type": "alerts",     "data": [{ "type": "siata", "severity": "CRITICAL", "message": "..." }] }
-```
+### Other
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/health/db` | Database connectivity check |
+| `WS` | `/ws/telemetry` | Real-time alerts via WebSocket |
 
-### Ruteo resiliente
+### Real-time (WebSocket)
 
-`GET /routes` traza origen→destino y, si cruza una zona de riesgo activa (inundación
-`watch`/`flooded` o `accident_zones` con `severity ≥ 3`), inserta un waypoint que la
-rodea. Devuelve `{ coordinates, distance_km, avoided_zones }`.
-
----
-
-## 🔐 Seguridad
-
-- **Usuarios**: JWT (OAuth2 password flow), roles `citizen`/`authority`/`admin`,
-  contraseñas con bcrypt. Dependencias `get_current_active_user`, `require_role(...)`.
-- **Dispositivos GPS**: la ingesta de telemetría usa **API key** (`X-API-Key`), validada
-  con `secrets.compare_digest` (tiempo constante). No usa JWT porque son máquinas.
-
----
-
-## ⚙️ Tareas periódicas (Celery beat)
-
-| Tarea | Frecuencia | Función |
-|-------|-----------|---------|
-| `telemetry.flush` | 1 min | Drena buffer Redis → Postgres (CQRS) |
-| `overspeed.check` | 1 min | Alertas por exceso de velocidad |
-| `siata.sync_flood_hazards` | 15 min | SIATA → `flood_hazards` |
-| `weather.sync` | 15 min | Open-Meteo → `weather_snapshots` |
-| `ml.cluster_accident_hotspots` | 1 h | DBSCAN → `accident_zones` |
-
-> Sin Celery corriendo, `weather_snapshots` y `accident_zones` quedan **vacías** (esas
-> capas del mapa no se pueblan). El dashboard y SIATA inicial sí funcionan, porque se
-> siembran en el arranque (`lifespan`).
+`/ws/telemetry` sends active alerts on connect via Redis pub/sub (`alerts:live`). The lifespan background task bridges Celery-published alerts to connected WebSocket clients.
 
 ---
 
-## 🚀 Cómo correr
+## Services (11 files)
 
-### Local (la config actual del `.env` apunta a :5433 / :6380)
+| Service | Role |
+|---------|------|
+| `ingestion.py` | Seed incidents + flood zones (fallback to demo data) |
+| `siata_sync.py` | SIATA flood levels sync (hexagonal: HTTP client + seed fallback) |
+| `weather.py` | Open-Meteo multi-point + forecast (hexagonal) |
+| `routing.py` | Resilient routing avoiding flood + weather hazard zones |
+| `notification.py` | Create and broadcast alerts |
+| `alert_broadcaster.py` | Redis pub/sub → WebSocket bridge (cross-process Celery↔FastAPI) |
+| `zones_seed.py` | Import comunas GeoJSON → PostGIS |
+| `air_quality_sync.py` | WAQI sync (hexagonal: HTTP + seed) |
+| `weather_alerts.py` | Auto weather alerts from snapshots |
+| `weather_event_sync.py` | SIATA weather events sync (hexagonal) |
+
+Removed: `telemetry.py` (CQRS telemetry no longer exists).
+
+---
+
+## Architecture Patterns
+
+- **Hexagonal (Port/Adapter)**: SIATA, WAQI, and Weather integrations depend on interfaces, not concrete sources. Each has a real HTTP adapter and a seed fallback adapter — interchangeable without touching business logic.
+- **No auth**: All endpoints are public. Rate limiting via slowapi for citizen report creation (5/h per IP).
+- **DB-native clustering**: `ST_ClusterDBSCAN` (PostGIS) for weather event clustering — computation lives where the data is.
+- **Pub/Sub for real-time**: Celery workers publish alerts to Redis (`alerts:live`); a lifespan listener forwards them to WebSocket clients.
+
+---
+
+## Celery Tasks (5 active)
+
+| Task | Frequency | Role |
+|------|-----------|------|
+| `siata.sync_flood_hazards` | Every 15 min | SIATA → flood_hazards |
+| `weather.sync` | Every 15 min | Open-Meteo → weather_snapshots |
+| `weather.generate_alerts` | Every 15 min | Auto alerts from weather data |
+| `air_quality.sync` | Every hour | WAQI → air_quality_readings |
+| `weather_events.sync` | Every hour (offset :30) | SIATA → weather_events |
+
+Removed: `telemetry.flush`, `overspeed.check`, `ml.cluster_accident_hotspots`, `ml.cache_predictions`.
+
+**Note**: `celery_app.py` still declares stale beat entries for removed tasks. Only the 5 tasks above have working handlers in `cron_jobs.py`.
+
+---
+
+## ML
+
+- `ml/dbscan_clustering.py` — PostGIS `ST_ClusterDBSCAN` for weather event clustering (rainfall, lightning, hail, storm) into `weather_hazard_zones`. Uses UTM 18N (EPSG:32618) for metric distance calculations.
+- XGBoost model exists as a separately trained model, not in `app/ml/`.
+
+---
+
+## Data Sources — Real vs Demo
+
+| Data | Status |
+|------|--------|
+| Accidents (702k, dashboard) | ✅ Real — Mendeley dataset (CC BY 4.0) |
+| SIATA flood levels | ✅ Real — live API (seed fallback) |
+| Weather (Open-Meteo) | ✅ Real — live, no API key |
+| Air Quality (WAQI) | ✅ Real — 15 stations, needs `WAQI_API_TOKEN` |
+| Comunas/municipios | ✅ Real — PostGIS geometries |
+| Weather events | ✅ Real — SIATA APIs |
+| Citizen reports | ⚠️ User-submitted |
+
+---
+
+## Quick Start
+
+### Local development
 
 ```bash
 cd backend
 docker compose -f docker-compose.test.yml up -d   # Postgres :5433 + Redis :6380
 source venv/bin/activate
 POSTGRES_DB=movimed_test alembic upgrade head
-./run.sh                                            # API en :8000 (sirve frontend/dist)
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Tiempo real (opcional, en dos terminales con el venv activado):
+### Celery worker (optional, for periodic tasks)
 
 ```bash
 celery -A app.tasks.celery_app.celery_app worker --loglevel=info
 celery -A app.tasks.celery_app.celery_app beat   --loglevel=info
 ```
 
-### Docker completo (Postgres + Redis + API + worker + beat)
+### Docker (full stack: DB + Redis + API + worker + beat)
 
 ```bash
 cd backend
-docker compose up --build       # usa la base 'movimed' en :5432; aplica migraciones solo
+docker compose -f docker-compose.pptmaps.yml up -d --build
+# Uses movimed DB on :5432, auto-ingests 702k incidents
 ```
 
-> Nota: `docker-compose.yml` usa `movimed` en `:5432`; tu `.env` local apunta a
-> `movimed_test` en `:5433`. Son entornos distintos: elegí uno y sé consistente.
+**Caution**: `docker-compose.pptmaps.yml` uses `movimed` on port `:5432`. Your local `.env` likely points to `movimed_test` on `:5433` (via `docker-compose.test.yml`). Keep them consistent.
 
 ---
 
-## 🧪 Tests
+## Tests
 
-**87 pruebas** (pytest + pytest-asyncio) sobre **PostGIS real**: auth, telemetría CQRS,
-WebSocket, ruteo, clustering DBSCAN, SIATA/clima (hexagonal), endpoints públicos, siembra
-de zonas, CRUD geoespacial y montaje del frontend (SPA).
+**91 test functions** (pytest + pytest-asyncio) on **real PostGIS**:
 
 ```bash
 cd backend
 docker compose -f docker-compose.test.yml up -d
 source venv/bin/activate
-pytest -q
+pytest -v
 ```
 
-> Recordá: pytest usa `movimed_test` y la deja vacía al terminar.
+Note: Tests use `movimed_test` and leave it clean after execution. Test DB is PostGIS on port 5433, not SQLite — spatial queries (ST_DWithin, ST_MakePoint) require the real extension.
 
 ---
 
-## 🌐 Origen de los datos — qué es real y qué es demo
-
-| Dato | Estado |
-|------|--------|
-| **Accidentalidad** (702k, dashboard) | ✅ Real — Sec. Movilidad de Medellín (Mendeley `r6g5dfnpgh`, CC BY 4.0) |
-| **SIATA** (niveles río/quebradas) | ✅ Real — API pública en vivo (con fallback seed) |
-| **Clima** (Open-Meteo) | ✅ Real — proxy en vivo, sin API key |
-| **Comunas/municipios** | ✅ Real — geometrías PostGIS del Valle de Aburrá |
-| **Accidentes del MAPA** (`reports`) | ⚠️ Demo — 10 registros sembrados (distinto de los 702k del dashboard) |
-| **Vehículos + telemetría** | ⚠️ Demo — 8 vehículos sembrados (no hay feed GPS real) |
-| **Alertas** | ⚠️ Demo — 4 iniciales; las de overspeed son reales si corre Celery |
-
----
-
-*Desarrollado para el Hackatón HackData CTGI SENA 2026.*
+*Built for the HackData CTGI SENA 2026 Hackathon.*

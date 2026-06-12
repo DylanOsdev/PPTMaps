@@ -6,7 +6,7 @@ No incluyen datos de fallback embebidos: si no hay datos, devuelven colecciones 
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from geoalchemy2.functions import ST_AsGeoJSON, ST_X, ST_Y
 from sqlalchemy import desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -431,3 +431,183 @@ async def public_historical_accidents(
         }
         for r in rows
     ]
+
+
+
+from app.services.routing import compute_route
+from fastapi import Query, HTTPException
+
+DEFAULT_ORIGIN = (6.2518, -75.5636)  # Centro Medellín
+
+def _parse_latlng(value: str) -> tuple[float, float]:
+    try:
+        lat, lng = (float(p) for p in value.split(","))
+        return lat, lng
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=422, detail="Coordenada inválida; usar 'lat,lng'")
+
+
+@router.get("/routes/safe-weather", summary="Ruta resiliente que evita zonas climáticas de alto riesgo")
+async def get_safe_weather_route(
+    destination: Optional[str] = Query(None, description="Destino como 'lat,lng'"),
+    origin: Optional[str] = Query(None, description="Origen como 'lat,lng' (default centro Medellín)"),
+    dest_lat: Optional[float] = Query(None, description="Latitud destino"),
+    dest_lng: Optional[float] = Query(None, description="Longitud destino"),
+    origin_lat: Optional[float] = Query(None, description="Latitud origen"),
+    origin_lng: Optional[float] = Query(None, description="Longitud origen"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Calcula ruta evitando tormentas activas, zonas de rayos/granizo, y zonas de inundación."""
+    if destination:
+        dest = _parse_latlng(destination)
+    elif dest_lat is not None and dest_lng is not None:
+        dest = (dest_lat, dest_lng)
+    else:
+        raise HTTPException(status_code=422, detail="Se requiere destination o dest_lat y dest_lng")
+
+    if origin:
+        orig = _parse_latlng(origin)
+    elif origin_lat is not None and origin_lng is not None:
+        orig = (origin_lat, origin_lng)
+    else:
+        orig = DEFAULT_ORIGIN
+
+    return await compute_route(db, orig, dest)
+
+@router.get("/routes", summary="Alias de /routes/safe-weather para compatibilidad frontend")
+async def get_route_alias(
+    destination: Optional[str] = Query(None, description="Destino como 'lat,lng'"),
+    origin: Optional[str] = Query(None, description="Origen como 'lat,lng' (default centro Medellín)"),
+    dest_lat: Optional[float] = Query(None, description="Latitud destino"),
+    dest_lng: Optional[float] = Query(None, description="Longitud destino"),
+    origin_lat: Optional[float] = Query(None, description="Latitud origen"),
+    origin_lng: Optional[float] = Query(None, description="Longitud origen"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Calcula ruta evitando tormentas activas, zonas de rayos/granizo, y zonas de inundación."""
+    if destination:
+        dest = _parse_latlng(destination)
+    elif dest_lat is not None and dest_lng is not None:
+        dest = (dest_lat, dest_lng)
+    else:
+        raise HTTPException(status_code=422, detail="Se requiere destination o dest_lat y dest_lng")
+
+    if origin:
+        orig = _parse_latlng(origin)
+    elif origin_lat is not None and origin_lng is not None:
+        orig = (origin_lat, origin_lng)
+    else:
+        orig = DEFAULT_ORIGIN
+
+    return await compute_route(db, orig, dest)
+
+
+@router.get("/accident-risk", summary="Riesgo de accidente en un punto (clima + históricos)")
+async def accident_risk_point(
+    lat: float,
+    lng: float,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.ml.feature_pipeline import build_inference_features
+    from app.ml.risk_model import SimpleRiskModel
+    from datetime import datetime
+
+    features = await build_inference_features(db, lat, lng)
+    model = SimpleRiskModel.get_instance()
+    if not model.is_trained:
+        model.train([])
+    score = model.predict(features)
+
+    return {
+        "risk_score": score,
+        "comuna": None,
+        "model": "climate-risk-v1",
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/accident-risk/heatmap", summary="Grid de riesgo de accidentes para heatmap")
+async def accident_risk_heatmap(
+    db: AsyncSession = Depends(get_db),
+):
+    import asyncio
+    import json
+    from app.ml.feature_pipeline import RiskFeatures, build_inference_features
+    from app.ml.risk_model import SimpleRiskModel
+    from datetime import datetime
+    from sqlalchemy import text as sql_text
+
+    try:
+        from app.db.redis import get_redis
+        r = get_redis()
+        cached = await r.get("heatmap:accident-risk")
+        if cached:
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    model = SimpleRiskModel.get_instance()
+    if not model.is_trained:
+        model.train([])
+
+    rows = await db.execute(
+        sql_text("""
+            SELECT
+                ST_Y(geom::geometry) AS lat,
+                ST_X(geom::geometry) AS lng
+            FROM accident_incidents
+            WHERE geom IS NOT NULL
+            ORDER BY random()
+            LIMIT 20
+        """)
+    )
+    candidates = [(r.lat, r.lng) for r in rows]
+    tasks = [build_inference_features(db, lat, lng) for lat, lng in candidates]
+    features = await asyncio.gather(*tasks, return_exceptions=True)
+
+    points = []
+    for (lat, lng), f in zip(candidates, features):
+        if isinstance(f, Exception):
+            continue
+        try:
+            score = model.predict(f)
+            if score > 0.1:
+                points.append({
+                    "lat": round(lat, 6),
+                    "lng": round(lng, 6),
+                    "risk_score": round(score, 4),
+                })
+        except Exception:
+            continue
+
+    result = {
+        "points": points,
+        "model": "climate-risk-v1",
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        r = get_redis()
+        await r.setex("heatmap:accident-risk", 3600, json.dumps(result))
+    except Exception:
+        pass
+
+    return result
+
+
+@router.get("/accident-risk/train", summary="Entrenar modelo de riesgo (disparo manual)")
+async def train_risk_model(
+    db: AsyncSession = Depends(get_db),
+):
+    from app.ml.feature_pipeline import build_training_features
+    from app.ml.risk_model import SimpleRiskModel
+
+    features = await build_training_features(db, limit=500, offset=0)
+    model = SimpleRiskModel.get_instance()
+    weights = model.train(features)
+
+    return {
+        "status": "ok",
+        "samples": len(features),
+        "weights": weights,
+    }

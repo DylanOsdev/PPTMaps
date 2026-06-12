@@ -95,6 +95,7 @@ async def sync_soda_incidents(db: AsyncSession) -> int:
                 description=acc["desc"],
                 latitude=acc["lat"],
                 longitude=acc["lng"],
+                reporter_name="Sistema MEData",
             ))
             count += 1
         if count:

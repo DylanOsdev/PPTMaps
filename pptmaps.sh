@@ -25,7 +25,6 @@ show_help() {
     echo "Uso: ./pptmaps.sh <comando>"
     echo ""
     echo "🧪 TESTS:"
-    echo "  test:e2e-chatbot     - Test E2E del chatbot IA + ML"
     echo "  test:docker          - Test del stack completo Docker"
     echo "  test:ml              - Test de predicciones ML"
     echo "  test:unit            - Tests unitarios (pytest)"
@@ -65,12 +64,6 @@ activate_venv() {
 }
 
 # Tests
-test_e2e_chatbot() {
-    print_header "🧪 Test E2E - Chatbot IA + ML"
-    cd "$BACKEND_DIR"
-    activate_venv
-    python tests/e2e/test_chatbot_e2e.py
-}
 
 test_docker() {
     print_header "🧪 Test Docker Stack"
@@ -172,7 +165,6 @@ show_info() {
 # Main
 case "$1" in
     # Tests
-    test:e2e-chatbot) test_e2e_chatbot ;;
     test:docker) test_docker ;;
     test:ml) test_ml ;;
     test:unit) test_unit ;;

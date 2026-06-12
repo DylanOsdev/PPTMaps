@@ -139,7 +139,7 @@ export default function Report() {
 
     try {
       const API_BASE = window.TPPMAPS_API || '/api/v1';
-      const res = await fetch(`${API_BASE}/reports`, {
+      const res = await fetch(`${API_BASE}/reports/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

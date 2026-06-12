@@ -1,27 +1,23 @@
 # ── Core Framework ────────────────────────────────────────────────────────────
 fastapi>=0.115.0
-uvicorn[standard]>=0.34.0
-python-multipart>=0.0.12
+uvicorn[standard]>=0.32.0
 
 # ── Configuración ─────────────────────────────────────────────────────────────
 pydantic>=2.10.0
 pydantic-settings>=2.6.0
-python-dotenv>=1.0.1
 
 # ── Base de Datos ─────────────────────────────────────────────────────────────
 SQLAlchemy>=2.0.36
 asyncpg>=0.30.0
-psycopg2-binary>=2.9.9
 GeoAlchemy2[shapely]>=0.15.0
 alembic>=1.14.0
 
 # ── Seguridad ─────────────────────────────────────────────────────────────────
 passlib[bcrypt]>=1.7.4
-bcrypt>=4.2.0
 python-jose[cryptography]>=3.3.0
 
-# ── WebSockets ────────────────────────────────────────────────────────────────
-websockets>=14.0
+# ── HTTP Client ───────────────────────────────────────────────────────────────
+httpx>=0.28.0
 
 # ── Tareas en Segundo Plano ───────────────────────────────────────────────────
 celery>=5.4.0
@@ -30,14 +26,8 @@ nest-asyncio>=1.6.0
 
 # ── Data Processing ───────────────────────────────────────────────────────────
 openpyxl>=3.1.0
-pandas>=2.2.0
-numpy>=1.26.0
 
 # ── Machine Learning ──────────────────────────────────────────────────────────
-scikit-learn>=1.5.0
-xgboost>=2.1.0
-joblib>=1.4.0
-groq>=0.4.0
 
 # ── Rate Limiting & Anti-Spam ─────────────────────────────────────────────────
 slowapi>=0.1.9
@@ -45,5 +35,4 @@ slowapi>=0.1.9
 # ── Testing ───────────────────────────────────────────────────────────────────
 pytest>=8.3.0
 pytest-asyncio>=0.24.0
-anyio>=4.7.0
 fakeredis>=2.26.0

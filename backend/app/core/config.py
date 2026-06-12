@@ -41,10 +41,6 @@ class Settings(BaseSettings):
     # WAQI API token para calidad del aire
     WAQI_API_TOKEN: str = Field(default="", repr=False)
     
-    # Groq API para Chatbot IA
-    GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
-
     # Rate Limiting para reportes ciudadanos
     RATE_LIMIT_REPORTS: str = "5/hour"  # 5 reportes por hora por IP
 

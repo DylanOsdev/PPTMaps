@@ -88,13 +88,17 @@ describe('Report.jsx - Flujo de reporte ciudadano', () => {
     const textarea = screen.getByPlaceholderText(/Describe brevemente/);
     fireEvent.change(textarea, { target: { value: 'Choque en la autopista' } });
 
+    // Escribir nombre
+    const nameInput = screen.getByPlaceholderText(/Ej: Juan Pérez/);
+    fireEvent.change(nameInput, { target: { value: 'Test User' } });
+
     // Enviar formulario
     const submitButton = screen.getByText('Enviar reporte');
     fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/v1/public/reports',
+        '/api/v1/reports/',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -103,6 +107,7 @@ describe('Report.jsx - Flujo de reporte ciudadano', () => {
             description: 'Choque en la autopista',
             latitude: 6.2518,
             longitude: -75.5696,
+            reporter_name: 'Test User',
           }),
         })
       );
@@ -128,6 +133,10 @@ describe('Report.jsx - Flujo de reporte ciudadano', () => {
 
     // Seleccionar tipo
     fireEvent.click(screen.getByText('Inundación'));
+
+    // Escribir nombre
+    const nameInput = screen.getByPlaceholderText(/Ej: Juan Pérez/);
+    fireEvent.change(nameInput, { target: { value: 'Test User' } });
 
     // Enviar
     fireEvent.click(screen.getByText('Enviar reporte'));
@@ -231,7 +240,11 @@ describe('Report.jsx - Flujo de reporte ciudadano', () => {
     });
 
     // Seleccionar tipo
-    fireEvent.click(screen.getByText('Hueco o bache'));
+    fireEvent.click(screen.getByText('Accidente de tránsito'));
+
+    // Escribir nombre
+    const nameInput = screen.getByPlaceholderText(/Ej: Juan Pérez/);
+    fireEvent.change(nameInput, { target: { value: 'Test' } });
 
     // Enviar
     fireEvent.click(screen.getByText('Enviar reporte'));

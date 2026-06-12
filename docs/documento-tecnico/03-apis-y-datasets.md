@@ -15,6 +15,14 @@
   estaciones reales del Valle de Aburrá y variación pseudoaleatoria (ver patrón hexagonal
   en el documento 5).
 
+### SIATA — eventos climáticos
+
+- **Endpoint real:** `https://siata.gov.co/data/siata_app/app_siata/Eventos.json`
+  (constante `SIATA_EVENTOS_URL` en `services/weather_event_sync.py`).
+- Alimenta la tabla `weather_events` con eventos meteorológicos reportados por SIATA:
+  tipo de evento, ubicación, fecha/hora y descripción.
+- Se sincroniza cada hora (Celery Beat, minuto :30).
+
 ### Open-Meteo — clima y pronóstico
 
 - **Endpoint:** `https://api.open-meteo.com/v1/forecast` (constante `OPEN_METEO_URL` en
@@ -25,6 +33,15 @@
 - **Modo pronóstico detallado** (`OpenMeteoForecastClient`): actual + horario + diario
   (5 días) para el centro de Medellín (Parque Berrío: `6.2518, -75.5636`), con la forma
   exacta que consume el widget del frontend.
+
+### WAQI — calidad del aire
+
+- **Endpoint:** `https://api.waqi.info/feed/geo:{lat};{lng}/?token={token}`
+  (constante `WAQI_URL` en `services/air_quality_sync.py`).
+- **Requiere API key** (`WAQI_API_TOKEN` en variables de entorno).
+- Alimenta la tabla `air_quality_readings`: índice AQI, PM2.5, PM10, O₃, NO₂, temperatura
+  y humedad por ubicación.
+- Se sincroniza cada hora (Celery Beat, minuto :00).
 
 ### Secretaría de Movilidad de Medellín — accidentalidad
 
@@ -43,6 +60,9 @@
 
 Base: `/api/v1`. Documentación interactiva (Swagger): `/docs` · ReDoc: `/redoc`.
 
+**Todos los endpoints son públicos.** No se requiere autenticación JWT, API key ni
+ningún otro mecanismo de seguridad.
+
 ### Health
 
 ```
@@ -50,34 +70,21 @@ GET  /health        Health check básico
 GET  /health/db     Verifica conexión a PostgreSQL (SELECT 1)
 ```
 
-### Autenticación y usuarios
+### Reportes ciudadanos (con rate limiting)
 
 ```
-POST /api/v1/auth/register     Registro de usuario
-POST /api/v1/auth/login        Login (JWT, OAuth2 password flow)
-GET  /api/v1/users/...         CRUD de usuarios (protegido)
+POST /api/v1/reports/          Crear reporte ciudadano (5/h por IP vía slowapi)
+GET  /api/v1/reports/          Listar reportes
+GET  /api/v1/reports/{id}      Reporte por ID
 ```
 
-### Reportes, vehículos y rutas
 
 ```
-POST/GET/PUT /api/v1/reports        Reportes ciudadanos (protegido)
-CRUD         /api/v1/vehicles       Gestión de flota
-GET          /api/v1/routes?destination=lat,lng[&origin=lat,lng]
-             Ruta resiliente que esquiva zonas de riesgo activas
-```
-
-### Telemetría (máquina-a-máquina)
-
-```
-POST /api/v1/telemetry    Ingesta masiva de pings GPS → 202 Accepted
-                          Requiere header X-API-Key (no JWT)
 ```
 
 ### Endpoints públicos (sin auth) — alimentan el mapa y el dashboard
 
 ```
-GET /api/v1/public/telemetry/latest    Última posición de cada vehículo
 GET /api/v1/public/alerts              Alertas activas (is_resolved, limit)
 GET /api/v1/public/accidents/geojson   Incidentes (FeatureCollection GeoJSON)
 GET /api/v1/public/fatalities          Accidentes graves (GeoJSON)
@@ -87,31 +94,49 @@ GET /api/v1/public/weather/forecast    Pronóstico detallado (proxy Open-Meteo)
 GET /api/v1/public/accidents/stats     Agregados de accidentalidad (dashboard)
 GET /api/v1/public/rain-risk           Puntos con riesgo de lluvia a 2h (prob ≥ 50%)
 GET /api/v1/public/comunas             Comunas y municipios (desde PostGIS)
-GET /api/v1/public/comunas/stats       Accidentes y vehículos por comuna (cruce espacial)
+GET /api/v1/public/comunas/stats       Accidentes por comuna (cruce espacial)
+GET /api/v1/public/air-quality         Calidad del aire (índice AQI, PM2.5, PM10, O₃, NO₂)
 ```
 
 > Nota: el README lista el clima como `/api/v1/weather/forecast`; la ruta **real** es
 > `/api/v1/public/weather/forecast` (bajo el router `public`).
 
-### WebSocket
+### Zonas de accidentalidad
 
 ```
-WS /ws/telemetry?channel=global
-   Al conectar envía:
-     {"type":"telemetry","data":[{id, vehicle_id, lat, lng, speed, heading, timestamp}]}
-     {"type":"alerts","data":[{id, type, severity, message, created_at, is_resolved}]}
+GET /api/v1/accident-zones/          Listar zonas calientes
+GET /api/v1/accident-zones/{id}      Zona por ID
+GET /api/v1/accident-zones/nearby    Zonas cercanas
 ```
+
+### Zonas de inundación
+
+```
+GET /api/v1/flood-hazards/           Listar zonas de riesgo
+GET /api/v1/flood-hazards/{id}       Zona por ID
+GET /api/v1/flood-hazards/nearby     Zonas cercanas
+```
+
+### Rutas resilientes
+
+```
+GET /api/v1/routes/?origin=lat,lng&destination=lat,lng
+     Ruta que esquiva zonas de riesgo activas
+```
+
+### Documentación interactiva
+
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
 ## 3.3 Consumo desde el frontend
 
-- `src/static/js/services/api.js` centraliza el acceso: `fetchTelemetry`, `fetchAlerts`,
+- `src/static/js/services/api.js` centraliza el acceso: `fetchAlerts`,
   `fetchAccidentsGeoJSON`, `fetchFatalities`, `fetchFloodZones`, `fetchRoute`,
-  `fetchWeather`, `fetchRainRisk`, más el WebSocket (`connectWebSocket`) con reconexión
-  exponencial (hasta 10 intentos).
+  `fetchWeather`, `fetchRainRisk`, `fetchAirQuality`.
 - `src/hooks/useWeather.js` consume `/api/v1/public/weather/forecast` (refresco cada 10 min).
 - `src/hooks/useAccidentStats.js` consume `/api/v1/public/accidents/stats`.
-- En desarrollo, Vite hace **proxy** de `/api`, `/health`, `/ws` y `/docs` hacia
+- En desarrollo, Vite hace **proxy** de `/api`, `/health` y `/docs` hacia
   `http://localhost:8000` (`vite.config.js`).
 
 ---
-

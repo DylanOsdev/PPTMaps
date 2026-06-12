@@ -69,7 +69,6 @@ app = FastAPI(
         {"name": "📍 Reportes", "description": "Reportes ciudadanos anónimos de incidentes."},
         {"name": "🗺️ Público", "description": "Endpoints públicos de consulta geográfica."},
         {"name": "🌤️ Clima", "description": "Pronóstico meteorológico y estadísticas."},
-        {"name": "🤖 Chatbot", "description": "Asistente de inteligencia geoespacial."},
     ],
 )
 
