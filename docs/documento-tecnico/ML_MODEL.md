@@ -313,5 +313,118 @@ docker restart backend-api-1 backend-worker-1
 
 ---
 
-**Última actualización**: 2026-06-07  
-**Versión del modelo**: 3.0 (con clima histórico + SIATA)
+# 🌡️ Modelo de Riesgo de Accidentes (Climate Risk)
+
+## Descripción
+
+Modelo ligero basado en **pesos manuales + señales en tiempo real** que estima el riesgo de accidente de tránsito en ubicaciones específicas del Valle de Aburrá. Se usa para generar un **heatmap climático** en el frontend.
+
+A diferencia del modelo de congestión (XGBoost), este modelo no requiere entrenamiento histórico supervisado — combina factores ambientales y de siniestralidad con pesos estáticos ajustables.
+
+## Modelo: `SimpleRiskModel`
+
+**Clase**: `app.ml.risk_model.SimpleRiskModel`
+
+### Pesos por Defecto
+
+| Factor | Peso | Descripción |
+|--------|------|-------------|
+| `accident_density` | 0.35 | Densidad de accidentes históricos en 1km |
+| `precipitation` | 0.20 | Precipitación actual (mm) |
+| `weather_event` | 0.15 | Eventos climáticos activos cercanos |
+| `reports` | 0.10 | Reportes ciudadanos en últimas 24h |
+| `night_hours` | 0.10 | Horario nocturno (< 6am o ≥ 8pm) |
+| `weekend` | 0.05 | Fin de semana |
+| `temp_extreme` | 0.05 | Temperatura extrema (< 10°C o > 35°C) |
+
+Los pesos se renormalizan automáticamente después de entrenamiento opcional con datos históricos.
+
+### Función de Score
+
+```python
+score = (0.35 * norm_density + 0.20 * norm_precip + 0.15 * min(events/5, 1)
+       + 0.10 * min(reports/10, 1) + 0.10 * night + 0.05 * weekend + 0.05 * norm_temp)
+```
+
+Donde:
+- `norm_density`: min(count_1km / 500, 1.0)
+- `norm_precip`: 0 (sin lluvia), 0.2 (<5mm), 0.5 (<15mm), 0.75 (<30mm), 1.0 (≥30mm)
+- `norm_temp`: 0 (normal), 0.5 (15-30°C), 1.0 (<10°C o >35°C)
+
+## Feature Pipeline: `build_inference_features`
+
+**Archivo**: `app.ml.feature_pipeline.build_inference_features`
+
+Para cada punto se consultan **4 fuentes en paralelo**:
+
+| Fuente | Tabla | Propósito |
+|--------|-------|-----------|
+| Weather snapshot | `weather_snapshots` | Precipitación, temperatura, humedad actuales |
+| Accident density | `accident_incidents` | ST_DWithin 1km → count |
+| Recent reports | `reports` | Reportes ciudadanos últimas 24h |
+| Weather events | `weather_events` | Eventos climáticos activos últimas 6h |
+
+Todas las queries espaciales usan `ST_DWithin` con PostGIS (SRID 4326).
+
+## Endpoint REST
+
+```http
+GET /api/v1/public/accident-risk/heatmap
+```
+
+**Respuesta**:
+```json
+{
+  "points": [
+    {
+      "lat": 6.249793,
+      "lng": -75.568645,
+      "risk_score": 0.52
+    }
+  ],
+  "model": "climate-risk-v1",
+  "generated_at": "2026-06-12T09:33:06.292502"
+}
+```
+
+Selecciona 20 ubicaciones aleatorias de `accident_incidents`, calcula el score de riesgo para cada una, y devuelve las que superan `risk_score > 0.1`.
+
+## Frontend: Visualización
+
+**Archivos**: `frontend/src/static/js/map/demo-layers.js`, `frontend/src/static/js/map/map-service.js`
+
+El toggle "Heatmap de riesgo climático" en el panel de capas:
+1. Agrega un `L.layerGroup` vacío al mapa
+2. Llama a `updateAccidentRiskHeatmap(map)` que fetchea el endpoint
+3. Renderiza con **leaflet.heat** (`L.heatLayer`) con gradiente:
+   - 0.2 → `#22c55e` (verde)
+   - 0.4 → `#eab308` (amarillo)
+   - 0.6 → `#f97316` (naranja)
+   - 0.8 → `#ef4444` (rojo)
+   - 1.0 → `#7f1d1d` (rojo oscuro)
+4. Fallback a `L.circleMarker` si leaflet.heat no está disponible
+
+## Caché
+
+| Propiedad | Valor |
+|-----------|-------|
+| **Backend** | Redis |
+| **TTL** | 3600 segundos (1 hora) |
+| **Pre-warming** | Al iniciar el contenedor API (background, ~28s) |
+| **Clave** | `heatmap:accident-risk` |
+
+## Performance
+
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| Tiempo de respuesta | ~28s | ~0.15s (caché) / ~28s (cold start) |
+| Queries por request | 80 secuenciales | 4 paralelas × 20 puntos = 80 concurrentes |
+| Caché | ❌ No | ✅ Redis 1h |
+
+**Cuello de botella conocido**: Las queries `ST_DWithin` sobre `accident_incidents` (~700k filas) usan Parallel Seq Scan incluso con índice GiST existente, debido al cast `geom::geography`.
+
+---
+
+**Última actualización**: 2026-06-12  
+**Versión del modelo**: 3.0 (con clima histórico + SIATA)  
+**Versión heatmap**: 1.0 (climate-risk-v1)

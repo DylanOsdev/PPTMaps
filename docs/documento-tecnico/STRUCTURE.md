@@ -17,10 +17,6 @@ PPTMaps/
 │   │   └── websocket/                # WebSocket handlers
 │   │
 │   ├── scripts/                      # 🆕 Scripts organizados
-│   │   ├── ml/                       # Scripts de Machine Learning
-│   │   │   ├── train_traffic_model.py
-│   │   │   ├── prepare_ml_dataset.py
-│   │   │   └── download_historical_weather.py
 │   │   ├── setup/                    # Scripts de setup
 │   │   │   ├── setup_db.sh
 │   │   │   └── seed_demo.py
@@ -36,10 +32,10 @@ PPTMaps/
 │   │
 │   ├── tests/                        # 🆕 Tests organizados
 │   │   ├── e2e/                      # Tests end-to-end
-│   │   │   ├── test_chatbot_e2e.py
-│   │   │   └── test_spa_routing_standalone.py
+│   │   │   ├── test_spa_routing_standalone.py
+│   │   │   ├── test_pivot_simple.py
+│   │   │   └── test_no_auth.py
 │   │   ├── unit/                     # Tests unitarios
-│   │   │   └── test_dbscan_optimized.py
 │   │   └── integration/              # Tests de integración
 │   │       ├── test_docker_stack.sh
 │   │       └── test_ml_predictions.sh
@@ -92,19 +88,14 @@ PPTMaps/
 
 ### 🔄 Movido y Reorganizado:
 
-#### Scripts ML → `backend/scripts/ml/`
-- `train_traffic_model.py`
-- `prepare_ml_dataset.py`
-- `download_historical_weather.py`
-
 #### Datos → `backend/data/`
 - `Fatal_Road_Traffic.xlsx` → `data/raw/`
 - `clima_historico_medellin.csv` → `data/processed/`
 
 #### Tests → `backend/tests/`
-- `test_chatbot_e2e.py` → `tests/e2e/`
 - `test_spa_routing_standalone.py` → `tests/e2e/`
-- `test_dbscan_optimized.py` → `tests/unit/`
+- `test_pivot_simple.py` → `tests/e2e/`
+- `test_no_auth.py` → `tests/e2e/`
 - `test_docker_stack.sh` → `tests/integration/`
 - `test_ml_predictions.sh` → `tests/integration/`
 
@@ -153,26 +144,16 @@ Agregadas reglas para:
 
 ### Ejecutar Tests
 ```bash
-# Tests E2E
-cd backend
-source venv/bin/activate
-python tests/e2e/test_chatbot_e2e.py
-
-# Tests de integración
-bash tests/integration/test_docker_stack.sh
-bash tests/integration/test_ml_predictions.sh
-
-# Tests unitarios
-pytest tests/unit/
+# Tests
+cd backend && source venv/bin/activate
+pytest -v
 ```
 
-### Entrenar Modelo ML
+### Tests de Integración
 ```bash
 cd backend
-source venv/bin/activate
-python scripts/ml/download_historical_weather.py
-python scripts/ml/prepare_ml_dataset.py
-python scripts/ml/train_traffic_model.py
+bash tests/integration/test_docker_stack.sh
+bash tests/integration/test_ml_predictions.sh
 ```
 
 ### Setup Base de Datos

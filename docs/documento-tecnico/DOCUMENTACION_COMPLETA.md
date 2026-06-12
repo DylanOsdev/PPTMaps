@@ -14,22 +14,20 @@
 5. [Backend — FastAPI](#5-backend--fastapi)
 6. [Base de Datos — PostGIS](#6-base-de-datos--postgis)
 7. [Frontend — React + Vite](#7-frontend--react--vite)
-8. [Tiempo Real — WebSockets + Redis Pub/Sub](#8-tiempo-real--websockets--redis-pubsub)
-9. [Tareas Asíncronas — Celery](#9-tareas-asíncronas--celery)
-10. [Servicios de Integración](#10-servicios-de-integración)
-11. [Machine Learning](#11-machine-learning)
-12. [Flujo de Datos Completo](#12-flujo-de-datos-completo)
-13. [Infraestructura y Despliegue](#13-infraestructura-y-despliegue)
-14. [API REST — Endpoints](#14-api-rest--endpoints)
-15. [Seguridad](#15-seguridad)
-16. [Guía de Inicio Rápido](#16-guía-de-inicio-rápido)
-17. [Demo y Datos de Prueba](#17-demo-y-datos-de-prueba)
+8. [Tareas Asíncronas — Celery](#8-tareas-asíncronas--celery)
+9. [Servicios de Integración](#9-servicios-de-integración)
+10. [Machine Learning](#10-machine-learning)
+11. [Flujo de Datos Completo](#11-flujo-de-datos-completo)
+12. [Infraestructura y Despliegue](#12-infraestructura-y-despliegue)
+13. [API REST — Endpoints](#13-api-rest--endpoints)
+14. [Guía de Inicio Rápido](#14-guía-de-inicio-rápido)
+15. [Demo y Datos de Prueba](#15-demo-y-datos-de-prueba)
 
 ---
 
 ## 1. Visión General
 
-**PPTMaps** es una **plataforma unificada de inteligencia geoespacial** que integra datos oficiales de movilidad de Medellín con reportes ciudadanos en tiempo real. Su objetivo es centralizar fuentes de información dispersas (SIATA, MEData, Open-Meteo) en un solo sistema con capacidades de análisis espacial, alertas en vivo y visualización interactiva.
+**PPTMaps** es una **plataforma unificada de inteligencia geoespacial** que integra datos oficiales de movilidad de Medellín con reportes ciudadanos en tiempo real. Su objetivo es centralizar fuentes de información dispersas (SIATA, MEData, Open-Meteo, WAQI) en un solo sistema con capacidades de análisis espacial, alertas en vivo y visualización interactiva.
 
 ### ¿Por qué PPTMaps?
 
@@ -38,8 +36,8 @@ Medellín cuenta con múltiples fuentes de datos abiertos y sistemas de monitore
 - Los niveles de los ríos y quebradas monitoreados por SIATA
 - Los incidentes de tránsito reportados en MEData
 - El pronóstico meteorológico
+- La calidad del aire
 - Los reportes ciudadanos
-- La telemetría de vehículos en tiempo real
 
 PPTMaps resuelve esto proporcionando **una sola API coherente** que unifica todas estas fuentes con un **dashboard geográfico interactivo** y **alertas en vivo**.
 
@@ -50,11 +48,12 @@ PPTMaps resuelve esto proporcionando **una sola API coherente** que unifica toda
 | Problema | Solución PPTMaps |
 |---|---|
 | Datos de movilidad dispersos en APIs oficiales sin filtros espaciales | Unificación en un solo backend con API REST coherente y caché inteligente en PostGIS |
-| Sin alertas en tiempo real para incidentes viales o crecidas | Sistema de alertas con WebSockets + Redis Pub/Sub + Celery para notificaciones push al navegador |
-| Reportes ciudadanos no digitalizados ni geolocalizados | Formulario público de reportes con captura de ubicación geográfica y soporte multimedia |
+| Sin alertas en tiempo real para incidentes viales o crecidas | Sistema de alertas con Redis Pub/Sub + Celery para notificaciones |
+| Reportes ciudadanos no digitalizados ni geolocalizados | Formulario público de reportes con captura de ubicación geográfica y rate limiting anti-spam |
 | Sin información climática integrada al análisis de movilidad | Proxy Open-Meteo con caché en Redis y widget de pronóstico en el dashboard |
 | APIs oficiales lentas y sin capacidad geoespacial | Cache en PostGIS con índices GiST y consultas espaciales optimizadas (`ST_DWithin`, `ST_ClusterDBSCAN`) |
 | Sin capacidad de análisis de zonas de riesgo | Motor de clustering DBSCAN nativo en PostGIS para detección de zonas calientes de accidentes |
+| Sin datos de calidad del aire integrados | Sincronización WAQI horaria con índice AQI, PM2.5, PM10, O₃, NO₂ |
 
 ---
 
@@ -63,56 +62,56 @@ PPTMaps resuelve esto proporcionando **una sola API coherente** que unifica toda
 ```
  ┌─────────────────────────────────────────────────────────────────────┐
  │                          CLIENTES                                    │
- │  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌───────────────────┐  │
- │  │ Dashboard│  │  App     │  │  Sistemas  │  │   Dispositivos    │  │
- │  │  React   │  │  Mobile  │  │  Externos  │  │     GPS (IoT)     │  │
- │  └────┬─────┘  └────┬─────┘  └─────┬─────┘  └────────┬──────────┘  │
- │       │              │              │                  │             │
- └───────┼──────────────┼──────────────┼──────────────────┼─────────────┘
-         │              │              │                  │
-    ┌────┴──────────────┴──────────────┴──────────────────┴────┐
-    │                      FASTAPI (Uvicorn)                    │
-    │  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌──────────────┐  │
-    │  │ REST API│ │WebSocket│ │  Celery  │ │  Proxy APIs  │  │
-    │  │/api/v1  │ │/ws/*    │ │  Tasks   │ │  Externas    │  │
-    │  └────┬────┘ └────┬────┘ └────┬─────┘ └──────┬───────┘  │
-    └───────┼───────────┼───────────┼───────────────┼──────────┘
-            │           │           │               │
-    ┌───────┴───────────┴───────────┴───────────────┴──────────┐
+ │  ┌──────────┐  ┌──────────┐  ┌───────────┐                         │
+ │  │ Dashboard│  │  App     │  │  Sistemas  │                         │
+ │  │  React   │  │  Mobile  │  │  Externos  │                         │
+ │  └────┬─────┘  └────┬─────┘  └─────┬─────┘                         │
+ │       │              │              │                                │
+ └───────┼──────────────┼──────────────┼────────────────────────────────┘
+         │              │              │
+    ┌────┴──────────────┴──────────────┴────┐
+    │                 FASTAPI (Uvicorn)                       │
+    │  ┌─────────┐ ┌──────────┐ ┌──────────────┐               │
+    │  │ REST API│ │  Celery  │ │  Proxy APIs  │               │
+    │  │/api/v1  │ │  Tasks   │ │  Externas    │               │
+    │  └────┬────┘ └────┬─────┘ └──────┬───────┘               │
+    └───────┼───────────┼───────────────┼────────────────────────┘
+            │           │               │
+    ┌───────┴───────────┴───────────────┴──────────┐
     │                    REDIS (7)                              │
-    │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐  │
-    │  │   Cache  │ │  Broker  │ │  Pub/Sub  │ │  Buffer  │  │
-    │  │  (Clima) │ │ (Celery) │ │ (Alertas) │ │(Telemetría)│ │
-    │  └──────────┘ └──────────┘ └───────────┘ └──────────┘  │
+    │  ┌──────────┐ ┌──────────┐ ┌───────────┐                 │
+    │  │   Cache  │ │  Broker  │ │  Pub/Sub  │                 │
+    │  │  (Clima) │ │ (Celery) │ │ (Alertas) │                 │
+    │  └──────────┘ └──────────┘ └───────────┘                 │
     └──────────────────────────────────────────────────────────┘
             │
     ┌───────┴──────────────────────────────────────────────────┐
     │              POSTGRESQL 16 + POSTGIS 3.5                  │
     │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
     │  │  Capa    │ │  Capa    │ │  Capa    │ │   Capa     │  │
-    │  │Usuario/  │ │Geográfica│ │  ML/     │ │  Tiempo    │  │
-    │  │ Auth     │ │(PostGIS) │ │Clustering│ │  Real      │  │
+    │  │Usuario/  │ │Geográfica│ │  ML/     │ │  Calidad   │  │
+    │  │ Reportes │ │(PostGIS) │ │Clustering│ │  del Aire  │  │
     │  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
     └──────────────────────────────────────────────────────────┘
             │
     ┌───────┴──────────────────────────────────────────────────┐
     │                FUENTES EXTERNAS                           │
-    │  ┌──────────┐ ┌──────────┐ ┌──────────────┐             │
-    │  │  SIATA   │ │  MEData  │ │  Open-Meteo  │             │
-    │  │(Ríos y   │ │(Abiertos │ │  (Clima      │             │
-    │  │Quebradas)│ │Medellín) │ │  Gratuito)   │             │
-    │  └──────────┘ └──────────┘ └──────────────┘             │
+    │  ┌──────────┐ ┌──────────┐ ┌──────────────┐ ┌────────┐ │
+    │  │  SIATA   │ │  MEData  │ │  Open-Meteo  │ │  WAQI  │ │
+    │  │(Ríos y   │ │(Abiertos │ │  (Clima      │ │(Calidad│ │
+    │  │Eventos)  │ │Medellín) │ │  Gratuito)   │ │  Aire) │ │
+    │  └──────────┘ └──────────┘ └──────────────┘ └────────┘ │
     └──────────────────────────────────────────────────────────┘
 ```
 
 ### Flujo de Comunicación
 
-1. **Frontend ↔ Backend**: Comunicación vía HTTP REST (datos) y WebSockets (tiempo real)
+1. **Frontend ↔ Backend**: Comunicación vía HTTP REST (datos)
 2. **Backend ↔ Base de Datos**: SQLAlchemy 2.0 asíncrono con AsyncPG para consultas geoespaciales
-3. **Backend ↔ Redis**: Caché de pronósticos meteorológicos, buffer de telemetría, broker de tareas Celery
+3. **Backend ↔ Redis**: Caché de pronósticos meteorológicos, broker de tareas Celery
 4. **Celery ↔ Redis**: Publicación de alertas en canal Pub/Sub `alerts:live`
 5. **FastAPI ↔ WebSocket**: Consumidor del canal Pub/Sub de Redis que reenvía alertas a los clientes conectados
-6. **Backend ↔ APIs Externas**: Clientes HTTP con patrón Port/Adapter para SIATA, MEData y Open-Meteo
+6. **Backend ↔ APIs Externas**: Clientes HTTP con patrón Port/Adapter para SIATA, MEData, Open-Meteo y WAQI
 
 ---
 
@@ -123,8 +122,9 @@ PPTMaps resuelve esto proporcionando **una sola API coherente** que unifica toda
 | Tecnología | Versión | Propósito |
 |---|---|---|
 | **Python** | 3.12+ | Lenguaje base |
-| **FastAPI** | 0.111+ | Framework web asíncrono |
+| **FastAPI** | 0.115+ | Framework web asíncrono |
 | **Uvicorn** | — | Servidor ASGI |
+| **slowapi** | — | Rate limiting (reportes ciudadanos) |
 | **Pydantic** | v2 | Validación de datos y schemas |
 | **SQLAlchemy** | 2.0 | ORM asíncrono |
 | **AsyncPG** | — | Driver PostgreSQL asíncrono |
@@ -134,8 +134,7 @@ PPTMaps resuelve esto proporcionando **una sola API coherente** que unifica toda
 | **Redis** | 7 | Cache, broker y Pub/Sub |
 | **Alembic** | — | Migraciones de base de datos |
 | **Shapely** | — | Operaciones geoespaciales (rutas seguras) |
-| **Passlib** | — | Hashing de contraseñas (bcrypt) |
-| **python-jose** | — | JWT |
+| **nest-asyncio** | — | Compatibilidad async en entornos síncronos |
 
 ### Frontend
 
@@ -171,18 +170,13 @@ backend/
 │   │   └── v1/
 │   │       ├── router.py        # Agrupación de todos los endpoints
 │   │       └── endpoints/       # Módulos de rutas
-│   │           ├── auth.py           # Registro, login, JWT
-│   │           ├── users.py          # CRUD de usuarios
 │   │           ├── reports.py        # Reportes ciudadanos
 │   │           ├── public.py         # Endpoints públicos (mapa, stats, clima)
-│   │           ├── vehicles.py       # Gestión de flota vehicular
-│   │           ├── routes.py         # Cálculo de rutas seguras
-│   │           ├── telemetry.py      # Ingesta de telemetría GPS
+│   │           ├── air_quality.py    # Calidad del aire
 │   │           ├── accident_zones.py # Zonas de accidentalidad
 │   │           └── flood_hazards.py  # Zonas de inundación
 │   ├── core/
 │   │   ├── config.py            # Configuración centralizada (Settings Pydantic)
-│   │   ├── security.py          # JWT, hashing de contraseñas
 │   │   └── exceptions.py        # Manejadores de errores personalizados
 │   ├── db/
 │   │   ├── database.py          # Engine asíncrono, session factory
@@ -194,10 +188,13 @@ backend/
 │   │   ├── report.py            # Reportes ciudadanos
 │   │   ├── accident_zone.py     # Zonas de accidentalidad
 │   │   ├── flood_hazard.py      # Zonas de riesgo de inundación
-│   │   ├── vehicle.py           # Vehículos de la flota
-│   │   ├── telemetry.py         # Pings GPS
 │   │   ├── alert.py             # Alertas del sistema
-│   │   └── weather.py           # Snapshots meteorológicos
+│   │   ├── weather.py           # Snapshots meteorológicos
+│   │   ├── zone.py              # Comunas y municipios
+│   │   ├── accident_incident.py # Incidentes históricos (702k)
+│   │   ├── air_quality_reading.py # Calidad del aire
+│   │   ├── weather_event.py     # Eventos climáticos SIATA
+│   │   └── weather_hazard_zone.py # Zonas de riesgo meteorológico
 │   ├── schemas/                 # Validadores Pydantic v2
 │   ├── crud/                    # Operaciones atómicas de base de datos
 │   ├── services/                # Lógica de negocio (Hexagonal)
@@ -205,17 +202,17 @@ backend/
 │   │   ├── ingestion.py         # Ingesta de datos MEData
 │   │   ├── siata_sync.py        # Sincronización SIATA (Port/Adapter)
 │   │   ├── weather.py           # Proxy Open-Meteo (Port/Adapter)
-│   │   ├── telemetry.py         # Buffer CQRS para telemetría
+│   │   ├── weather_alerts.py    # Generación automática de alertas climáticas
+│   │   ├── weather_event_sync.py # Sincronización eventos SIATA
+│   │   ├── air_quality_sync.py  # Sincronización WAQI (Port/Adapter)
 │   │   ├── routing.py           # Cálculo de rutas seguras
-│   │   ├── notification.py      # Notificaciones externas
+│   │   ├── notification.py      # Notificaciones
 │   │   └── zones_seed.py        # Siembra de comunas/municipios
 │   ├── tasks/                   # Tareas Celery
 │   │   ├── celery_app.py        # Configuración Celery + Beat schedule
-│   │   ├── worker.py            # Tareas del worker (detección excesos)
 │   │   └── cron_jobs.py         # Wrappers asíncronos para tareas periódicas
 │   ├── ml/                      # Machine Learning
-│   │   ├── dbscan_clustering.py # Clustering espacial (ST_ClusterDBSCAN)
-│   │   └── predict_traffic.py   # Predicción de tráfico (placeholder)
+│   │   └── dbscan_clustering.py # Clustering espacial (ST_ClusterDBSCAN)
 │   └── websocket/               # Gestión de WebSockets
 │       ├── ws_router.py         # Endpoint /ws/telemetry
 │       └── connection_manager.py # Pool de conexiones por canal
@@ -237,9 +234,8 @@ El archivo `main.py` define un manejador `lifespan` que se ejecuta al arrancar y
 3. Sincroniza incidentes de MEData (SODA API) — si falla, usa datos semilla locales
 4. Sincroniza zonas de inundación desde SIATA — si falla, usa datos semilla
 5. Siembra alertas iniciales para que el panel LIVE ALERTS no arranque vacío
-6. Siembra 8 vehículos demo con telemetría (ambulancias, patrullas, bomberos) dispersos por Medellín
-7. Encola una sincronización inicial del clima para evitar mapa vacío
-8. Inicia tarea asíncrona de listener de alertas en Redis Pub/Sub
+6. Encola una sincronización inicial del clima para evitar mapa vacío
+7. Inicia tarea asíncrona de listener de alertas en Redis Pub/Sub
 
 **Al detener:**
 1. Cancela el listener de alertas
@@ -250,21 +246,22 @@ El archivo `main.py` define un manejador `lifespan` que se ejecuta al arrancar y
 El backend implementa el patrón **Puerto/Adaptador** (Arquitectura Hexagonal) para las integraciones externas:
 
 ```
-┌──────────────────────────────────────────────────┐
-│                 SERVICIO (dominio)                │
-│              SiataSyncService.sync()              │
-└────────────┬─────────────────────┬────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    SERVICIOS (dominio)                     │
+│  SiataSyncService · WeatherSyncService                     │
+│  AirQualitySyncService · WeatherEventSyncService           │
+└────────────┬─────────────────────┬────────────────────────┘
              │                     │
-    ┌────────▼────────┐   ┌───────▼────────┐
-    │  Puerto (ABC)   │   │ Puerto (ABC)   │
-    │ SiataGaugeClient│   │ WeatherClient  │
-    └────────┬────────┘   └───────┬────────┘
-             │                     │
-    ┌────────▼────────┐   ┌───────▼────────┐
-    │   Adaptador 1   │   │  Adaptador 1   │
-    │ SiataHttpClient │   │ OpenMeteoClient│
-    │ (API real)      │   │ (API gratuita) │
-    └─────────────────┘   └────────────────┘
+    ┌────────▼────────┐   ┌───────▼────────┐   ┌────────────▼────────┐
+    │  Puerto (ABC)   │   │ Puerto (ABC)   │   │  Puerto (ABC)       │
+    │ SiataGaugeClient│   │ WeatherClient  │   │  AirQualityClient   │
+    └────────┬────────┘   └───────┬────────┘   └────────────┬────────┘
+             │                     │                         │
+    ┌────────▼────────┐   ┌───────▼────────┐   ┌────────────▼────────┐
+    │   Adaptador 1   │   │  Adaptador 1   │   │   Adaptador 1       │
+    │ SiataHttpClient │   │ OpenMeteoClient│   │  WaqiHttpClient     │
+    │ (API real)      │   │ (API gratuita) │   │  (API real)         │
+    └─────────────────┘   └────────────────┘   └─────────────────────┘
     ┌─────────────────┐   ┌────────────────┐
     │   Adaptador 2   │   │  Adaptador 2   │
     │ SiataSeedClient │   │ OpenMeteo      │
@@ -282,49 +279,48 @@ El backend implementa el patrón **Puerto/Adaptador** (Arquitectura Hexagonal) p
 
 ```
 ┌─────────────┐       ┌──────────────┐       ┌──────────────┐
-│    users    │       │  telemetry   │       │  vehicles    │
+│    users    │       │   alerts     │       │  reports     │
 ├─────────────┤       ├──────────────┤       ├──────────────┤
-│ id (PK)     │◄──┐   │ id (PK)      │   ┌──►│ id (PK)      │
-│ email       │   │   │ vehicle_id   │───┘   │ plate        │
-│ password    │   │   │ latitude     │       │ type         │
-│ full_name   │   │   │ longitude    │       │ status       │
-│ role        │   │   │ speed        │       │ model        │
-│ is_active   │   │   │ heading      │       └──────────────┘
-└─────────────┘   │   │ location(POINT)│
-                   │   │ timestamp    │
-                   │   └──────────────┘
-                   │
-┌─────────────┐   │   ┌──────────────┐       ┌──────────────┐
-│   reports   │   │   │   alerts     │       │ accident_    │
-├─────────────┤   │   ├──────────────┤       │    zones     │
-│ id (PK)     │   │   │ id (PK)      │       ├──────────────┤
-│ reporter_id │───┘   │ vehicle_id   │──┐    │ id (PK)      │
-│ report_type │       │ type         │  │    │ name          │
-│ description │       │ severity     │  │    │ severity      │
-│ geom(POINT) │       │ message      │  │    │ incident_count│
-│ created_at  │       │ is_resolved  │  │    │ geom(MULTI-   │
-│ media_url   │       │ created_at   │  │    │   POLYGON)   │
-└─────────────┘       └──────────────┘  │    └──────────────┘
-                                        │
-┌──────────────┐       ┌──────────────┐ │    ┌──────────────┐
-│ flood_hazards│       │weather_      │ │    │    zones     │
-├──────────────┤       │ snapshots    │ │    ├──────────────┤
-│ id (PK)      │       ├──────────────┤ │    │ id (PK)      │
-│ name         │       │ id (PK)      │ │    │ kind (comuna │
-│ siata_       │       │ location_name│ │    │   /municipio)│
-│  station_id  │       │ temperature_c│ │    │ name         │
-│ status       │       │ humidity     │ │    │ geom(GEOMETRY)│
-│ water_level_m│       │ rain_mm      │ │    └──────────────┘
-│ geom(POLYGON)│       │ geom(POINT)  │ │
-└──────────────┘       └──────────────┘ │
-                                                   
+│ id (PK)     │       │ id (PK)      │       │ id (PK)      │
+│ email       │       │ type         │       │ reporter_id  │
+│ password    │       │ severity     │       │ report_type  │
+│ full_name   │       │ message      │       │ description  │
+│ role        │       │ is_resolved  │       │ geom(POINT)  │
+│ is_active   │       │ created_at   │       │ created_at   │
+└─────────────┘       └──────────────┘       └──────────────┘
+
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+│ flood_hazards│       │weather_      │       │   zones      │
+├──────────────┤       │ snapshots    │       ├──────────────┤
+│ id (PK)      │       ├──────────────┤       │ id (PK)      │
+│ name         │       │ id (PK)      │       │ kind (comuna │
+│ siata_       │       │ location_name│       │   /municipio)│
+│  station_id  │       │ temperature_c│       │ name         │
+│ status       │       │ humidity     │       │ geom(GEOMETRY)│
+│ water_level_m│       │ rain_mm      │       └──────────────┘
+│ geom(POLYGON)│       │ geom(POINT)  │
+└──────────────┘       └──────────────┘
+
+┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+│ accident_incidents│   │air_quality_      │   │ weather_events   │
+├──────────────────┤   │   readings       │   ├──────────────────┤
+│ id (PK)          │   ├──────────────────┤   │ id (PK)          │
+│ llave (único)    │   │ id (PK)          │   │ event_type       │
+│ year             │   │ location_name    │   │ description      │
+│ incident_class   │   │ aqi              │   │ geom(POINT)      │
+│ severity         │   │ pm25             │   │ event_time       │
+│ comuna           │   │ pm10             │   │ severity         │
+│ geom(POINT)      │   │ o3               │   │ source           │
+└──────────────────┘   │ no2              │   └──────────────────┘
+                       │ geom(POINT)      │
+                       └──────────────────┘
 ```
 
 ### Tipos Geoespaciales PostGIS
 
 | Tipo | Uso |
 |---|---|
-| `POINT` (SRID 4326) | Ubicaciones precisas: reportes, telemetría, estaciones clima |
+| `POINT` (SRID 4326) | Ubicaciones precisas: reportes, estaciones clima, calidad del aire, eventos meteorológicos |
 | `POLYGON` (SRID 4326) | Zonas de inundación (polígonos de quebradas y ríos) |
 | `MULTIPOLYGON` (SRID 4326) | Zonas de accidentalidad (clusters DBSCAN) |
 | `GEOMETRY` (SRID 4326) | Comunas y municipios (polígonos administrativos) |
@@ -358,13 +354,13 @@ Esto evita transferir datos geográficos al servidor Python, aprovechando la cap
 | Ruta | Página | Propósito |
 |---|---|---|
 | `/` | `Landing.jsx` | Página de aterrizaje con hero, estadísticas, características y CTA |
-| `/map` | `CommandCenter.jsx` | Dashboard de comando geoespacial — mapa en vivo, capas, clima, alertas |
+| `/map` | `CommandCenter.jsx` | Dashboard de comando geoespacial — mapa en vivo, capas, clima, alertas, calidad del aire |
 | `/report` | `Report.jsx` | Formulario de reporte ciudadano con geolocalización |
 | `/navigate` | `Navigate.jsx` | Vista de ruta y navegación móvil |
 
 ### Dashboard de Comando (CommandCenter)
 
-El componente principal `CommandCenter.jsx` (411 líneas) es el corazón del frontend. Está organizado en paneles:
+El componente principal `CommandCenter.jsx` es el corazón del frontend. Está organizado en paneles:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -379,15 +375,16 @@ El componente principal `CommandCenter.jsx` (411 líneas) es el corazón del fro
 │  ☑ Flood      │     │     (OpenStreetMap)             │       │
 │     Zones    │     │                                 │       │
 │  ☑ Reports   │     │   • Marcadores GPS              │       │
-│  ☑ Telemetry │     │   • Polígonos de riesgo         │       │
-│  ☑ Comunas   │     │   • Calor de accidentes         │       │
-│  ☑ Municipios│     │   • Alertas geolocalizadas      │       │
+│  ☑ Comunas   │     │   • Polígonos de riesgo         │       │
+│  ☑ Municipios│     │   • Calor de accidentes         │       │
+│              │     │   • Alertas geolocalizadas      │       │
 │              │     └─────────────────────────────────┘       │
 │              │                                               │
 │              │  RIGHT PANEL                                   │
 │              │  ┌──────────────────────┐                     │
 │              │  │  SEARCH              │                     │
 │              │  │  WEATHER WIDGET      │                     │
+│              │  │  AQI INDICATOR       │                     │
 │              │  │  LIVE ALERTS FEED    │                     │
 │              │  │  [ALL][SIATA][REP]   │                     │
 │              │  └──────────────────────┘                     │
@@ -404,7 +401,7 @@ El componente principal `CommandCenter.jsx` (411 líneas) es el corazón del fro
 | `TopBar` | `TopBar.jsx` | Barra superior con marca, reloj Zulu, estado del sistema, contador de alertas, botón API Docs |
 | `StatusCluster` | `StatusCluster.jsx` | Indicadores visuales de estado: sistema, SIATA, conectividad |
 | `WeatherWidget` | `WeatherWidget.jsx` | Widget meteorológico: temperatura actual, feels-like, humedad, viento, nubosidad, presión, lluvia; pronóstico a 6 horas y 5 días |
-| Landing hero | `Landing.jsx` | Estadísticas clave (16 comunas, 847 conductores GPS, 9 capas, <30s latencia) |
+| Landing hero | `Landing.jsx` | Estadísticas clave (16 comunas, 0 conductores GPS, 9 capas, <30s latencia) |
 
 ### Hooks Personalizados
 
@@ -419,9 +416,8 @@ El mapa Leaflet soporta las siguientes capas superpuestas:
 1. **Accident Zones** — Polígonos de zonas calientes de accidentes
 2. **Flood Zones** — Polígonos de riesgo de inundación (con estado: dry/watch/flooded)
 3. **Reports** — Marcadores de reportes ciudadanos
-4. **Telemetry** — Posiciones GPS de vehículos en tiempo real
-5. **Comunas** — Polígonos administrativos de las 16 comunas de Medellín
-6. **Municipios** — Polígonos de los municipios del Valle de Aburrá
+4. **Comunas** — Polígonos administrativos de las 16 comunas de Medellín
+5. **Municipios** — Polígonos de los municipios del Valle de Aburrá
 
 ### Tema Visual
 
@@ -433,59 +429,7 @@ El diseño sigue una estética **Osiris (oscuro)** con una paleta de colores per
 
 ---
 
-## 8. Tiempo Real — WebSockets + Redis Pub/Sub
-
-### Arquitectura de Tiempo Real
-
-```
-  CELERY WORKER                    FASTAPI                      NAVEGADOR
-  ┌──────────────┐               ┌──────────────┐             ┌──────────┐
-  │ detect_      │               │              │             │          │
-  │ overspeed()  │               │              │             │          │
-  │              │               │              │             │          │
-  │ Crea alerta  │               │              │             │          │
-  │ ───────────► │  Redis Pub    │              │             │          │
-  │ Publica en   │────alerts:───►│  Listener    │             │          │
-  │ alerts:live  │   live        │  asyncio     │───WS MSG──►│ alert.js │
-  │              │               │  broadcast() │             │          │
-  └──────────────┘               └──────────────┘             └──────────┘
-```
-
-### Componentes
-
-1. **Celery Worker** (`worker.py`):
-   - Detecta excesos de velocidad (>80 km/h) en los últimos 2 minutos de telemetría
-   - Crea una alerta en la base de datos
-   - Publica la alerta en el canal de Redis `alerts:live`
-
-2. **Redis Pub/Sub**:
-   - Actúa como middleware de mensajería entre Celery y FastAPI
-   - Canal: `alerts:live`
-
-3. **FastAPI Listener** (`alert_broadcaster.py`):
-   - `listen_and_broadcast_alerts()`: se suscribe al canal `alerts:live` de Redis
-   - Por cada mensaje recibido, llama a `ConnectionManager.broadcast()`
-
-4. **ConnectionManager** (`connection_manager.py`):
-   - Mantiene un pool de conexiones WebSocket organizadas por canal (`global`)
-   - `broadcast()`: envía el mensaje JSON a todas las conexiones del canal
-   - Remueve automáticamente conexiones muertas (desconectadas)
-
-5. **Endpoint WebSocket** (`ws_router.py`):
-   - Ruta: `ws://host/ws/telemetry?channel=global`
-   - Al conectarse, envía al cliente:
-     - `{type: "telemetry"}` — última posición conocida de cada vehículo
-     - `{type: "alerts"}` — alertas no resueltas actuales
-   - Luego mantiene la conexión abierta para recibir broadcasts
-
-6. **Cliente WebSocket** (`frontend/static/js/ui/alerts.js`):
-   - Se conecta al WebSocket al cargar el dashboard
-   - Escucha mensajes entrantes y renderiza alertas en el feed
-   - Filtros por tipo: ALL, SIATA, REPORTS, TRAFFIC
-
----
-
-## 9. Tareas Asíncronas — Celery
+## 8. Tareas Asíncronas — Celery
 
 ### Configuración
 
@@ -499,43 +443,15 @@ El diseño sigue una estética **Osiris (oscuro)** con una paleta de colores per
 |---|---|---|---|
 | `siata.sync_flood_hazards` | Cada 15 min | SIATA | Actualizar niveles de ríos y quebradas |
 | `weather.sync` | Cada 15 min | Open-Meteo | Actualizar pronóstico meteorológico |
-| `telemetry.flush` | Cada 1 min | Telemetría | Vaciar buffer de Redis a PostgreSQL |
-| `overspeed.check` | Cada 1 min | Seguridad | Detectar excesos de velocidad |
-| `ml.cluster_accident_hotspots` | Cada 1 hora | ML | Recalcular zonas calientes de accidentes |
-
-### Flujo de Telemetría (Patrón CQRS)
-
-```
-Dispositivo GPS → POST /api/v1/telemetry → Redis List (telemetry:buffer)
-                                                    │
-                                          Cada 1 min (Celery Beat)
-                                                    │
-                                                    ▼
-                                          Redis → PostgreSQL (bulk insert)
-                                          (flush_telemetry)
-```
-
-Este patrón **CQRS** (Command Query Responsibility Segregation) separa la escritura de la lectura:
-- **Comando**: La telemetría entrante se escribe rápidamente en Redis (operación O(1))
-- **Lectura**: Las consultas al mapa leen desde PostgreSQL (datos consolidados)
-- **Sincronización**: Cada minuto, Celery vacía el buffer de Redis y hace un bulk insert en PostgreSQL
-
-Beneficio: La ingesta de telemetría es extremadamente rápida (no espera a PostgreSQL) y se protege contra picos de tráfico.
-
-### Detección de Excesos de Velocidad
-
-La tarea `detect_overspeed()` en `worker.py`:
-1. Consulta la telemetría de los últimos 2 minutos
-2. Filtra registros con velocidad > 80 km/h
-3. Por cada infracción, crea una alerta de tipo `overspeed` con severidad `WARNING`
-4. Persiste la alerta en PostgreSQL
-5. Publica la alerta en Redis Pub/Sub (`alerts:live`)
+| `weather.generate_alerts` | Cada 15 min | Clima | Generar alertas automáticas por condiciones climáticas |
+| `air_quality.sync` | Cada 1 hora | WAQI | Sincronizar calidad del aire |
+| `weather_events.sync` | Cada 1 hora (min :30) | SIATA | Sincronizar eventos climáticos |
 
 ---
 
-## 10. Servicios de Integración
+## 9. Servicios de Integración
 
-### 10.1 SIATA — Sistema de Alerta Temprana
+### 9.1 SIATA — Sistema de Alerta Temprana
 
 **SIATA** (Sistema de Alerta Temprana del Valle de Aburrá) monitora en tiempo real los niveles de los ríos y quebradas.
 
@@ -556,16 +472,23 @@ La tarea `detect_overspeed()` en `worker.py`:
 4. Quebrada La Presidenta
 5. Quebrada La Volcana
 
-### 10.2 MEData — Datos Abiertos de Medellín
+### 9.2 SIATA — Eventos Climáticos
+
+**Implementación** (`weather_event_sync.py`):
+- Artefacto: `WeatherEventClient` (puerto abstracto)
+- `SiataEventosHttpClient`: Consulta `Eventos.json` de SIATA
+- Alimenta la tabla `weather_events` con tipo de evento, ubicación, fecha y descripción
+
+### 9.3 MEData — Datos Abiertos de Medellín
 
 **MEData** es el portal de datos abiertos de la Alcaldía de Medellín, que expone incidentes viales históricos.
 
 **Implementación** (`ingestion.py`):
 - `sync_soda_incidents()`: Consulta la API SODA de `datos.gov.co`
 - Si la consulta falla (sin conexión, límite de tasa), usa 10 accidentes semilla predefinidos con coordenadas reales de Medellín
-- Los accidentes se almacenan como geometrías POINT en la tabla `accident_zones`
+- Los accidentes se almacenan como geometrías POINT en la tabla `reports`
 
-### 10.3 Open-Meteo — Clima
+### 9.4 Open-Meteo — Clima
 
 **Open-Meteo** es una API meteorológica gratuita y sin clave.
 
@@ -579,7 +502,15 @@ La tarea `detect_overspeed()` en `worker.py`:
 
 **Puntos monitoreados:** Medellín, Bello, Itagüí, Envigado, Sabaneta
 
-### 10.4 Enrutamiento Seguro
+### 9.5 WAQI — Calidad del Aire
+
+**Implementación** (`air_quality_sync.py`):
+- Artefacto: `AirQualityClient` (puerto abstracto)
+- `WaqiHttpClient`: Consulta `api.waqi.info` con token de API
+- Alimenta la tabla `air_quality_readings` con índice AQI, PM2.5, PM10, O₃, NO₂
+- Se sincroniza cada hora vía Celery Beat
+
+### 9.6 Enrutamiento Seguro
 
 **Implementación** (`routing.py`):
 - Calcula una ruta en línea recta entre origen y destino usando el haversine (distancia de gran círculo)
@@ -591,7 +522,7 @@ La tarea `detect_overspeed()` en `worker.py`:
 
 ---
 
-## 11. Machine Learning
+## 10. Machine Learning
 
 ### Clustering DBSCAN de Zonas de Accidentalidad
 
@@ -615,56 +546,54 @@ La tarea `detect_overspeed()` en `worker.py`:
 
 ### Predicción de Tráfico
 
-**Archivo**: `ml/predict_traffic.py`
-
-Actualmente es un placeholder (archivo vacío). Está planificado implementar un modelo **XGBoost** para predicción temporal de flujo vehicular basado en datos históricos de telemetría.
+**Archivo**: `ml/predict_traffic.py` — actualmente eliminado (no implementado).
 
 ---
 
-## 12. Flujo de Datos Completo
+## 11. Flujo de Datos Completo
 
 ```
-                         ╔══════════════════════════════════╗
-                         ║       INICIO (API Startup)       ║
-                         ║   main.py → lifespan handler     ║
-                         ╚══════════════════════════════════╝
-                                     │
-              ┌──────────────────────┼──────────────────────┐
-              │                      │                       │
-              ▼                      ▼                       ▼
-   ╔══════════════════╗  ╔══════════════════╗  ╔══════════════════╗
-   ║ Seed Zonas       ║  ║ Sync SIATA       ║  ║ Sync MEData      ║
-   ║ (comunas JSON)   ║  ║ Flood Hazards    ║  ║ SODA Incidents   ║
-   ╚══════════════════╝  ╚══════════════════╝  ╚══════════════════╝
-              │                      │                       │
-              └──────────────────────┼──────────────────────┘
-                                     ▼
-                    ╔══════════════════════════════════╗
-                    ║     PostGIS + Redis CACHE        ║
-                    ║  (Datos consolidados)            ║
-                    ╚══════════════════════════════════╝
-                                     │
-              ┌──────────────────────┼──────────────────────┐
-              │                      │                       │
-              ▼                      ▼                       ▼
-   ╔══════════════════╗  ╔══════════════════╗  ╔══════════════════╗
-   ║ FRONTEND (REST)  ║  ║ FRONTEND (WS)    ║  ║ EXTERNAL         ║
-   ║ Carga datos al   ║  ║ Recibe alertas   ║  ║ Consume API      ║
-   ║ abrir el mapa    ║  ║ en vivo          ║  ║ REST             ║
-   ╚══════════════════╝  ╚══════════════════╝  ╚══════════════════╝
-                                     │
-                                     ▼
-                    ╔══════════════════════════════════╗
-                    ║       CELERY BEAT (cada N min)   ║
-                    ║  ┌─────────┐ ┌────────┐ ┌─────┐ ║
-                    ║  │ SIATA   │ │Weather │ │ML   │ ║
-                    ║  │15 min   │ │15 min  │ │1h   │ ║
-                    ║  └─────────┘ └────────┘ └─────┘ ║
-                    ║  ┌─────────┐ ┌────────┐         ║
-                    ║  │Telemetry│ │Overspeed│        ║
-                    ║  │1 min    │ │1 min   │         ║
-                    ║  └─────────┘ └────────┘         ║
-                    ╚══════════════════════════════════╝
+                          ╔══════════════════════════════════╗
+                          ║       INICIO (API Startup)       ║
+                          ║   main.py → lifespan handler     ║
+                          ╚══════════════════════════════════╝
+                                      │
+               ┌──────────────────────┼──────────────────────┐
+               │                      │                       │
+               ▼                      ▼                       ▼
+    ╔══════════════════╗  ╔══════════════════╗  ╔══════════════════╗
+    ║ Seed Zonas       ║  ║ Sync SIATA       ║  ║ Sync MEData      ║
+    ║ (comunas JSON)   ║  ║ Flood Hazards    ║  ║ SODA Incidents   ║
+    ╚══════════════════╝  ╚══════════════════╝  ╚══════════════════╝
+               │                      │                       │
+               └──────────────────────┼──────────────────────┘
+                                      ▼
+                     ╔══════════════════════════════════╗
+                     ║     PostGIS + Redis CACHE        ║
+                     ║  (Datos consolidados)            ║
+                     ╚══════════════════════════════════╝
+                                      │
+               ┌──────────────────────┼──────────────────────┐
+               │                      │                       │
+               ▼                      ▼                       ▼
+    ╔══════════════════╗  ╔══════════════════╗  ╔══════════════════╗
+    ║ FRONTEND (REST)  ║  ║ FRONTEND (WS)    ║  ║ EXTERNAL         ║
+    ║ Carga datos al   ║  ║ Recibe alertas   ║  ║ Consume API      ║
+    ║ abrir el mapa    ║  ║ en vivo          ║  ║ REST             ║
+    ╚══════════════════╝  ╚══════════════════╝  ╚══════════════════╝
+                                      │
+                                      ▼
+                     ╔══════════════════════════════════╗
+                     ║       CELERY BEAT (cada N min)   ║
+                     ║  ┌─────────┐ ┌────────┐ ┌─────┐ ║
+                     ║  │ SIATA   │ │Weather │ │ML   │ ║
+                     ║  │15 min   │ │15 min  │ │1h   │ ║
+                     ║  └─────────┘ └────────┘ └─────┘ ║
+                     ║  ┌───────────┐ ┌──────────────┐  ║
+                     ║  │Air Quality│ │Weather Events│  ║
+                     ║  │1h         │ │1h (:30)     │  ║
+                     ║  └───────────┘ └──────────────┘  ║
+                     ╚══════════════════════════════════╝
 ```
 
 ### Ciclo de Actualización de Datos
@@ -673,14 +602,15 @@ Actualmente es un placeholder (archivo vacío). Está planificado implementar un
 |---|---|---|
 | Zonas de inundación SIATA | Cada 15 min | Celery Beat → SIATA API |
 | Clima / Pronóstico | Cada 15 min | Celery Beat → Open-Meteo → Redis Cache |
-| Telemetría GPS | Streaming continuo | POST API → Redis Buffer → Cada 1 min → PostgreSQL |
-| Alertas de exceso velocidad | Cada 1 min | Celery Beat → PostgreSQL + Redis Pub/Sub |
+| Alertas meteorológicas | Cada 15 min | Celery Beat → weather.generate_alerts |
+| Calidad del aire (WAQI) | Cada 1 hora | Celery Beat → WAQI API |
+| Eventos climáticos SIATA | Cada 1 hora (min :30) | Celery Beat → SIATA Eventos |
 | Zonas calientes accidentes | Cada 1 hora | Celery Beat → PostGIS ST_ClusterDBSCAN |
 | Reportes ciudadanos | Bajo demanda | Formulario → POST API → PostgreSQL |
 
 ---
 
-## 13. Infraestructura y Despliegue
+## 12. Infraestructura y Despliegue
 
 ### Docker Compose (5 servicios)
 
@@ -708,7 +638,7 @@ Docker Compose incluye healthchecks para `db` (`pg_isready`) y `redis` (`redis-c
 
 ---
 
-## 14. API REST — Endpoints
+## 13. API REST — Endpoints
 
 ### Sistema
 
@@ -717,102 +647,52 @@ Docker Compose incluye healthchecks para `db` (`pg_isready`) y `redis` (`redis-c
 | `GET` | `/health` | Health check básico |
 | `GET` | `/health/db` | Verificación de base de datos |
 
-### Autenticación
-
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Registrar nuevo usuario | No |
-| `POST` | `/api/v1/auth/login` | Iniciar sesión (JWT) | No |
-| `GET` | `/api/v1/auth/me` | Perfil del usuario autenticado | JWT |
-
-### Usuarios
-
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/v1/users/` | Listar usuarios | Admin |
-| `GET` | `/api/v1/users/{id}` | Usuario por ID | JWT |
-| `PUT` | `/api/v1/users/{id}` | Actualizar usuario | JWT |
-
 ### Reportes Ciudadanos
 
-| Método | Ruta | Descripción | Auth |
+| Método | Ruta | Descripción | Rate Limit |
 |---|---|---|---|
-| `POST` | `/api/v1/reports/` | Crear reporte | JWT |
-| `GET` | `/api/v1/reports/` | Listar reportes | JWT |
-| `GET` | `/api/v1/reports/{id}` | Reporte por ID | JWT |
-| `PUT` | `/api/v1/reports/{id}` | Actualizar reporte | JWT |
+| `POST` | `/api/v1/reports/` | Crear reporte | 5/h por IP |
+| `GET` | `/api/v1/reports/` | Listar reportes | — |
+| `GET` | `/api/v1/reports/{id}` | Reporte por ID | — |
+
 
 ### Endpoints Públicos (Mapa)
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/v1/public/reports` | Reportes públicos |
-| `GET` | `/api/v1/public/accidents` | Accidentes geolocalizados |
-| `GET` | `/api/v1/public/accident-zones` | Zonas de accidentalidad (GeoJSON) |
+| `GET` | `/api/v1/public/accidents/geojson` | Incidentes en GeoJSON |
+| `GET` | `/api/v1/public/accidents/stats` | Agregados de accidentalidad (dashboard) |
 | `GET` | `/api/v1/public/fatalities` | Incidentes fatales |
 | `GET` | `/api/v1/public/flood-zones` | Zonas de inundación |
-| `GET` | `/api/v1/public/nearby` | Búsqueda geográfica cercana |
-| `GET` | `/api/v1/public/stats` | Estadísticas generales |
-| `GET` | `/api/v1/public/telemetry/latest` | Última telemetría de vehículos |
 | `GET` | `/api/v1/public/alerts` | Alertas activas |
-| `GET` | `/api/v1/public/weather` | Clima actual |
-| `GET` | `/api/v1/public/weather/forecast` | Pronóstico meteorológico |
-| `GET` | `/api/v1/public/rain-risk` | Riesgo de lluvia |
+| `GET` | `/api/v1/public/weather` | Clima actual multipunto |
+| `GET` | `/api/v1/public/weather/forecast` | Pronóstico detallado (proxy Open-Meteo) |
+| `GET` | `/api/v1/public/rain-risk` | Riesgo de lluvia a 2h |
 | `GET` | `/api/v1/public/comunas` | Polígonos de comunas |
 | `GET` | `/api/v1/public/comunas/stats` | Estadísticas por comuna |
-
-### Clima
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/v1/weather/forecast` | Pronóstico Open-Meteo (proxy con caché Redis) |
-
-### Vehículos
-
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/v1/vehicles/` | Listar vehículos | JWT |
-| `POST` | `/api/v1/vehicles/` | Registrar vehículo | JWT |
-| `GET` | `/api/v1/vehicles/{id}` | Vehículo por ID | JWT |
-| `PUT` | `/api/v1/vehicles/{id}` | Actualizar vehículo | JWT |
-| `DELETE` | `/api/v1/vehicles/{id}` | Eliminar vehículo | JWT |
+| `GET` | `/api/v1/public/air-quality` | Calidad del aire (AQI, PM2.5, PM10, O₃, NO₂) |
 
 ### Zonas de Accidentalidad
 
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/v1/accident-zones/` | Listar zonas | JWT |
-| `POST` | `/api/v1/accident-zones/` | Crear zona | JWT |
-| `GET` | `/api/v1/accident-zones/{id}` | Zona por ID | JWT |
-| `GET` | `/api/v1/accident-zones/nearby` | Zonas cercanas | JWT |
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/v1/accident-zones/` | Listar zonas |
+| `GET` | `/api/v1/accident-zones/{id}` | Zona por ID |
+| `GET` | `/api/v1/accident-zones/nearby` | Zonas cercanas |
 
 ### Zonas de Inundación
 
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `GET` | `/api/v1/flood-hazards/` | Listar zonas | JWT |
-| `POST` | `/api/v1/flood-hazards/` | Crear zona | JWT |
-| `GET` | `/api/v1/flood-hazards/{id}` | Zona por ID | JWT |
-| `PUT` | `/api/v1/flood-hazards/{id}` | Actualizar zona | JWT |
-| `GET` | `/api/v1/flood-hazards/nearby` | Zonas cercanas | JWT |
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/v1/flood-hazards/` | Listar zonas |
+| `GET` | `/api/v1/flood-hazards/{id}` | Zona por ID |
+| `GET` | `/api/v1/flood-hazards/nearby` | Zonas cercanas |
 
 ### Rutas
 
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/api/v1/routes/?origin=lat,lng&destination=lat,lng` | Calcular ruta segura |
-
-### Telemetría
-
-| Método | Ruta | Descripción | Auth |
-|---|---|---|---|
-| `POST` | `/api/v1/telemetry/` | Ingesta de datos GPS | API Key |
-
-### WebSockets
-
-| Ruta | Descripción |
-|---|---|
-| `WS /ws/telemetry?channel=global` | Streaming de telemetría en tiempo real + alertas |
 
 ### Documentación Interactiva
 
@@ -821,43 +701,7 @@ Docker Compose incluye healthchecks para `db` (`pg_isready`) y `redis` (`redis-c
 
 ---
 
-## 15. Seguridad
-
-### Autenticación JWT
-
-- **Algoritmo**: HS256
-- **Expiración**: 1440 minutos (24 horas), configurable
-- **Implementación**: `python-jose` + `passlib` (bcrypt)
-- **Flujo**:
-  1. Usuario se registra con email y contraseña
-  2. Inicia sesión → recibe un token JWT
-  3. Cada petición autenticada incluye `Authorization: Bearer <token>`
-
-### Roles y Permisos
-
-| Rol | Descripción |
-|---|---|
-| `citizen` | Ciudadano — puede crear reportes y ver datos públicos |
-| `authority` | Autoridad — puede gestionar vehículos, zonas y alertas |
-| `admin` | Administrador — acceso completo incluyendo gestión de usuarios |
-
-**Implementación**: `deps.py` — `require_role(*roles)` verifica que el token contenga el rol adecuado.
-
-### API Key para Dispositivos GPS
-
-- Los dispositivos GPS (máquinas, no usuarios) se autentican mediante header `X-API-Key`
-- Validación con comparación de tiempo constante para prevenir timing attacks
-- Configurable via `TELEMETRY_API_KEY` en variables de entorno
-
-### Validación de Datos
-
-- Todos los inputs se validan con **Pydantic v2** (schemas)
-- Modelos SQLAlchemy con tipos estrictos
-- PostGIS garantiza integridad geoespacial (SRID 4326 para WGS84)
-
----
-
-## 16. Guía de Inicio Rápido
+## 14. Guía de Inicio Rápido
 
 ### Requisitos
 
@@ -907,15 +751,15 @@ chmod +x start.sh
 
 ---
 
-## 17. Demo y Datos de Prueba
+## 15. Demo y Datos de Prueba
 
 ### seed_demo.py
 
 Script independiente que genera un conjunto completo de datos demo:
-- 5 vehículos demo con telemetría
-- 2 alertas de ejemplo
 - Sincronización de zonas de inundación SIATA
-- 1 reporte de accidente ciudadano
+- Alertas de ejemplo
+- Reportes de accidente ciudadano
+- Datos meteorológicos iniciales
 
 ### Datos Semilla Incorporados
 
@@ -923,26 +767,24 @@ El sistema incluye datos semilla para funcionar sin conexión a APIs externas:
 
 | Componente | Cantidad | Descripción |
 |---|---|---|
-| Vehículos demo | 8 | 3 ambulancias, 3 patrullas, 2 bomberos — dispersos por Medellín |
 | Alertas iniciales | 4 | Tráfico (Av. Oriental), SIATA (La Iguana), etc. |
 | Accidentes semilla | 10 | Ubicaciones reales del área metropolitana |
 | Zonas inundación | 5 | Río Medellín, quebradas La Iguana, Presidenta, Volcana |
-| Estaciones SIATA | 5 | Datos con variación pseudoaleatoria cada 5 minutos |
+| Estaciones SIATA | 5 | Datos con variación pseudoaleatoria cada 15 minutos |
 | Comunas/Municipios | ~25 | Polígonos GeoJSON del Valle de Aburrá |
 
 ---
 
 ## Conclusión
 
-**PPTMaps** es una plataforma completa de movilidad inteligente que demuestra cómo integrar múltiples fuentes de datos heterogéneas (APIs gubernamentales, datos abiertos, clima, reportes ciudadanos, telemetría IoT) en un sistema unificado con:
+**PPTMaps** es una plataforma completa de movilidad inteligente que demuestra cómo integrar múltiples fuentes de datos heterogéneas (APIs gubernamentales, datos abiertos, clima, calidad del aire, reportes ciudadanos) en un sistema unificado con:
 
 - **Arquitectura moderna**: FastAPI asíncrono, React 19, PostGIS, Celery, Redis
 - **Tiempo real**: WebSockets + Redis Pub/Sub para alertas instantáneas
 - **Resiliencia**: Patrón hexagonal con degradación suave cuando APIs externas fallan
-- **Escalabilidad**: CQRS para telemetría, caché Redis, workers Celery
 - **Inteligencia geoespacial**: Clustering DBSCAN nativo en PostGIS, rutas seguras con Shapely
-- **UX**: Dashboard oscuro tipo centro de comando con capas superpuestas, widget climático y alimentación de alertas en vivo
+- **UX**: Dashboard oscuro tipo centro de comando con capas superpuestas, widget climático, indicador AQI y alimentación de alertas en vivo
 
 ---
 
-*Medellín, Colombia 🇨🇴*
+*Medellín, Colombia*
