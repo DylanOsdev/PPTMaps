@@ -10,7 +10,8 @@ class ReportCreate(BaseModel):
     description: Optional[str] = None
     latitude: float
     longitude: float
-    reporter_name: str  # Obligatorio
+    reporter_name: Optional[str] = None
+    reporter_email: Optional[str] = None
 
 
 class ReportUpdate(BaseModel):
