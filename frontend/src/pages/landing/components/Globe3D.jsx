@@ -3,23 +3,27 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const RADIUS = 2;
+const CITY_COLOR = '#22D3EE';
+const CITY_GLOW_COLOR = '#06B6D4';
+const ARC_COLOR = '#22D3EE';
+const ARC_FLOW_COLOR = '#67E8F9';
 
 const ALL_CITIES = [
-  { name: 'Medellín', lat: 6.2442, lng: -75.5812, size: 1.0, isHub: true },
-  { name: 'Bogotá', lat: 4.7110, lng: -74.0721, size: 0.7 },
-  { name: 'Cali', lat: 3.4516, lng: -76.5320, size: 0.6 },
-  { name: 'Barranquilla', lat: 10.9685, lng: -74.7813, size: 0.5 },
-  { name: 'Cartagena', lat: 10.3910, lng: -75.5144, size: 0.45 },
-  { name: 'New York', lat: 40.7128, lng: -74.0060, size: 0.7 },
-  { name: 'London', lat: 51.5074, lng: -0.1278, size: 0.6 },
-  { name: 'Tokyo', lat: 35.6762, lng: 139.6503, size: 0.6 },
-  { name: 'Sydney', lat: -33.8688, lng: 151.2093, size: 0.5 },
-  { name: 'São Paulo', lat: -23.5505, lng: -46.6333, size: 0.5 },
-  { name: 'Moscow', lat: 55.7558, lng: 37.6173, size: 0.5 },
-  { name: 'Dubai', lat: 25.2048, lng: 55.2708, size: 0.5 },
-  { name: 'Mumbai', lat: 19.0760, lng: 72.8777, size: 0.5 },
-  { name: 'Beijing', lat: 39.9042, lng: 116.4074, size: 0.55 },
-  { name: 'Lagos', lat: 6.5244, lng: 3.3792, size: 0.4 },
+  { name: 'Medellín', lat: 6.2442, lng: -75.5812, size: 0.08, isHub: true },
+  { name: 'Bogotá', lat: 4.7110, lng: -74.0721, size: 0.05 },
+  { name: 'Cali', lat: 3.4516, lng: -76.5320, size: 0.04 },
+  { name: 'Barranquilla', lat: 10.9685, lng: -74.7813, size: 0.04 },
+  { name: 'Cartagena', lat: 10.3910, lng: -75.5144, size: 0.035 },
+  { name: 'New York', lat: 40.7128, lng: -74.0060, size: 0.05 },
+  { name: 'London', lat: 51.5074, lng: -0.1278, size: 0.04 },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503, size: 0.04 },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093, size: 0.035 },
+  { name: 'São Paulo', lat: -23.5505, lng: -46.6333, size: 0.04 },
+  { name: 'Moscow', lat: 55.7558, lng: 37.6173, size: 0.035 },
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708, size: 0.035 },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777, size: 0.035 },
+  { name: 'Beijing', lat: 39.9042, lng: 116.4074, size: 0.04 },
+  { name: 'Lagos', lat: 6.5244, lng: 3.3792, size: 0.03 },
 ];
 
 const ALL_ARCS = [
@@ -45,506 +49,347 @@ function latLngToVec3(lat, lng, radius = RADIUS) {
   );
 }
 
-function toNormalized(lat, lng) {
-  const phi = (90 - lat) * Math.PI / 180;
-  const theta = (180 + lng) * Math.PI / 180;
-  return new THREE.Vector3(
-    -Math.sin(phi) * Math.cos(theta),
-    Math.cos(phi),
-    Math.sin(phi) * Math.sin(theta),
-  );
-}
-
-const atmosphereVert = `
-  varying vec3 vNormal;
-  varying vec3 vPos;
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    vec4 wp = modelMatrix * vec4(position, 1.0);
-    vPos = wp.xyz;
-    gl_Position = projectionMatrix * viewMatrix * wp;
-  }
-`;
-
-const atmosphereFrag = `
-  uniform vec3 color;
-  uniform float intensity;
-  uniform float power;
-  varying vec3 vNormal;
-  varying vec3 vPos;
-  void main() {
-    vec3 viewDir = normalize(cameraPosition - vPos);
-    float rim = 1.0 - max(0.0, dot(viewDir, vNormal));
-    float a = pow(rim, power) * intensity;
-    gl_FragColor = vec4(color, a);
-  }
-`;
-
-const surfaceVert = `
-  varying vec3 vPos;
-  varying vec3 vNorm;
-  varying vec3 vView;
-  void main() {
-    vec4 wp = modelMatrix * vec4(position, 1.0);
-    vPos = normalize(position);
-    vNorm = normalize(normalMatrix * normal);
-    vView = normalize(cameraPosition - wp.xyz);
-    gl_Position = projectionMatrix * viewMatrix * wp;
-  }
-`;
-
-const surfaceFrag = `
-  uniform vec3 baseColor;
-  uniform vec3 gridColor;
-  uniform vec3 rimColor;
-  uniform vec3 scanColor;
-  uniform float time;
-  varying vec3 vPos;
-  varying vec3 vNorm;
-  varying vec3 vView;
-
-  #define PI 3.14159265359
-
-  void main() {
-    vec3 p = normalize(vPos);
-    float lat = acos(p.y);
-    float lng = atan(p.z, p.x);
-
-    float latStep = PI / 12.0;
-    float lngStep = PI / 12.0;
-
-    float lw = 0.035;
-    float lg = mod(lat, latStep) / latStep;
-    float ng = mod(lng + PI, lngStep) / lngStep;
-    float latLine = 1.0 - smoothstep(0.0, lw, min(lg, 1.0 - lg));
-    float lngLine = 1.0 - smoothstep(0.0, lw, min(ng, 1.0 - ng));
-    float grid = max(latLine, lngLine) * 0.3;
-
-    float eq = 1.0 - smoothstep(0.0, 0.012, abs(lat - PI * 0.5));
-    float pm = 1.0 - smoothstep(0.0, 0.012, abs(lng));
-    float special = max(eq, pm) * 0.5;
-
-    float fresnel = pow(1.0 - max(0.0, dot(vView, vNorm)), 3.0);
-
-    float scan = exp(-pow(abs(lng - mod(time * 0.12 + PI, 2.0 * PI) - PI), 2.0) * 300.0);
-    scan *= 0.3 + 0.2 * (0.5 + 0.5 * sin(lat * 4.0 + time));
-
-    float pulse = 0.5 + 0.5 * sin(time * 0.4);
-
-    vec3 c = baseColor;
-    c += gridColor * grid * 1.5;
-    c += gridColor * special;
-    c += scanColor * scan * 2.0;
-    c += rimColor * fresnel * 0.5;
-    c += gridColor * fresnel * pulse * 0.15;
-    c += gridColor * 0.05 * (0.5 + 0.5 * sin(lat * 20.0 + lng * 20.0 + time * 0.5));
-    c += gridColor * 0.06;
-
-    gl_FragColor = vec4(c, 0.88);
-  }
-`;
-
-function makeGlowTexture(stops) {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  stops.forEach(([offset, color]) => g.addColorStop(offset, color));
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  return tex;
-}
-
-const glowTex = makeGlowTexture([
-  [0.0, 'rgba(255,255,255,1)'],
-  [0.05, 'rgba(34,211,238,0.9)'],
-  [0.2, 'rgba(34,211,238,0.5)'],
-  [0.5, 'rgba(34,211,238,0.15)'],
-  [1.0, 'rgba(34,211,238,0)'],
-]);
-
-const haloTex = makeGlowTexture([
-  [0.0, 'rgba(34,211,238,0)'],
-  [0.3, 'rgba(34,211,238,0.05)'],
-  [0.55, 'rgba(34,211,238,0.25)'],
-  [0.7, 'rgba(34,211,238,0.5)'],
-  [0.85, 'rgba(34,211,238,0.3)'],
-  [1.0, 'rgba(34,211,238,0)'],
-]);
-
-const starTex = makeGlowTexture([
-  [0.0, 'rgba(255,255,255,1)'],
-  [0.1, 'rgba(255,255,255,0.5)'],
-  [0.4, 'rgba(255,255,255,0.05)'],
-  [1.0, 'rgba(255,255,255,0)'],
-]);
-
-function Atmosphere({ inner, scale, color, intensity, power }) {
-  const ref = useRef();
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.getElapsedTime();
-    ref.current.material.uniforms.intensity.value = intensity + 0.05 * Math.sin(t * 0.3 + inner * 1.5);
-    ref.current.scale.setScalar(1.0 + 0.006 * Math.sin(t * 0.25 + inner));
-  });
-
-  return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[RADIUS * scale, 48, 48]} />
-      <shaderMaterial
-        vertexShader={atmosphereVert}
-        fragmentShader={atmosphereFrag}
-        uniforms={{
-          color: { value: new THREE.Color(color) },
-          intensity: { value: intensity },
-          power: { value: power },
-        }}
-        transparent
-        side={THREE.BackSide}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </mesh>
-  );
-}
-
-function GlobeSurface() {
-  return (
-    <mesh>
-      <shaderMaterial
-        vertexShader={surfaceVert}
-        fragmentShader={surfaceFrag}
-        uniforms={{
-          baseColor: { value: new THREE.Color('#0F1F3D') },
-          gridColor: { value: new THREE.Color('#22D3EE') },
-          rimColor: { value: new THREE.Color('#06B6D4') },
-          scanColor: { value: new THREE.Color('#67E8F9') },
-          time: { value: 0 },
-        }}
-        transparent
-        depthWrite={true}
-      />
-      <sphereGeometry args={[RADIUS, 64, 64]} />
-    </mesh>
-  );
-}
-
 function CityPoints({ cities, visible }) {
-  const dotRef = useRef();
+  const dotsRef = useRef();
   const glowRef = useRef();
-  const outerRef = useRef();
-  const haloRef = useRef();
+  const ringRef = useRef();
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  const positions = useMemo(() => cities.map(c => latLngToVec3(c.lat, c.lng, RADIUS)), [cities]);
-  const sizes = useMemo(() => cities.map(c => c.size), [cities]);
-  const hubs = useMemo(() => cities.map(c => !!c.isHub), [cities]);
+  const cityPositions = useMemo(() => {
+    return cities.map(c => latLngToVec3(c.lat, c.lng, RADIUS));
+  }, [cities]);
+
+  const citySizes = useMemo(() => {
+    return cities.map(c => c.size || 0.04);
+  }, [cities]);
+
+  const isHub = useMemo(() => {
+    return cities.map(c => c.isHub || false);
+  }, [cities]);
+
+  const count = cityPositions.length;
 
   useFrame(({ clock }) => {
-    if (!visible) return;
-    if (!dotRef.current || !glowRef.current || !outerRef.current || !haloRef.current) return;
+    if (!dotsRef.current || !glowRef.current || !ringRef.current || !visible) return;
     const t = clock.getElapsedTime();
-    const n = positions.length;
-
-    for (let i = 0; i < n; i++) {
-      const pos = positions[i];
-      const s = sizes[i];
-      const hub = hubs[i];
-      const pulse = 0.85 + 0.15 * Math.sin(t * (hub ? 1.8 : 1.0) + i * 2.3);
-      const gp = 0.5 + 0.5 * Math.sin(t * (hub ? 2.5 : 1.3) + i * 3.0);
-
+    for (let i = 0; i < count; i++) {
+      const pos = cityPositions[i];
+      const baseSize = citySizes[i];
+      const hub = isHub[i];
+      
+      const pulse = 0.85 + 0.15 * Math.sin(t * (hub ? 1.2 : 0.8) + i * 1.5);
+      const glowPulse = 0.7 + 0.3 * Math.sin(t * (hub ? 1.5 : 1.0) + i * 2.0);
+      const ringPulse = (t * 0.3 + i * 0.5) % 1.0;
+      
       dummy.position.copy(pos);
-      dummy.scale.setScalar(s * 0.03 * pulse);
+      dummy.scale.setScalar(pulse * baseSize * (hub ? 1.5 : 1.0));
       dummy.updateMatrix();
-      dotRef.current.setMatrixAt(i, dummy.matrix);
-
-      dummy.scale.setScalar(s * 0.1 * (0.7 + 0.3 * gp));
+      dotsRef.current.setMatrixAt(i, dummy.matrix);
+      
+      dummy.scale.setScalar(glowPulse * baseSize * 2.5 * (hub ? 2.0 : 1.5));
       dummy.updateMatrix();
       glowRef.current.setMatrixAt(i, dummy.matrix);
-
-      dummy.scale.setScalar(s * 0.2 * (0.6 + 0.4 * gp));
+      
+      dummy.scale.setScalar(baseSize * 0.5 + ringPulse * baseSize * 3.0);
+      dummy.rotation.set(0, t * 0.2, 0);
       dummy.updateMatrix();
-      outerRef.current.setMatrixAt(i, dummy.matrix);
-
-      dummy.scale.setScalar(s * 0.04 + 0.05 * ((t * 0.25 + i * 0.9) % 1.0));
-      dummy.lookAt(0, 0, 0);
-      dummy.updateMatrix();
-      haloRef.current.setMatrixAt(i, dummy.matrix);
+      ringRef.current.setMatrixAt(i, dummy.matrix);
     }
-
-    dotRef.current.instanceMatrix.needsUpdate = true;
+    dotsRef.current.instanceMatrix.needsUpdate = true;
     glowRef.current.instanceMatrix.needsUpdate = true;
-    outerRef.current.instanceMatrix.needsUpdate = true;
-    haloRef.current.instanceMatrix.needsUpdate = true;
+    ringRef.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
     <group>
-      <instancedMesh ref={haloRef} args={[undefined, undefined, positions.length]}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={haloTex} transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+      <instancedMesh ref={ringRef} args={[undefined, undefined, count]}>
+        <ringGeometry args={[0.02, 0.08, 32]} />
+        <meshBasicMaterial
+          color={CITY_GLOW_COLOR}
+          transparent
+          opacity={0.3}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
       </instancedMesh>
-      <instancedMesh ref={outerRef} args={[undefined, undefined, positions.length]}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={glowTex} transparent opacity={0.2} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </instancedMesh>
-      <instancedMesh ref={glowRef} args={[undefined, undefined, positions.length]}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={glowTex} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </instancedMesh>
-      <instancedMesh ref={dotRef} args={[undefined, undefined, positions.length]}>
+      <instancedMesh ref={glowRef} args={[undefined, undefined, count]}>
         <sphereGeometry args={[0.035, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.95} />
+        <meshBasicMaterial
+          color={CITY_GLOW_COLOR}
+          transparent
+          opacity={0.15}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </instancedMesh>
+      <instancedMesh ref={dotsRef} args={[undefined, undefined, count]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshBasicMaterial
+          color={CITY_COLOR}
+          transparent
+          opacity={1}
+        />
       </instancedMesh>
     </group>
   );
 }
 
 function ConnectionArcs({ arcs, cityMap, visible }) {
-  const lineRef = useRef();
-  const glowRef = useRef();
+  const arcsRef = useRef();
+  const flowRef = useRef();
 
-  const arcData = useMemo(() => arcs.map(([from, to], i) => {
-    const f = cityMap[from];
-    const t = cityMap[to];
-    if (!f || !t) return null;
-    const start = latLngToVec3(f.lat, f.lng);
-    const end = latLngToVec3(t.lat, t.lng);
-    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const dist = start.distanceTo(end);
-    mid.normalize().multiplyScalar(RADIUS + dist * 0.35);
-    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-    const points = curve.getPoints(50);
-    const seed = Math.abs(Math.sin(i * 127.1 + 311.7));
-    return { points, curve, op: 0.06 + (seed % 0.5) * 0.14 };
-  }).filter(Boolean), [arcs, cityMap]);
+  const arcData = useMemo(() => {
+    return arcs.map(([from, to], i) => {
+      const f = cityMap[from];
+      const t = cityMap[to];
+      if (!f || !t) return null;
+      const start = latLngToVec3(f.lat, f.lng);
+      const end = latLngToVec3(t.lat, t.lng);
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+      const dist = start.distanceTo(end);
+      mid.normalize().multiplyScalar(RADIUS + dist * 0.4);
+      const seed = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+      const opacity = 0.12 + (seed - Math.floor(seed)) * 0.08;
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      const points = curve.getPoints(60);
+      return { start, mid, end, from, to, opacity, curve, points };
+    }).filter(Boolean);
+  }, [arcs, cityMap]);
 
   const lineMeshes = useMemo(() => arcData.map((d, i) => {
-    const pts = d.points;
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const colors = new Float32Array(pts.length * 3);
-    for (let j = 0; j < pts.length; j++) {
-      const t = j / (pts.length - 1);
-      const c = new THREE.Color('#22D3EE').lerp(new THREE.Color('#06B6D4'), t);
-      colors[j * 3] = c.r; colors[j * 3 + 1] = c.g; colors[j * 3 + 2] = c.b;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: d.op });
+    const geo = new THREE.BufferGeometry().setFromPoints(d.points);
+    const mat = new THREE.LineBasicMaterial({
+      color: ARC_COLOR,
+      transparent: true,
+      opacity: d.opacity,
+      linewidth: 1,
+    });
     return new THREE.Line(geo, mat);
   }), [arcData]);
 
-  const glowPoints = useMemo(() => arcData.map((d, i) => {
-    const pts = d.points;
-    const count = pts.length * 3;
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const colors = new Float32Array(count * 3);
-    for (let j = 0; j < count; j++) {
-      const t = j / (count - 1);
-      const p = d.curve.getPoint(t);
-      positions[j * 3] = p.x; positions[j * 3 + 1] = p.y; positions[j * 3 + 2] = p.z;
-      const s = 0.01 + 0.04 * Math.sin(t * Math.PI);
-      sizes[j] = s;
-      const c = new THREE.Color('#22D3EE').lerp(new THREE.Color('#67E8F9'), t);
-      colors[j * 3] = c.r; colors[j * 3 + 1] = c.g; colors[j * 3 + 2] = c.b;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mat = new THREE.PointsMaterial({
-      size: 0.04, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending,
-      depthWrite: false, sizeAttenuation: true, vertexColors: true,
-    });
-    return new THREE.Points(geo, mat);
-  }), [arcData]);
-
-  const flowParticles = useMemo(() => arcData.map((d, i) => {
+  const flowMeshes = useMemo(() => arcData.map((d, i) => {
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(20 * 3);
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.PointsMaterial({
-      color: '#67E8F9', size: 0.04, transparent: true, opacity: 0.7,
-      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+      color: ARC_FLOW_COLOR,
+      size: 0.025,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     return new THREE.Points(geo, mat);
   }), [arcData]);
 
-  useEffect(() => () => {
-    [...lineMeshes, ...glowPoints, ...flowParticles].forEach(m => {
-      m.geometry.dispose(); m.material.dispose();
-    });
-  }, [lineMeshes, glowPoints, flowParticles]);
+  useEffect(() => {
+    return () => {
+      lineMeshes.forEach(line => {
+        line.geometry.dispose();
+        line.material.dispose();
+      });
+      flowMeshes.forEach(flow => {
+        flow.geometry.dispose();
+        flow.material.dispose();
+      });
+    };
+  }, [lineMeshes, flowMeshes]);
 
   useFrame(({ clock }) => {
     if (!visible) return;
     const time = clock.getElapsedTime();
-
+    
     lineMeshes.forEach((line, i) => {
-      line.material.opacity = arcData[i].op * (0.5 + 0.5 * (0.5 + 0.5 * Math.sin(time * 0.3 + i * 1.4)));
+      const opacity = 0.06 + 0.1 * (0.5 + 0.5 * Math.sin(time * 0.5 + i * 1.5));
+      line.material.opacity = opacity;
     });
-
-    glowPoints.forEach((gp, i) => {
-      gp.material.opacity = 0.15 + 0.2 * (0.5 + 0.5 * Math.sin(time * 0.4 + i * 1.7));
-    });
-
-    flowParticles.forEach((flow, i) => {
+    
+    flowMeshes.forEach((flow, i) => {
       const d = arcData[i];
-      const pos = flow.geometry.attributes.position.array;
-      const num = 20;
-      const prog = (time * 0.2 + i * 0.6) % 1.0;
-      for (let j = 0; j < num; j++) {
-        const p = (prog + j / num) % 1.0;
-        const pt = d.curve.getPoint(p);
-        pos[j * 3] = pt.x; pos[j * 3 + 1] = pt.y; pos[j * 3 + 2] = pt.z;
+      const positions = flow.geometry.attributes.position.array;
+      const numParticles = 20;
+      const progress = (time * 0.3 + i * 0.7) % 1.0;
+      
+      for (let j = 0; j < numParticles; j++) {
+        const particleProgress = (progress + j / numParticles) % 1.0;
+        const point = d.curve.getPoint(particleProgress);
+        positions[j * 3] = point.x;
+        positions[j * 3 + 1] = point.y;
+        positions[j * 3 + 2] = point.z;
       }
       flow.geometry.attributes.position.needsUpdate = true;
-      flow.material.opacity = 0.3 + 0.5 * (0.5 + 0.5 * Math.sin(time * 0.5 + i * 2.0));
+      
+      const flowOpacity = 0.4 + 0.4 * (0.5 + 0.5 * Math.sin(time * 0.8 + i * 2.0));
+      flow.material.opacity = flowOpacity;
     });
   });
 
   return (
-    <group>
-      {lineMeshes.map((m, i) => <primitive key={`al-${i}`} object={m} />)}
-      {glowPoints.map((m, i) => <primitive key={`ag-${i}`} object={m} />)}
-      {flowParticles.map((m, i) => <primitive key={`af-${i}`} object={m} />)}
+    <group ref={arcsRef}>
+      {lineMeshes.map((line, i) => <primitive key={`line-${i}`} object={line} />)}
+      {flowMeshes.map((flow, i) => <primitive key={`flow-${i}`} object={flow} />)}
     </group>
   );
 }
 
-function OrbitalParticles({ count, visible }) {
-  const ref = useRef();
+function DataFlowParticles({ count, visible }) {
+  const particlesRef = useRef();
+  const offsetsRef = useRef([]);
+  const speedsRef = useRef([]);
+  const phasesRef = useRef([]);
+  const sizesRef = useRef([]);
 
-  const geo = useMemo(() => {
-    const g = new THREE.BufferGeometry();
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const data = { speeds: new Float32Array(count), offsets: new Float32Array(count), radii: new Float32Array(count) };
-
+    const off = new Float32Array(count);
+    const spd = new Float32Array(count);
+    const phase = new Float32Array(count);
+    const sz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = RADIUS + 0.2 + Math.random() * 0.8;
+      const phi = Math.acos(Math.max(-1, Math.min(1, 2 * Math.random() - 1)));
+      const r = RADIUS + 0.1 + Math.random() * 0.8;
       pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       pos[i * 3 + 1] = r * Math.cos(phi);
       pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-      sizes[i] = 0.01 + Math.random() * 0.03;
-      data.speeds[i] = 0.08 + Math.random() * 0.25;
-      data.offsets[i] = Math.random() * Math.PI * 2;
-      data.radii[i] = r;
+      off[i] = Math.random() * Math.PI * 2;
+      spd[i] = 0.15 + Math.random() * 0.35;
+      phase[i] = Math.random() * Math.PI * 2;
+      sz[i] = 0.02 + Math.random() * 0.03;
     }
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    g.userData = data;
-    return g;
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(sz, 1));
+    offsetsRef.current = off;
+    speedsRef.current = spd;
+    phasesRef.current = phase;
+    sizesRef.current = sz;
+    return geo;
   }, [count]);
 
   useFrame(({ clock }) => {
-    if (!ref.current || !visible) return;
-    const t = clock.getElapsedTime();
-    const pos = ref.current.geometry.attributes.position.array;
-    const { speeds, offsets, radii } = ref.current.geometry.userData;
-
+    if (!particlesRef.current || !visible) return;
+    const time = clock.getElapsedTime();
+    const posAttr = particlesRef.current.geometry.attributes.position;
+    const arr = posAttr.array;
+    const off = offsetsRef.current;
+    const spd = speedsRef.current;
+    const phase = phasesRef.current;
+    const sz = sizesRef.current;
     for (let i = 0; i < count; i++) {
-      const angle = t * speeds[i] + offsets[i];
-      const r = radii[i] + 0.15 * Math.sin(angle * 0.4 + offsets[i]);
-      const theta = angle * 0.5;
-      const phi = Math.acos(Math.max(-0.9, Math.min(0.9, Math.sin(angle * 0.25 + offsets[i] * 0.3))));
-      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      pos[i * 3 + 1] = r * Math.cos(phi);
-      pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+      const angle = time * spd[i] + off[i];
+      const radius = RADIUS + 0.1 + 0.4 * (0.5 + 0.5 * Math.sin(angle * 0.5 + phase[i]));
+      const theta = angle * 0.7;
+      const phi = Math.acos(Math.max(-1, Math.min(1, 2 * ((angle * 0.3 + off[i] * 0.1 + phase[i]) % 1) - 1)));
+      arr[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      arr[i * 3 + 1] = radius * Math.cos(phi);
+      arr[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
     }
-    ref.current.geometry.attributes.position.needsUpdate = true;
+    posAttr.needsUpdate = true;
   });
 
-  useEffect(() => () => geo.dispose(), [geo]);
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
 
   return (
-    <points ref={ref} geometry={geo}>
+    <points ref={particlesRef} geometry={geometry}>
       <pointsMaterial
-        size={0.025} color="#22D3EE" transparent opacity={0.6}
-        blending={THREE.AdditiveBlending} depthWrite={false} sizeAttenuation
+        size={0.03}
+        color={CITY_COLOR}
+        transparent
+        opacity={0.7}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        vertexColors={false}
       />
     </points>
   );
 }
 
-function ExpandingRings({ count, visible }) {
-  const ref = useRef();
-  const data = useMemo(() => {
-    const p = latLngToVec3(6.2442, -75.5812, RADIUS);
-    return Array.from({ length: count }, (_, i) => ({ pos: p.clone(), delay: i * 1.5 }));
-  }, [count]);
+function ExpandingRings({ ringCount, visible }) {
+  const ringsRef = useRef();
+  const ringData = useMemo(() => {
+    const medPos = latLngToVec3(6.2442, -75.5812, RADIUS);
+    return Array.from({ length: ringCount }, (_, i) => ({
+      position: medPos.clone(),
+      delay: i * 1.5,
+      colorOffset: i * 0.3,
+    }));
+  }, [ringCount]);
 
-  const meshes = useMemo(() => data.map((d, i) => {
-    const geo = new THREE.RingGeometry(0.005, 0.03, 48);
+  const ringMeshes = useMemo(() => ringData.map((d, i) => {
+    const geo = new THREE.RingGeometry(0.015, 0.05, 48);
     const mat = new THREE.MeshBasicMaterial({
-      color: '#22D3EE', transparent: true, opacity: 0.5,
-      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false,
+      color: ARC_COLOR,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.copy(d.pos);
+    mesh.userData = { colorOffset: d.colorOffset };
     return mesh;
-  }), [data]);
+  }), [ringData]);
 
-  useEffect(() => () => meshes.forEach(m => { m.geometry.dispose(); m.material.dispose(); }), [meshes]);
+  const outerRingMeshes = useMemo(() => ringData.map(() => {
+    const geo = new THREE.RingGeometry(0.03, 0.08, 32);
+    const mat = new THREE.MeshBasicMaterial({
+      color: CITY_GLOW_COLOR,
+      transparent: true,
+      opacity: 0.2,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    return new THREE.Mesh(geo, mat);
+  }), [ringData]);
+
+  useEffect(() => {
+    return () => {
+      ringMeshes.forEach(mesh => {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+      });
+      outerRingMeshes.forEach(mesh => {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+      });
+    };
+  }, [ringMeshes, outerRingMeshes]);
 
   useFrame(({ clock }) => {
     if (!visible) return;
-    const t = clock.getElapsedTime();
-    meshes.forEach((mesh, i) => {
-      const p = ((t + data[i].delay) % 5) / 5;
-      const s = 0.1 + p * 7;
-      mesh.scale.setScalar(s);
-      mesh.material.opacity = 0.5 * (1 - p) * (0.6 + 0.4 * Math.sin(t * 2 + i));
+    const time = clock.getElapsedTime();
+    ringMeshes.forEach((mesh, i) => {
+      const t = (time + ringData[i].delay) % 4 / 4;
+      const scale = 0.3 + t * 6;
+      mesh.scale.setScalar(scale);
+      mesh.material.opacity = 0.7 * (1 - t) * (0.5 + 0.5 * Math.sin(time * 2 + ringData[i].colorOffset));
+      mesh.position.copy(ringData[i].position);
       mesh.lookAt(0, 0, 0);
+      mesh.rotation.z = time * 0.1;
+    });
+    outerRingMeshes.forEach((mesh, i) => {
+      const t = (time + ringData[i].delay + 1) % 4 / 4;
+      const scale = 0.5 + t * 5;
+      mesh.scale.setScalar(scale);
+      mesh.material.opacity = 0.3 * (1 - t);
+      mesh.position.copy(ringData[i].position);
+      mesh.lookAt(0, 0, 0);
+      mesh.rotation.z = -time * 0.08;
     });
   });
 
-  return <group ref={ref}>{meshes.map((m, i) => <primitive key={`r-${i}`} object={m} />)}</group>;
-}
-
-function EquatorialRing() {
   return (
-    <mesh rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[RADIUS + 0.005, RADIUS + 0.03, 64]} />
-      <meshBasicMaterial color="#22D3EE" transparent opacity={0.15} side={THREE.DoubleSide} depthWrite={false} />
-    </mesh>
-  );
-}
-
-function Starfield({ count }) {
-  const ref = useRef();
-
-  const geo = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const pos = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      const r = 7 + Math.random() * 20;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      pos[i * 3 + 1] = r * Math.cos(phi);
-      pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-      sizes[i] = 0.5 + Math.random() * 1.0;
-    }
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    return g;
-  }, [count]);
-
-  return (
-    <points ref={ref} geometry={geo}>
-      <pointsMaterial
-        map={starTex} size={0.08} transparent opacity={0.7}
-        blending={THREE.AdditiveBlending} depthWrite={false} sizeAttenuation
-      />
-    </points>
+    <group ref={ringsRef}>
+      {outerRingMeshes.map((mesh, i) => <primitive key={`outer-${i}`} object={mesh} />)}
+      {ringMeshes.map((mesh, i) => <primitive key={`inner-${i}`} object={mesh} />)}
+    </group>
   );
 }
 
@@ -554,40 +399,64 @@ function GlobeInner({ config, visible }) {
   const cities = useMemo(() => ALL_CITIES.slice(0, config.globeCities), [config.globeCities]);
   const arcs = useMemo(() => ALL_ARCS.slice(0, config.globeArcs), [config.globeArcs]);
   const cityMap = useMemo(() => {
-    const m = {};
-    ALL_CITIES.forEach(c => { m[c.name] = c; });
-    return m;
+    const map = {};
+    ALL_CITIES.forEach(c => { map[c.name] = c; });
+    return map;
   }, []);
 
   useFrame(({ clock, mouse }) => {
     if (!groupRef.current || !visible) return;
+    groupRef.current.rotation.y += 0.0015;
+    groupRef.current.rotation.x += (mouse.y * 0.3 - groupRef.current.rotation.x - 0.1) * 0.02;
+    groupRef.current.rotation.z += (mouse.x * 0.2 - groupRef.current.rotation.z) * 0.02;
+  });
+
+  const atmosphereRef = useRef();
+  
+  useFrame(({ clock }) => {
+    if (!atmosphereRef.current || !visible) return;
     const t = clock.getElapsedTime();
-
-    groupRef.current.rotation.y += 0.0018;
-
-    const targetX = mouse.y * 0.15;
-    const targetZ = mouse.x * 0.12;
-    groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.015;
-    groupRef.current.rotation.z += (targetZ - groupRef.current.rotation.z) * 0.015;
-
-    groupRef.current.children.forEach(child => {
-      if (child.material && child.material.uniforms && child.material.uniforms.time) {
-        child.material.uniforms.time.value = t;
-      }
-    });
+    atmosphereRef.current.material.opacity = 0.15 + 0.05 * Math.sin(t * 0.5);
+    atmosphereRef.current.scale.setScalar(1.02 + 0.01 * Math.sin(t * 0.3));
   });
 
   return (
     <group ref={groupRef}>
-      <Atmosphere inner={0} scale={1.12} color="#22D3EE" intensity={0.35} power={2.5} />
-      <Atmosphere inner={1} scale={1.06} color="#06B6D4" intensity={0.5} power={3.5} />
-      <GlobeSurface />
-      <EquatorialRing />
+      <mesh ref={atmosphereRef}>
+        <sphereGeometry args={[RADIUS * 1.15, 32, 32]} />
+        <meshBasicMaterial
+          color={CITY_GLOW_COLOR}
+          transparent
+          opacity={0.15}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[RADIUS, 64, 64]} />
+        <meshBasicMaterial
+          color="#051020"
+          transparent
+          opacity={0.6}
+        />
+      </mesh>
+      <mesh>
+        <icosahedronGeometry args={[RADIUS, 3]} />
+        <meshBasicMaterial color={CITY_COLOR} wireframe transparent opacity={0.08} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[RADIUS - 0.01, 48, 48]} />
+        <meshBasicMaterial color="#0a1628" transparent opacity={0.4} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[RADIUS - 0.005, 24, 24]} />
+        <meshBasicMaterial color={CITY_COLOR} wireframe transparent opacity={0.04} />
+      </mesh>
       <CityPoints cities={cities} visible={visible} />
       <ConnectionArcs arcs={arcs} cityMap={cityMap} visible={visible} />
-      <OrbitalParticles count={config.globeParticles} visible={visible} />
-      <ExpandingRings count={config.globeRings} visible={visible} />
-      <Starfield count={250} />
+      <DataFlowParticles count={config.globeParticles} visible={visible} />
+      <ExpandingRings ringCount={config.globeRings} visible={visible} />
     </group>
   );
 }
@@ -610,7 +479,7 @@ export default function Globe3D({ config }) {
   return (
     <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-none" style={{ transform: 'scale(1.1)' }}>
       <Canvas
-        camera={{ position: [0, 1.0, 4.8], fov: 42, near: 0.1, far: 30 }}
+        camera={{ position: [0, 1.5, 5], fov: 50, near: 0.1, far: 20 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         style={{ background: 'transparent' }}
         frameloop={visible ? 'always' : 'never'}
