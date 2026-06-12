@@ -32,21 +32,5 @@ celery_app.conf.update(
             "task": "air_quality.sync",
             "schedule": crontab(minute="0"),
         },
-        "telemetry-flush-every-min": {
-            "task": "telemetry.flush",
-            "schedule": crontab(minute="*"),
-        },
-        "overspeed-check-every-min": {
-            "task": "overspeed.check",
-            "schedule": crontab(minute="*"),
-        },
-        "cluster-accidents-hourly": {
-            "task": "ml.cluster_accident_hotspots",
-            "schedule": crontab(minute="0"),
-        },
-        "ml-predictions-every-15-min": {
-            "task": "ml.cache_predictions",
-            "schedule": crontab(minute="*/15"),
-        },
     },
 )
