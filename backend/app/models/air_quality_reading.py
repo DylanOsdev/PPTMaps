@@ -40,3 +40,17 @@ class AirQualityReading(Base):
     __table_args__ = (
         UniqueConstraint('station_id', 'timestamp', name='uq_station_timestamp'),
     )
+    
+    @property
+    def lat(self) -> float:
+        """Extract latitude from PostGIS geometry."""
+        from geoalchemy2.shape import to_shape
+        point = to_shape(self.geom)
+        return point.y
+    
+    @property
+    def lng(self) -> float:
+        """Extract longitude from PostGIS geometry."""
+        from geoalchemy2.shape import to_shape
+        point = to_shape(self.geom)
+        return point.x
