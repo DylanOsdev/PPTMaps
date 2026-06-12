@@ -27,23 +27,23 @@ const NETWORK_CSS = `
 `;
 
 const NODES = [
-  { id: 'medellin', label: 'MEDELLÍN', x: 50, y: 45, type: 'hub', status: 'online', latency: 12 },
-  { id: 'bogota', label: 'BOGOTÁ', x: 35, y: 25, type: 'relay', status: 'online', latency: 18 },
-  { id: 'cali', label: 'CALI', x: 25, y: 60, type: 'relay', status: 'online', latency: 22 },
-  { id: 'barranquilla', label: 'BARRANQUILLA', x: 65, y: 15, type: 'endpoint', status: 'online', latency: 28 },
-  { id: 'cartagena', label: 'CARTAGENA', x: 70, y: 30, type: 'endpoint', status: 'warning', latency: 45 },
-  { id: 'bello', label: 'BELLO', x: 48, y: 38, type: 'sensor', status: 'online', latency: 8 },
-  { id: 'envigado', label: 'ENVIGADO', x: 55, y: 52, type: 'sensor', status: 'online', latency: 6 },
-  { id: 'itagui', label: 'ITAGÜÍ', x: 42, y: 50, type: 'sensor', status: 'online', latency: 9 },
-  { id: 'sabaneta', label: 'SABANETA', x: 52, y: 60, type: 'sensor', status: 'offline', latency: 0 },
-  { id: 'copacabana', label: 'COPACABANA', x: 44, y: 32, type: 'sensor', status: 'online', latency: 11 },
+  { id: 'medellin', label: 'MEDELLÍN', x: 50, y: 42, type: 'hub', status: 'online', latency: 12 },
+  { id: 'bello', label: 'BELLO', x: 48, y: 28, type: 'relay', status: 'online', latency: 8 },
+  { id: 'copacabana', label: 'COPACABANA', x: 44, y: 20, type: 'relay', status: 'online', latency: 11 },
+  { id: 'girardota', label: 'GIRARDOTA', x: 40, y: 14, type: 'endpoint', status: 'online', latency: 14 },
+  { id: 'barbosa', label: 'BARBOSA', x: 36, y: 10, type: 'endpoint', status: 'warning', latency: 32 },
+  { id: 'envigado', label: 'ENVIGADO', x: 55, y: 54, type: 'sensor', status: 'online', latency: 6 },
+  { id: 'sabaneta', label: 'SABANETA', x: 52, y: 64, type: 'sensor', status: 'online', latency: 7 },
+  { id: 'la_estrella', label: 'LA ESTRELLA', x: 46, y: 68, type: 'sensor', status: 'online', latency: 9 },
+  { id: 'itagui', label: 'ITAGÜÍ', x: 40, y: 56, type: 'sensor', status: 'online', latency: 10 },
+  { id: 'caldas', label: 'CALDAS', x: 34, y: 62, type: 'sensor', status: 'offline', latency: 0 },
 ];
 
 const CONNECTIONS = [
-  ['medellin', 'bogota'], ['medellin', 'cali'], ['medellin', 'barranquilla'],
-  ['medellin', 'cartagena'], ['medellin', 'bello'], ['medellin', 'envigado'],
-  ['medellin', 'itagui'], ['bogota', 'barranquilla'], ['cali', 'cartagena'],
-  ['bello', 'copacabana'], ['bello', 'sabaneta'], ['envigado', 'sabaneta'],
+  ['medellin', 'bello'], ['medellin', 'envigado'], ['medellin', 'itagui'],
+  ['bello', 'copacabana'], ['copacabana', 'girardota'], ['girardota', 'barbosa'],
+  ['envigado', 'sabaneta'], ['sabaneta', 'la_estrella'], ['itagui', 'caldas'],
+  ['itagui', 'la_estrella'], ['bello', 'envigado'], ['medellin', 'sabaneta'],
 ];
 
 const STATUS_COLORS = {

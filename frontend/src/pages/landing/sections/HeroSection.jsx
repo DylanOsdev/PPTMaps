@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
-import Globe3D from '../components/Globe3D.jsx';
+import DataNetwork from '../components/DataNetwork.jsx';
 import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
 
 function useReducedMotion() {
@@ -572,7 +572,7 @@ export default function HeroSection() {
         className="absolute inset-0 z-0 pointer-events-none"
         style={!reduceMotion ? { x: bgX, y: bgY } : {}}
       >
-        <Globe3D config={config} />
+        <DataNetwork />
       </motion.div>
 
       <TopBar weather={weather} />
