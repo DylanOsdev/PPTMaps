@@ -54,7 +54,7 @@ describe('useAccidentStats hook', () => {
     renderHook(() => useAccidentStats());
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/v1/public/accidents/stats');
+      expect(fetch).toHaveBeenCalledWith('/api/v1/public/accidents/stats', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     });
   });
 
