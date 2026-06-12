@@ -64,7 +64,6 @@ frontend/
 | `/map` | `CommandCenter.jsx` | Centro de comando con mapa Leaflet en vivo | ✅ |
 | `/dashboard` | `Dashboard.jsx` | Analítica de accidentalidad (Chart.js) | ✅ |
 | `/report` | `Report.jsx` | Formulario de reporte de incidente | ⚠️ solo visual |
-| `/navigate` | `Navigate.jsx` | Vista móvil de navegación | ⚠️ maqueta estática |
 | `*` | — | Redirige a `/` | ✅ |
 
 ---
