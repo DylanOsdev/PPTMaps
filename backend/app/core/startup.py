@@ -38,8 +38,18 @@ async def seed_initial_data() -> None:
         await SiataSyncService(client).sync(db)
 
         await _seed_alerts(db)
+        await _seed_weather_zones(db)
 
     _enqueue_startup_syncs()
+
+
+async def _seed_weather_zones(db) -> None:
+    """Inicializa zonas climáticas si están vacías."""
+    from app.models.weather_hazard_zone import WeatherHazardZone
+    result = await db.execute(select(WeatherHazardZone).limit(1))
+    if not result.scalars().first():
+        logger.info("Tabla weather_hazard_zones vacía — ejecutar clustering inicial cuando haya eventos.")
+
 
 
 async def _seed_alerts(db) -> None:

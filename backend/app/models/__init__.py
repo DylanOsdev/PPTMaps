@@ -8,5 +8,7 @@ from app.models.weather import WeatherSnapshot
 from app.models.zone import Zone
 from app.models.accident_incident import AccidentIncident
 from app.models.air_quality_reading import AirQualityReading
+from app.models.weather_hazard_zone import WeatherHazardZone
+from app.models.weather_event import WeatherEvent
 
-__all__ = ["Base", "User", "Alert", "Report", "AccidentZone", "FloodHazard", "WeatherSnapshot", "Zone", "AccidentIncident", "AirQualityReading"]
+__all__ = ["Base", "User", "Alert", "Report", "AccidentZone", "FloodHazard", "WeatherSnapshot", "Zone", "AccidentIncident", "AirQualityReading", "WeatherHazardZone", "WeatherEvent"]

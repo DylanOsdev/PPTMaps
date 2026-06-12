@@ -1,5 +1,7 @@
 import asyncio
 
+from sqlalchemy import select
+
 from app.db.database import async_session_maker
 from app.db.redis import get_redis
 from app.services.siata_sync import SiataSyncService, _create_siata_client
@@ -66,3 +68,77 @@ def sync_air_quality() -> int:
     import nest_asyncio
     nest_asyncio.apply()
     return asyncio.run(_run_air_quality_sync())
+
+
+async def _run_weather_events_sync() -> int:
+    """Ejecuta sync de eventos climáticos desde SIATA."""
+    from app.services.weather_event_sync import sync_weather_events
+    
+    async with async_session_maker() as db:
+        return await sync_weather_events(db)
+
+
+@celery_app.task(name="weather_events.sync")
+def sync_weather_events_task() -> int:
+    """Sincroniza eventos climáticos (lluvia + rayos SIATA) con weather_events."""
+    import nest_asyncio
+    nest_asyncio.apply()
+    return asyncio.run(_run_weather_events_sync())
+
+
+async def _run_risk_train() -> dict:
+    from app.ml.feature_pipeline import build_training_features
+    from app.ml.risk_model import SimpleRiskModel
+
+    async with async_session_maker() as db:
+        features = await build_training_features(db, limit=1000, offset=0)
+        model = SimpleRiskModel.get_instance()
+        weights = model.train(features)
+        return {"samples": len(features), "weights": weights}
+
+
+@celery_app.task(name="ml.train_risk_model")
+def train_risk_model() -> dict:
+    """Entrena el modelo de riesgo de accidentes con datos históricos + clima."""
+    import nest_asyncio
+    nest_asyncio.apply()
+    result = asyncio.run(_run_risk_train())
+    logger = __import__("logging").getLogger(__name__)
+    logger.info(f"Risk model trained on {result['samples']} samples")
+    return result
+
+
+async def _run_risk_update() -> int:
+    from app.models.accident_zone import AccidentZone
+    from app.ml.feature_pipeline import build_inference_features
+    from app.ml.risk_model import SimpleRiskModel
+
+    async with async_session_maker() as db:
+        model = SimpleRiskModel.get_instance()
+        if not model.is_trained:
+            from app.ml.feature_pipeline import build_training_features
+            features = await build_training_features(db, limit=1000, offset=0)
+            model.train(features)
+
+        zones = await db.execute(
+            select(AccidentZone).where(AccidentZone.severity >= 1).limit(100)
+        )
+        updated = 0
+        for zone in zones.scalars().all():
+            try:
+                from geoalchemy2.shape import to_shape
+                center = to_shape(zone.geom).centroid
+                features = await build_inference_features(db, center.y, center.x)
+                _ = model.predict(features)
+                updated += 1
+            except Exception:
+                continue
+        return updated
+
+
+@celery_app.task(name="ml.update_risk_scores")
+def update_risk_scores() -> int:
+    """Recalcula risk scores de todas las zonas con datos climáticos actuales."""
+    import nest_asyncio
+    nest_asyncio.apply()
+    return asyncio.run(_run_risk_update())

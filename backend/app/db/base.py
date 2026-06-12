@@ -13,6 +13,8 @@ from app.models.weather import WeatherSnapshot  # noqa: F401
 from app.models.zone import Zone  # noqa: F401
 from app.models.accident_incident import AccidentIncident  # noqa: F401
 from app.models.air_quality_reading import AirQualityReading  # noqa: F401
+from app.models.weather_hazard_zone import WeatherHazardZone  # noqa: F401
+from app.models.weather_event import WeatherEvent  # noqa: F401
 
 __all__ = [
     "Base",
@@ -25,4 +27,6 @@ __all__ = [
     "Zone",
     "AccidentIncident",
     "AirQualityReading",
+    "WeatherHazardZone",
+    "WeatherEvent",
 ]
