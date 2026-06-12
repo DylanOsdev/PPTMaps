@@ -6,7 +6,7 @@ celery_app = Celery(
     "movimed_worker",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.cron_jobs", "app.tasks.worker"],
+    include=["app.tasks.cron_jobs"],
 )
 
 celery_app.conf.update(
