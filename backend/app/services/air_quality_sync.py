@@ -118,7 +118,7 @@ class WAQIHttpClient(AirQualityClient):
         readings: List[AirQualityData] = []
         
         async with httpx.AsyncClient(timeout=30) as client:
-            for station_id in self._STATION_IDS[:5]:  # Limitar a 5 para demo
+            for station_id in self._STATION_IDS:  # Todas las estaciones del Valle de Aburrá
                 try:
                     url = f"{WAQI_API_URL}/@{station_id}/?token={self.api_token}"
                     resp = await client.get(url)
