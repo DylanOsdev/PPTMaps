@@ -1,370 +1,446 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useDevicePerformance } from '../../../hooks/useDevicePerformance';
-import { seededRandom } from '../../../utils/random';
 
-const NETWORK_CSS = `
-@keyframes nodePulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.3); opacity: 1; }
+// ── Canvas: underwater effects ──────────────────────────────────────────
+function WaterCanvas() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas.getContext('2d');
+    let rafId;
+    let bubbles = [], biolum = [], fish = [];
+    const WAVE_SEG = 100;
+
+    const resize = () => {
+      const p = canvas.parentElement;
+      canvas.width = p.offsetWidth;
+      canvas.height = p.offsetHeight;
+      init();
+    };
+
+    const init = () => {
+      const w = canvas.width, h = canvas.height;
+      bubbles = Array.from({ length: 60 }, () => ({
+        x: Math.random() * w, y: h + Math.random() * h * 0.5,
+        size: 0.8 + Math.random() * 5,
+        speed: 0.3 + Math.random() * 0.8,
+        drift: (Math.random() - 0.5) * 0.4,
+        wobble: 0.02 + Math.random() * 0.03,
+        phase: Math.random() * Math.PI * 2,
+      }));
+      biolum = Array.from({ length: 60 }, () => ({
+        x: Math.random() * w, y: h * 0.5 + Math.random() * h * 0.5,
+        size: 0.5 + Math.random() * 2.2,
+        speed: -(0.1 + Math.random() * 0.3),
+        drift: (Math.random() - 0.5) * 0.3,
+        alphaSpd: 0.002 + Math.random() * 0.004,
+        phase: Math.random() * Math.PI * 2,
+        color: ['#22D3EE','#34D399','#67E8F9'][Math.floor(Math.random() * 3)],
+      }));
+      fish = Array.from({ length: 6 }, () => ({
+        x: Math.random() * w, y: h * 0.2 + Math.random() * h * 0.6,
+        size: 4 + Math.random() * 8,
+        speed: (0.3 + Math.random() * 0.5) * (Math.random() > 0.5 ? 1 : -1),
+        alpha: 0.06 + Math.random() * 0.04,
+      }));
+    };
+
+    const draw = (time) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width, h = canvas.height;
+      const t = time * 0.001;
+
+      // ── Surface wave ──
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let i = 0; i <= WAVE_SEG; i++) {
+        const x = (i / WAVE_SEG) * w;
+        const y = 8 + Math.sin(x * 0.02 + t * 2) * 5 + Math.sin(x * 0.01 + t * 1.3) * 3;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, 0);
+      ctx.closePath();
+      const wGrad = ctx.createLinearGradient(0, 0, 0, 50);
+      wGrad.addColorStop(0, 'rgba(34,211,238,0.025)');
+      wGrad.addColorStop(0.4, 'rgba(34,211,238,0.008)');
+      wGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = wGrad;
+      ctx.fill();
+
+      // ── Light rays ──
+      const rays = [
+        { x: 0.3, a: 80, o: 0.04 }, { x: 0.45, a: 100, o: 0.03 },
+        { x: 0.55, a: 75, o: 0.025 }, { x: 0.65, a: 110, o: 0.02 },
+      ];
+      for (const r of rays) {
+        const angle = (r.a + Math.sin(t * r.x * 0.8 + r.x) * 5) * Math.PI / 180;
+        ctx.save();
+        ctx.translate(w * r.x, 0);
+        ctx.rotate(angle);
+        const g = ctx.createLinearGradient(-w*0.25, 0, w*0.25, 0);
+        g.addColorStop(0, 'transparent');
+        g.addColorStop(0.4, `rgba(34,211,238,${r.o*0.5})`);
+        g.addColorStop(0.5, `rgba(34,211,238,${r.o})`);
+        g.addColorStop(0.6, `rgba(34,211,238,${r.o*0.5})`);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(-w*0.25, -h*0.5, w*0.5, h*2);
+        ctx.restore();
+      }
+
+      // ── Sonar ──
+      for (let i = 0; i < 3; i++) {
+        const cycle = 2.8;
+        const offset = cycle / 3 * i;
+        let p = ((t - offset) % cycle + cycle) % cycle / cycle;
+        const alpha = Math.max(0, (1 - p) * 0.2);
+        if (alpha > 0.001) {
+          ctx.beginPath();
+          ctx.arc(w / 2, h / 2, 10 + p * 440, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(34,211,238,${alpha})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      // ── Caustic floor ──
+      const spots = [
+        { x: 0.3, y: 0.85, p: 0, ox: 0.06, s: 0.25, a: 0.04 },
+        { x: 0.65, y: 0.8, p: 1.5, ox: 0.05, s: 0.18, a: 0.025 },
+        { x: 0.5, y: 0.92, p: 0, ox: 0.1, s: 0.35, a: 0.02 },
+      ];
+      for (const s of spots) {
+        const cx = w * (s.x + Math.sin(t * 0.8 + s.p) * s.ox);
+        const cy = h * s.y;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * s.s);
+        g.addColorStop(0, `rgba(34,211,238,${s.a})`);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // ── Bubbles ──
+      for (const b of bubbles) {
+        b.y -= b.speed;
+        b.x += Math.sin(t * b.wobble * 10 + b.phase) * b.drift;
+        if (b.y < -20) { b.y = h + 20; b.x = Math.random() * w; }
+
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(34,211,238,0.08)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        if (b.size > 2) {
+          const g = ctx.createRadialGradient(b.x - b.size*0.3, b.y - b.size*0.3, 0, b.x, b.y, b.size);
+          g.addColorStop(0, 'rgba(34,211,238,0.03)');
+          g.addColorStop(1, 'transparent');
+          ctx.fillStyle = g;
+          ctx.fill();
+        }
+      }
+
+      // ── Bioluminescence ──
+      for (const p of biolum) {
+        p.y += p.speed;
+        p.x += p.drift * Math.sin(t + p.phase);
+        if (p.y < -10) { p.y = h * 0.5 + Math.random() * h * 0.5; p.x = Math.random() * w; }
+
+        const alpha = 0.3 + Math.sin(t * p.alphaSpd * 100 + p.phase) * 0.3;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = p.size * 5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, Math.min(alpha, 0.7));
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+
+      // ── Fish ──
+      for (const f of fish) {
+        f.x += f.speed;
+        if (f.speed > 0 && f.x > w + 50) { f.x = -50; f.y = 0.2*h + Math.random() * 0.6*h; }
+        if (f.speed < 0 && f.x < -50) { f.x = w + 50; f.y = 0.2*h + Math.random() * 0.6*h; }
+
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.scale(f.speed > 0 ? 1 : -1, 1);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(f.size * 0.6, -f.size * 0.35, f.size * 1.4, 0);
+        ctx.quadraticCurveTo(f.size * 0.6, f.size * 0.35, 0, 0);
+        ctx.fillStyle = `rgba(34,211,238,${f.alpha})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(f.size * 1.1, 0, Math.max(0.5, f.size * 0.08), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(34,211,238,${f.alpha * 2})`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      rafId = requestAnimationFrame(draw);
+    };
+
+    init();
+    window.addEventListener('resize', resize);
+    rafId = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={ref} className="absolute inset-0 pointer-events-none z-0" />;
 }
-@keyframes dataFlow {
-  0% { stroke-dashoffset: 20; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes signalWave {
-  0% { r: 4; opacity: 0.6; }
-  100% { r: 20; opacity: 0; }
-}
-@keyframes statusBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-@keyframes latencyBar {
-  0%, 100% { width: var(--latency-pct); }
-  50% { width: calc(var(--latency-pct) + 5%); }
-}
-`;
 
-const NODES = [
-  { id: 'medellin', label: 'MEDELLÍN', x: 50, y: 42, type: 'hub', status: 'online', latency: 12 },
-  { id: 'bello', label: 'BELLO', x: 48, y: 28, type: 'relay', status: 'online', latency: 8 },
-  { id: 'copacabana', label: 'COPACABANA', x: 44, y: 20, type: 'relay', status: 'online', latency: 11 },
-  { id: 'girardota', label: 'GIRARDOTA', x: 40, y: 14, type: 'endpoint', status: 'online', latency: 14 },
-  { id: 'barbosa', label: 'BARBOSA', x: 36, y: 10, type: 'endpoint', status: 'warning', latency: 32 },
-  { id: 'envigado', label: 'ENVIGADO', x: 55, y: 54, type: 'sensor', status: 'online', latency: 6 },
-  { id: 'sabaneta', label: 'SABANETA', x: 52, y: 64, type: 'sensor', status: 'online', latency: 7 },
-  { id: 'la_estrella', label: 'LA ESTRELLA', x: 46, y: 68, type: 'sensor', status: 'online', latency: 9 },
-  { id: 'itagui', label: 'ITAGÜÍ', x: 40, y: 56, type: 'sensor', status: 'online', latency: 10 },
-  { id: 'caldas', label: 'CALDAS', x: 34, y: 62, type: 'sensor', status: 'offline', latency: 0 },
-];
-
-const CONNECTIONS = [
-  ['medellin', 'bello'], ['medellin', 'envigado'], ['medellin', 'itagui'],
-  ['bello', 'copacabana'], ['copacabana', 'girardota'], ['girardota', 'barbosa'],
-  ['envigado', 'sabaneta'], ['sabaneta', 'la_estrella'], ['itagui', 'caldas'],
-  ['itagui', 'la_estrella'], ['bello', 'envigado'], ['medellin', 'sabaneta'],
-];
-
-const STATUS_COLORS = {
-  online: { dot: '#22d3ee', ring: 'rgba(34,211,238,0.3)', text: 'text-cyan-400', label: 'ONLINE' },
-  warning: { dot: '#eab308', ring: 'rgba(234,179,8,0.3)', text: 'text-yellow-400', label: 'DEGRADADO' },
-  offline: { dot: '#ef4444', ring: 'rgba(239,68,68,0.3)', text: 'text-red-400', label: 'OFFLINE' },
-};
-
-const NODE_TYPES = {
-  hub: { size: 10, icon: '◈', color: '#22d3ee' },
-  relay: { size: 8, icon: '◆', color: '#67e8f9' },
-  endpoint: { size: 7, icon: '●', color: '#a78bfa' },
-  sensor: { size: 5, icon: '•', color: '#94a3b8' },
-};
-
-function NetworkTopology({ nodes, connections, elapsed }) {
-  const nodeMap = useMemo(() => {
-    const map = {};
-    nodes.forEach(n => { map[n.id] = n; });
-    return map;
-  }, [nodes]);
-
+// ── CSS Animated Bars ───────────────────────────────────────────────────
+function AnimatedBars({ count = 8, color = '#22D3EE', height = 40 }) {
   return (
-    <svg viewBox="0 0 100 80" className="w-full h-full" style={{ filter: 'drop-shadow(0 0 20px rgba(34,211,238,0.1))' }}>
-      <defs>
-        <radialGradient id="topoGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.04" />
-          <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-        </radialGradient>
-        <filter id="nodeGlow">
-          <feGaussianBlur stdDeviation="0.8" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      <circle cx="50" cy="40" r="35" fill="url(#topoGlow)" />
-
-      {/* Grid rings */}
-      {[12, 22, 32].map((r, i) => (
-        <circle key={`ring-${i}`} cx="50" cy="40" r={r} fill="none"
-          stroke="rgba(34,211,238,0.03)" strokeWidth="0.15"
-          strokeDasharray={i % 2 === 0 ? '1 3' : 'none'} />
+    <div className="flex items-end gap-[3px]" style={{ height }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-t-sm bar-pulse"
+          style={{
+            backgroundColor: color,
+            animationDelay: `${i * 0.08}s`,
+            animationDuration: `${0.8 + (i % 4) * 0.2}s`,
+          }}
+        />
       ))}
+    </div>
+  );
+}
 
-      {/* Connections */}
-      {connections.map(([fromId, toId], i) => {
-        const from = nodeMap[fromId];
-        const to = nodeMap[toId];
-        if (!from || !to) return null;
-        const fromStatus = STATUS_COLORS[from.status];
-        const toStatus = STATUS_COLORS[to.status];
-        const bothOnline = from.status === 'online' && to.status === 'online';
-        const opacity = bothOnline ? 0.15 : 0.05;
-        const dashArray = bothOnline ? '2 4' : '1 6';
+// ── Count-up ───────────────────────────────────────────────────────────
+function useCountUp(target, duration = 1200) {
+  const [display, setDisplay] = useState(target);
+  const prev = useRef(target);
+  const raf = useRef(null);
+  useEffect(() => {
+    if (target === prev.current) return;
+    const start = performance.now();
+    const from = prev.current;
+    prev.current = target;
+    const step = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + (target - from) * eased));
+      if (t < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration]);
+  return display;
+}
 
-        return (
-          <g key={`conn-${i}`}>
-            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-              stroke={bothOnline ? '#22d3ee' : '#64748b'}
-              strokeWidth="0.2" strokeDasharray={dashArray} opacity={opacity}>
-              {bothOnline && (
-                <animate attributeName="stroke-dashoffset" from="20" to="0"
-                  dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
-              )}
-            </line>
-            {bothOnline && (
-              <circle r="0.6" fill="#22d3ee" opacity="0.4">
-                <animateMotion dur={`${3 + i * 0.5}s`} repeatCount="indefinite"
-                  path={`M${from.x},${from.y} L${to.x},${to.y}`} />
-              </circle>
-            )}
-          </g>
-        );
-      })}
-
-      {/* Nodes */}
-      {nodes.map((node, i) => {
-        const typeInfo = NODE_TYPES[node.type];
-        const statusInfo = STATUS_COLORS[node.status];
-        const pulse = Math.sin(elapsed * 0.003 + i * 1.2) * 0.5 + 0.5;
-
-        return (
-          <g key={node.id}>
-            {/* Signal ring */}
-            {node.status === 'online' && (
-              <circle cx={node.x} cy={node.y} r={typeInfo.size * 0.4}
-                fill="none" stroke={statusInfo.dot} strokeWidth="0.15" opacity={0.2 + pulse * 0.3}>
-                <animate attributeName="r" values={`${typeInfo.size * 0.4};${typeInfo.size * 0.8};${typeInfo.size * 0.4}`}
-                  dur="3s" begin={`${i * 0.4}s`} repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.3;0;0.3" dur="3s"
-                  begin={`${i * 0.4}s`} repeatCount="indefinite" />
-              </circle>
-            )}
-
-            {/* Node core */}
-            <circle cx={node.x} cy={node.y} r={typeInfo.size * 0.35}
-              fill={statusInfo.dot} filter="url(#nodeGlow)"
-              opacity={node.status === 'offline' ? 0.3 : 0.8 + pulse * 0.2} />
-
-            {/* Node label */}
-            <text x={node.x} y={node.y + typeInfo.size * 0.5 + 2.5}
-              textAnchor="middle" fill="rgba(148,163,184,0.5)"
-              fontSize="1.8" fontFamily="monospace" letterSpacing="0.5">
-              {node.label}
-            </text>
-          </g>
-        );
-      })}
+// ── Sparkline ─────────────────────────────────────────────────────────
+function Sparkline({ data, color, height = 32, width = 120 }) {
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 8) - 4;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+      <defs>
+        <linearGradient id={`sg-${color.replace('#','')}-${Math.random().toString(36).slice(2,6)}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.08" />
+      <polygon points={`${pts} ${width},${height} 0,${height}`} fill="transparent" opacity="0.6" />
     </svg>
   );
 }
 
-function LatencyChart({ nodes }) {
-  const onlineNodes = nodes.filter(n => n.status !== 'offline');
-  const maxLatency = Math.max(...onlineNodes.map(n => n.latency), 1);
-
+// ── Metric Card ───────────────────────────────────────────────────────
+function MetricCard({ label, value, unit, color = '#22D3EE', sparkData, children, delay = 0 }) {
   return (
-    <div className="space-y-2">
-      {onlineNodes.slice(0, 6).map((node, i) => {
-        const pct = (node.latency / maxLatency) * 100;
-        const color = node.latency < 15 ? '#22d3ee' : node.latency < 30 ? '#a78bfa' : '#eab308';
-        return (
-          <div key={node.id} className="flex items-center gap-3">
-            <span className="font-mono text-[9px] text-slate-500 w-20 truncate">{node.label}</span>
-            <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-              <motion.div className="h-full rounded-full origin-left"
-                initial={{ scaleX: 0 }} animate={{ scaleX: pct / 100 }}
-                transition={{ duration: 1.2, delay: 0.3 + i * 0.1, ease: 'easeOut' }}
-                style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}60` }} />
-            </div>
-            <span className="font-mono text-[10px] tabular-nums w-10 text-right" style={{ color }}>
-              {node.latency}ms
+    <motion.div
+      className="relative rounded-2xl backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] overflow-hidden group"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+      <div className="relative p-5 md:p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}60` }} />
+          <span className="font-mono text-[9px] md:text-[10px] tracking-[0.2em] uppercase" style={{ color: `${color}99` }}>
+            {label}
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end gap-2">
+            <span className="text-3xl md:text-4xl lg:text-5xl font-bold font-['Space_Grotesk'] leading-none tracking-tight"
+              style={{ color, textShadow: `0 0 20px ${color}30` }}>
+              {value}
             </span>
+            <span className="font-mono text-[9px] md:text-[10px] mb-1" style={{ color: `${color}40` }}>{unit}</span>
           </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function NetworkStats({ nodes }) {
-  const online = nodes.filter(n => n.status === 'online').length;
-  const warning = nodes.filter(n => n.status === 'warning').length;
-  const offline = nodes.filter(n => n.status === 'offline').length;
-  const avgLatency = Math.round(nodes.filter(n => n.status !== 'offline').reduce((a, n) => a + n.latency, 0) / (online + warning) || 0);
-  const uptime = ((online / nodes.length) * 100).toFixed(1);
-
-  const stats = [
-    { label: 'NODOS', value: nodes.length, color: '#22d3ee' },
-    { label: 'ONLINE', value: online, color: '#22d3ee' },
-    { label: 'DEGRADADOS', value: warning, color: '#eab308' },
-    { label: 'OFFLINE', value: offline, color: '#ef4444' },
-    { label: 'LATENCIA', value: `${avgLatency}ms`, color: '#a78bfa' },
-    { label: 'UPTIME', value: `${uptime}%`, color: '#22d3ee' },
-  ];
-
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {stats.map((stat, i) => (
-        <motion.div key={stat.label}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 + i * 0.08, duration: 0.5 }}
-          className="bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5 text-center">
-          <div className="font-mono text-xl font-bold tabular-nums" style={{ color: stat.color }}>
-            {stat.value}
+          {children}
+        </div>
+        {sparkData && (
+          <div className="mt-3 h-8">
+            <Sparkline data={sparkData} color={color} />
           </div>
-          <div className="font-mono text-[7px] text-slate-500 tracking-[0.2em] mt-0.5">
-            {stat.label}
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-function DataFlowStream() {
-  const messages = useMemo(() => [
-    '[SAT] GPS-24 Signal: -120 dBm · SNR 42dB',
-    '[NET] Mesh topology: 8/10 nodes active',
-    '[REL] Bogotá relay: 18ms latency · 99.97% uptime',
-    '[SNS] Envigado sensor batch: 1,247 readings/s',
-    '[LAT] Cali-Cartagena link: 22ms · 0 packet loss',
-    '[HUB] Medellín hub: processing 2.4K events/min',
-    '[WRN] Cartagena: signal degradation · switching to backup',
-    '[OFF] Sabaneta: last heartbeat 47s ago · initiating reconnect',
-  ], []);
-
-  const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    let timeoutId;
-    const interval = setInterval(() => {
-      setVisible(false);
-      timeoutId = setTimeout(() => {
-        setIndex(prev => (prev + 1) % messages.length);
-        setVisible(true);
-      }, 300);
-    }, 4000);
-    return () => { clearInterval(interval); clearTimeout(timeoutId); };
-  }, [messages.length]);
-
-  return (
-    <div className="bg-[#041327]/60 border border-cyan-400/10 rounded-xl px-4 py-3 overflow-hidden">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
-        </span>
-        <span className="font-mono text-[8px] text-cyan-400/40 tracking-[0.25em] uppercase">Network Stream</span>
-      </div>
-      <div className="font-mono text-[10px] text-cyan-300/70 tracking-wide h-4">
-        {visible && (
-          <motion.div key={index}
-            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }}>
-            {messages[index]}
-          </motion.div>
         )}
       </div>
-    </div>
+      <div className="absolute -bottom-10 -right-10 w-20 h-20 rounded-full opacity-[0.03]" style={{ background: `radial-gradient(circle, ${color}, transparent)` }} />
+    </motion.div>
   );
 }
 
-export default React.memo(function SatelliteNetwork() {
-  const { config, tier } = useDevicePerformance();
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(0);
+// ── Clock ─────────────────────────────────────────────────────────────
+function Clock() {
+  const [t, setT] = useState('');
+  useEffect(() => {
+    const u = () => setT(new Date().toLocaleTimeString('es-CO', { hour12: false }));
+    u(); const i = setInterval(u, 1000);
+    return () => clearInterval(i);
+  }, []);
+  return <span className="font-mono text-sm md:text-base text-cyan-400/40 tabular-nums tracking-wider">{t}</span>;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────
+export default React.memo(function TelemetrySection() {
+  const [events, setEvents] = useState(12847);
+  const [gps, setGps] = useState(847);
+  const [alerts, setAlerts] = useState(234);
 
   useEffect(() => {
-    startRef.current = performance.now();
-    let raf;
-    const step = (now) => {
-      setElapsed(now - startRef.current);
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    const t = setInterval(() => {
+      setEvents(n => Math.max(12000, n + Math.floor(Math.random() * 9) - 3));
+      setGps(n => Math.max(820, Math.min(870, n + Math.floor(Math.random() * 6) - 2)));
+      setAlerts(n => n + Math.floor(Math.random() * 2));
+    }, 2800);
+    return () => clearInterval(t);
   }, []);
 
-  const nodeCount = tier === 'HIGH' ? NODES.length : tier === 'MEDIUM' ? 7 : 5;
-  const visibleNodes = useMemo(() => NODES.slice(0, nodeCount), [nodeCount]);
-  const visibleConnections = useMemo(() =>
-    CONNECTIONS.filter(([a, b]) => visibleNodes.some(n => n.id === a) && visibleNodes.some(n => n.id === b)),
-    [visibleNodes]
-  );
+  const dEvents = useCountUp(events);
+  const dGps = useCountUp(gps);
+  const dAlerts = useCountUp(alerts);
+
+  const sparkEvents = [12400, 12600, 12500, 12700, 12800, 12750, 12847, 12830, 12860, 12840, 12855, 12847, 12852];
+  const sparkGps = [820, 835, 840, 830, 845, 847, 840, 850, 845, 847, 843];
+  const sparkAlerts = [228, 230, 229, 231, 232, 230, 233, 234, 233, 234, 235];
 
   return (
-    <div className="w-full h-full relative flex items-center justify-center overflow-hidden bg-[#041327]">
-      <style>{NETWORK_CSS}</style>
+    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-[#021A26] select-none">
 
-      {/* Background grid */}
-      <div className="absolute inset-0 cartographic-grid opacity-[0.04] pointer-events-none" />
+      {/* Background water gradient */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(34,211,238,0.03) 0%, transparent 60%)' }} />
+        style={{
+          background: `
+            linear-gradient(180deg,
+              rgba(6,78,102,0.12) 0%,
+              rgba(2,6,23,0) 30%,
+              rgba(2,6,23,0) 60%,
+              rgba(6,78,102,0.08) 80%,
+              rgba(15,118,110,0.1) 100%
+            )
+          `,
+        }}
+      />
 
-      <div className="absolute inset-0 flex flex-col px-6 md:px-12 lg:px-20 pt-20 pb-8 z-10">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-          className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.03] flex-none">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-              <div className="absolute inset-0 w-2 h-2 rounded-full bg-cyan-400 animate-ping opacity-50" />
-            </div>
-            <div>
-              <h2 className="font-['Space_Grotesk'] text-2xl md:text-3xl font-bold text-white tracking-tight">
-                Red Satelital
-              </h2>
-              <p className="font-mono text-[9px] text-cyan-400/40 tracking-[0.2em] uppercase mt-0.5">
-                Conectividad de red en tiempo real
-              </p>
-            </div>
+      <WaterCanvas />
+
+      {/* Vignette */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, transparent 20%, rgba(2,26,38,0.7) 100%)' }} />
+
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 md:px-8 py-3 md:py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-300 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+            <span className="font-mono text-[9px] md:text-[11px] text-cyan-400/60 tracking-[0.3em] uppercase font-bold">En Vivo</span>
           </div>
-          <div className="hidden md:flex items-center gap-3">
-            <span className="font-mono text-[9px] text-slate-500">MESH TOPOLOGY</span>
-            <span className="w-px h-3 bg-white/[0.06]" />
-            <span className="font-mono text-[9px] text-cyan-400/60 tabular-nums">
-              {new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
+          <span className="text-slate-700 text-[11px] hidden sm:inline">|</span>
+          <span className="font-mono text-[8px] md:text-[9px] text-slate-500 tracking-[0.2em] hidden sm:inline">Valle de Aburrá</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-[8px] text-cyan-400/20 tracking-[0.2em] hidden sm:inline">SAT-NET v2.4.1</span>
+          <Clock />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 md:px-6 flex flex-col h-full justify-center">
+
+        {/* Title */}
+        <div className="text-center mb-8 md:mb-10">
+          <motion.p
+            className="font-mono text-[9px] md:text-[11px] text-cyan-400/40 tracking-[0.5em] uppercase mb-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+          >
+            Cobertura Satelital · Centro de Control
+          </motion.p>
+          <motion.h2
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-['Space_Grotesk'] font-bold tracking-tight leading-none"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span className="text-white">Red</span>{' '}
+            <span className="text-cyan-400" style={{ textShadow: '0 0 40px rgba(34,211,238,0.3), 0 0 80px rgba(34,211,238,0.1)' }}>Satelital</span>
+          </motion.h2>
+        </div>
+
+        {/* Metrics grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+
+          <div className="sm:col-span-2 lg:col-span-3">
+            <MetricCard label="Flujo de Eventos" value={dEvents.toLocaleString()} unit="ev/s" color="#22D3EE" sparkData={sparkEvents} delay={0.2}>
+              <AnimatedBars count={12} color="#22D3EE" height={44} />
+            </MetricCard>
           </div>
+
+          <MetricCard label="GPS Activos" value={dGps.toString()} unit="señales" color="#34D399" sparkData={sparkGps} delay={0.35}>
+            <AnimatedBars count={6} color="#34D399" height={32} />
+          </MetricCard>
+
+          <MetricCard label="Alertas Hoy" value={dAlerts.toString()} unit="eventos" color="#FBBF24" sparkData={sparkAlerts} delay={0.45}>
+            <AnimatedBars count={6} color="#FBBF24" height={32} />
+          </MetricCard>
+
+          <MetricCard label="Latencia de Red" value="28" unit="ms" color="#A78BFA" delay={0.55}>
+            <AnimatedBars count={6} color="#A78BFA" height={32} />
+          </MetricCard>
+
+          <MetricCard label="Satélites en Vista" value="14" unit="activos" color="#67E8F9" delay={0.65}>
+            <AnimatedBars count={6} color="#67E8F9" height={32} />
+          </MetricCard>
+
+          <MetricCard label="Throughput" value="1.2" unit="Gbps" color="#22D3EE" delay={0.75} />
+
+          <MetricCard label="Tiempo Activo" value="99.97" unit="%" color="#34D399" delay={0.85} />
+
+        </div>
+
+        {/* Bottom status */}
+        <motion.div
+          className="mt-5 pt-3 border-t border-white/[0.03] flex items-center justify-between font-mono text-[7px] md:text-[8px] text-slate-600/60 uppercase tracking-widest"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.6 }}
+        >
+          <span>Uptime 99.97% · Latencia 28ms · Throughput 1.2 Gbps · 0.03% pérdida</span>
+          <span className="hidden sm:inline">Cluster Aburrá · SAT-NET v2.4.1</span>
         </motion.div>
 
-        <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0">
-          {/* LEFT: Topology */}
-          <div className="w-full lg:w-[60%] flex flex-col">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="flex-1 bg-white/[0.02] border border-white/[0.04] rounded-2xl p-4 relative overflow-hidden">
-              <div className="absolute top-3 left-4 font-mono text-[8px] text-cyan-400/30 tracking-[0.2em] uppercase">
-                Topología de Red
-              </div>
-              <div className="w-full h-full pt-6">
-                <NetworkTopology nodes={visibleNodes} connections={visibleConnections} elapsed={elapsed} />
-              </div>
-            </motion.div>
-          </div>
-
-          {/* RIGHT: Stats + Latency */}
-          <div className="w-full lg:w-[40%] flex flex-col gap-4">
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}>
-              <NetworkStats nodes={visibleNodes} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              className="bg-white/[0.02] border border-white/[0.04] rounded-2xl p-4 flex-1">
-              <div className="font-mono text-[8px] text-cyan-400/30 tracking-[0.2em] uppercase mb-3">
-                Latencia por Nodo
-              </div>
-              <LatencyChart nodes={visibleNodes} />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7, duration: 0.6 }}>
-              <DataFlowStream />
-            </motion.div>
-          </div>
-        </div>
       </div>
     </div>
   );
