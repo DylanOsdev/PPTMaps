@@ -1,7 +1,7 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones, updateAirQualityStations } from "./demo-layers.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateAccidentZones, updateAirQualityStations, updateAccidentRiskHeatmap } from "./demo-layers.js";
 import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones, fetchAirQualityStations } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
@@ -199,6 +199,9 @@ export function initMap() {
     fadeAnimation: false,
     markerZoomAnimation: false,
     zoomAnimation: false,
+    preferCanvas: true,
+    updateWhenZooming: false,
+    updateWhenIdle: true,
   });
 
   const osmLayer = L.tileLayer(CONFIG.map.tileUrl, {
@@ -250,7 +253,6 @@ export async function setupMapLayers() {
   loadAirQualityData();
   startReportsPolling();
   startFatalitiesPolling();
-  updateSafeRoutes(map);
 
   let statsTimer;
   map.on("moveend zoomend", () => {
@@ -271,6 +273,21 @@ function bindLayerToggles(map) {
     if (key === "satellite-base") {
       input.addEventListener("change", () => {
         toggleSatellite(input.checked);
+      });
+      return;
+    }
+
+    if (key === "accident-risk") {
+      input.addEventListener("change", () => {
+        const lg = AppState.layerGroups[key];
+        if (!lg) return;
+        if (input.checked) {
+          map.addLayer(lg);
+          updateAccidentRiskHeatmap(map);
+        } else {
+          map.removeLayer(lg);
+        }
+        document.dispatchEvent(new CustomEvent("tppmaps:layers-changed"));
       });
       return;
     }

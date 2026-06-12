@@ -16,7 +16,6 @@ import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
 import { AirQualityWidget } from '../components/AirQualityWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
-import Chatbot from '../components/Chatbot.jsx';
 
 export default function CommandCenter() {
   const mapRef = useRef(false);
@@ -27,8 +26,6 @@ export default function CommandCenter() {
   const [isSystemOk, setIsSystemOk]     = React.useState(false);
   const { weather, loading: weatherLoading, error: weatherError } = useWeather();
   const [locating, setLocating] = React.useState(false);
-  const [chatbotOpen, setChatbotOpen] = React.useState(false);
-
   const handleLocateMe = () => {
     const m = AppState.map;
     if (!m) return;
@@ -206,36 +203,11 @@ export default function CommandCenter() {
       <div className="app-shell">
         <TopBar systemStatus={systemStatus} isSystemOk={isSystemOk} />
 
-        {/* Floating Waze-style Search & Navigation Bar */}
-        <div style={{ position: 'absolute', top: '75px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: '10px', width: '90%', maxWidth: '600px' }}>
-          <input
-            type="text"
-            id="wazeSearch"
-            placeholder="¿A dónde vas? (Ej. Comuna 13)"
-            style={{ flex: 1, padding: '14px 22px', borderRadius: '30px', border: '2px solid rgba(56, 189, 248, 0.6)', backgroundColor: 'rgba(5, 8, 12, 0.95)', color: '#fff', fontSize: '15px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', outline: 'none', fontFamily: '"Orbitron", sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-            onKeyDown={(e) => {
-               if (e.key === "Enter") {
-                 const runBtn = document.getElementById("btnScan");
-                 if (runBtn) runBtn.click();
-               }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            style={{ padding: '0 22px', borderRadius: '30px', border: locating ? '2px solid #ef4444' : '2px solid #0ea5e9', backgroundColor: locating ? 'rgba(239, 68, 68, 0.2)' : 'rgba(14, 165, 233, 0.2)', color: locating ? '#ef4444' : '#0ea5e9', fontSize: '13px', fontWeight: 'bold', boxShadow: locating ? '0 0 20px rgba(239, 68, 68, 0.4)' : '0 4px 20px rgba(14,165,233,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
-            title={locating ? "Detener seguimiento" : "Iniciar seguimiento GPS"}
-          >
-            <FaCrosshairs size={16} />
-            {locating ? "DETENER" : "MI UBICACIÓN"}
-          </button>
-        </div>
-
-          <aside className="panel panel-left" id="panelLayers" aria-label="Capas de datos">
+        <aside className="panel panel-left" id="panelLayers" aria-label="Capas de datos">
           <div className="panel-head">
             <h2>DATA LAYERS</h2>
             <span className="layer-status-dot" id="layerStatusDot" style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:'#fbbf24',marginRight:4,boxShadow:'0 0 6px #fbbf24'}} title="Cargando capas..."></span>
-            <span className="layer-fraction" id="layerFraction">0/17</span>
+            <span className="layer-fraction" id="layerFraction">0/16</span>
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
           <div className="panel-scroll" id="layersList">
@@ -367,19 +339,19 @@ export default function CommandCenter() {
               </ul>
             </details>
 
-            <details className="layer-group" data-group="routes">
+            <details className="layer-group" data-group="risk">
               <summary>
-                <span className="layer-icon"><FaRoad /></span>
-                <span>RUTAS SEGURAS</span>
-                <span className="group-count" id="count-routes">0/1</span>
-                <button type="button" className="btn-toggle-all" data-group="routes" title="Toggle all">⊞</button>
+                <span className="layer-icon"><FaExclamationTriangle /></span>
+                <span>RIESGO DE ACCIDENTES (CLIMA + ML)</span>
+                <span className="group-count" id="count-risk">0/1</span>
+                <button type="button" className="btn-toggle-all" data-group="risk" title="Toggle all">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
                 <li>
                   <label className="layer-row">
-                    <span>Ruta segura activa</span>
-                    <input type="checkbox" className="toggle" data-layer="safe-route" />
+                    <span>Heatmap de riesgo climático</span>
+                    <input type="checkbox" className="toggle" data-layer="accident-risk" />
                   </label>
                 </li>
               </ul>
@@ -397,8 +369,146 @@ export default function CommandCenter() {
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
+          <div style={{ flex: 1, overflowY: 'auto' }}
                className="panel-scroll">
+
+            <section className="tool-section">
+              <div className="search-cmd">
+                <span className="search-prefix">⌕</span>
+                <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autoComplete="off" />
+              </div>
+              <div className="scan-box">
+                <p className="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
+                <div className="scan-row">
+                  <input type="text" id="geoQuery" placeholder="Ej: Belén, San Cristóbal, Comuna 10" />
+                  <button type="button" className="btn-scan" id="btnScan">ESCANEAR</button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleLocateMe}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: locating ? '1px solid #ef4444' : '1px solid #0ea5e9',
+                      backgroundColor: locating ? 'rgba(239, 68, 68, 0.1)' : 'rgba(14, 165, 233, 0.1)',
+                      color: locating ? '#ef4444' : '#0ea5e9',
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.3s',
+                      fontFamily: '"JetBrains Mono", monospace',
+                      letterSpacing: '0.08em'
+                    }}
+                    title={locating ? "Detener seguimiento" : "Iniciar seguimiento GPS"}
+                  >
+                    <FaCrosshairs size={12} />
+                    {locating ? "DETENER GPS" : "MI UBICACIÓN"}
+                  </button>
+                </div>
+                <span id="scanFeedback" style={{display:'none',fontSize:'9px',color:'#f87171',padding:'4px 0',letterSpacing:'0.05em'}}></span>
+              </div>
+            </section>
+
+            {/* Safety Briefing - Evaluación Climática de Ruta */}
+            <div id="safetyBriefing" style={{ 
+              display: 'none', 
+              borderBottom: '1px solid rgba(56, 189, 248, 0.15)', 
+              padding: '16px',
+              backgroundColor: 'rgba(5, 8, 12, 0.6)'
+            }}>
+              <div style={{
+                fontSize: '10px',
+                letterSpacing: '0.15em',
+                fontWeight: 700,
+                color: '#67e8f9',
+                marginBottom: '12px',
+                fontFamily: '"JetBrains Mono", monospace',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>🌦️</span>
+                EVALUACIÓN CLIMÁTICA DE RUTA
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div id="briefingDestContainer" style={{ 
+                  padding: '10px', 
+                  backgroundColor: 'rgba(74, 222, 128, 0.08)', 
+                  borderRadius: '6px',
+                  border: '1px solid rgba(74, 222, 128, 0.3)',
+                  transition: 'all 0.3s'
+                }}>
+                  <div style={{ 
+                    fontSize: '8px', 
+                    color: '#94a3b8', 
+                    marginBottom: '4px',
+                    letterSpacing: '0.1em',
+                    fontFamily: '"JetBrains Mono", monospace'
+                  }}>
+                    DESTINO
+                  </div>
+                  <div id="briefingDest" style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 700, 
+                    color: '#4ade80',
+                    fontFamily: '"Orbitron", sans-serif',
+                    letterSpacing: '0.05em'
+                  }}>
+                    SEGURO
+                  </div>
+                  <div id="briefingDestDesc" style={{ 
+                    fontSize: '10px', 
+                    color: '#cbd5e1', 
+                    marginTop: '4px',
+                    lineHeight: '1.4'
+                  }}>
+                    Sin alertas climáticas activas
+                  </div>
+                </div>
+
+                <div id="briefingRouteContainer" style={{ 
+                  padding: '10px', 
+                  backgroundColor: 'rgba(74, 222, 128, 0.08)', 
+                  borderRadius: '6px',
+                  border: '1px solid rgba(74, 222, 128, 0.3)',
+                  transition: 'all 0.3s'
+                }}>
+                  <div style={{ 
+                    fontSize: '8px', 
+                    color: '#94a3b8', 
+                    marginBottom: '4px',
+                    letterSpacing: '0.1em',
+                    fontFamily: '"JetBrains Mono", monospace'
+                  }}>
+                    RUTA
+                  </div>
+                  <div id="briefingRoute" style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 700, 
+                    color: '#4ade80',
+                    fontFamily: '"Orbitron", sans-serif',
+                    letterSpacing: '0.05em'
+                  }}>
+                    SEGURO
+                  </div>
+                  <div id="briefingRouteDesc" style={{ 
+                    fontSize: '10px', 
+                    color: '#cbd5e1', 
+                    marginTop: '4px',
+                    lineHeight: '1.4'
+                  }}>
+                    Ruta despejada, sin riesgo de inundación
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div style={{ borderBottom: '1px solid rgba(56, 189, 248, 0.15)' }}>
               <div style={{
@@ -418,21 +528,6 @@ export default function CommandCenter() {
               <AirQualityWidget />
             </div>
 
-            <section className="tool-section">
-              <div className="search-cmd">
-                <span className="search-prefix">⌕</span>
-                <input type="search" id="cmdSearch" placeholder="Comuna, corregimiento, barrio..." autoComplete="off" />
-              </div>
-              <div className="scan-box">
-                <p className="scan-warn">SEARCH — MEDELLÍN Y VALLE</p>
-                <div className="scan-row">
-                  <input type="text" id="geoQuery" placeholder="Ej: Belén, San Cristóbal, Comuna 10" />
-                  <button type="button" className="btn-scan" id="btnScan">ESCANEAR</button>
-                </div>
-                <span id="scanFeedback" style={{display:'none',fontSize:'9px',color:'#f87171',padding:'4px 0',letterSpacing:'0.05em'}}></span>
-              </div>
-            </section>
-
             <section className="alerts-section">
               <div className="alerts-head">
                 <h2>LIVE ALERTS</h2>
@@ -451,7 +546,6 @@ export default function CommandCenter() {
 
         <footer className="bottom-bar">
           <div className="bottom-left">
-            <button type="button" className="icon-btn" id="btnProfile" title="Chatbot IA" onClick={() => setChatbotOpen(true)}><FaUser /></button>
             <button type="button" className="icon-btn" id="btnReport" title="Crear Reporte" onClick={() => navigate('/report')}><FaFileAlt /></button>
             <span className="metro-label">Valle del Aburrá</span>
           </div>
@@ -508,8 +602,7 @@ export default function CommandCenter() {
         <Link to="/map" className="dock-item dock-active">Comando</Link>
       </nav>
 
-      {/* Chatbot IA */}
-      {chatbotOpen && <Chatbot isOpen={chatbotOpen} onClose={() => setChatbotOpen(false)} />}
+
     </>
   );
 }

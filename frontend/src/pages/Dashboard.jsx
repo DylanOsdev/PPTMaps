@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../static/css/tppmaps.css';
 import {
@@ -41,14 +41,14 @@ function Panel({ title, children }) {
         fontSize: 11, letterSpacing: '0.12em', color: CYAN,
         margin: '0 0 12px', fontWeight: 600, fontFamily: '"JetBrains Mono", monospace',
       }}>{title}</h3>
-      <div style={{ height: 240 }}>{children}</div>
+      <div className="chart-panel" style={{ height: 240 }}>{children}</div>
     </div>
   );
 }
 
 function KPI({ value, label, color }) {
   return (
-    <div style={{
+    <div className="kpi-item" style={{
       background: '#1e293b', border: '1px solid rgba(56,189,248,0.15)',
       borderRadius: 10, padding: '16px 20px', textAlign: 'center', minWidth: 140,
     }}>
@@ -59,6 +59,13 @@ function KPI({ value, label, color }) {
 }
 
 export default function Dashboard() {
+  useEffect(() => {
+    document.documentElement.classList.add('page-landing');
+    return () => {
+      document.documentElement.classList.remove('page-landing');
+    };
+  }, []);
+
   const { stats, loading, error } = useAccidentStats();
   const { stats: weatherStats, loading: weatherLoading } = useWeatherStats();
 
@@ -67,9 +74,9 @@ export default function Dashboard() {
     fontFamily: '"JetBrains Mono", monospace', padding: '20px 24px 48px',
   };
 
-  if (loading) return <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: CYAN }}>CARGANDO ANALÍTICA…</div>;
+  if (loading) return <div className="dashboard-page" style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: CYAN }}>CARGANDO ANALÍTICA…</div>;
   if (error || !stats) return (
-    <div style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: '#f87171' }}>
+    <div className="dashboard-page" style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: '#f87171' }}>
       ⚠ SIN DATOS ANALÍTICOS<div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>{error}</div>
       <div style={{ marginTop: 20 }}><Link to="/" style={{ color: CYAN }}>← Inicio</Link></div>
     </div>
@@ -79,7 +86,7 @@ export default function Dashboard() {
   const years = [...stats.by_year].sort((a, b) => Number(a.key) - Number(b.key));
 
   return (
-    <div style={wrap}>
+    <div className="dashboard-page" style={wrap}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontFamily: '"Orbitron", sans-serif', fontSize: 22, margin: 0, color: CYAN }}>
@@ -96,7 +103,7 @@ export default function Dashboard() {
       </header>
 
       {/* KPIs */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+      <div className="kpi-grid">
         <KPI value={fmt(stats.total)} label="INCIDENTES TOTALES" color={CYAN} />
         <KPI value={fmt(muertos)} label="VÍCTIMAS FATALES" color="#f87171" />
         <KPI value={stats.by_comuna.length ? stats.by_comuna[0].key : '—'} label="COMUNA MÁS CRÍTICA" color="#fbbf24" />
@@ -104,7 +111,7 @@ export default function Dashboard() {
       </div>
 
       {/* Gráficos */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+      <div className="chart-grid">
         <Panel title="POR GRAVEDAD">
           <Doughnut
             data={{
@@ -163,7 +170,7 @@ export default function Dashboard() {
           }}>
             🌧 PRECIPITACIÓN HISTÓRICA
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+          <div className="chart-grid">
             <Panel title="LLUVIA ANUAL (2008-2025)">
               <Bar
                 data={{

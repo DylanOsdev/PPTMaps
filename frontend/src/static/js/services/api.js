@@ -161,7 +161,7 @@ export async function fetchRoute(destination, origin = null) {
   const [destLat, destLng] = destination.split(",").map(v => parseFloat(v.trim()));
   const [origLat, origLng] = origin ? origin.split(",").map(v => parseFloat(v.trim())) : [6.2518, -75.5636]; // Default: Centro Medellín
   
-  const url = `${CONFIG.apiBase}/public/routes?origin_lat=${origLat}&origin_lng=${origLng}&dest_lat=${destLat}&dest_lng=${destLng}&_cb=${Date.now()}`;
+  const url = `${CONFIG.apiBase}/public/routes/safe-weather?origin_lat=${origLat}&origin_lng=${origLng}&dest_lat=${destLat}&dest_lng=${destLng}&_cb=${Date.now()}`;
   
   const res = await fetch(url, {
     cache: "no-store",
@@ -208,6 +208,14 @@ export async function fetchTrafficPredictions() {
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error("Error fetching traffic predictions");
+  return res.json();
+}
+
+export async function fetchAccidentRiskHeatmap() {
+  const res = await fetch(`${CONFIG.apiBase}/public/accident-risk/heatmap`, {
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!res.ok) throw new Error("Error fetching accident risk heatmap");
   return res.json();
 }
 

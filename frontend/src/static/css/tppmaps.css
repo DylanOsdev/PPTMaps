@@ -50,6 +50,61 @@ html.page-landing body {
   background: #0f172a;
 }
 
+/* Dashboard responsive */
+.dashboard-page .kpi-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.dashboard-page .chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .dashboard-page {
+    padding: 12px 12px 48px !important;
+  }
+  .dashboard-page h1 {
+    font-size: 16px !important;
+  }
+  .dashboard-page h2 {
+    font-size: 14px !important;
+    margin-top: 24px !important;
+  }
+  .dashboard-page header p {
+    font-size: 9px !important;
+  }
+  .dashboard-page header nav {
+    font-size: 10px !important;
+  }
+  .dashboard-page .kpi-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .dashboard-page .kpi-grid > * {
+    min-width: unset !important;
+  }
+  .dashboard-page .chart-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-page .chart-panel {
+    height: 200px !important;
+  }
+  .dashboard-page footer {
+    font-size: 7px !important;
+  }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .dashboard-page .kpi-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+}
+
 .map-fullscreen {
   position: fixed;
   inset: 0;
@@ -996,17 +1051,6 @@ html.page-landing body {
   box-shadow: none !important;
 }
 
-.marker-safe-route {
-  will-change: transform;
-}
-
-.marker-safe-route-dash {
-  animation: dashScroll 1.6s linear infinite;
-}
-
-@keyframes dashScroll {
-  to { stroke-dashoffset: -36; }
-}
 
 .marker-blocked {
   display: flex;
@@ -1403,10 +1447,6 @@ body.night-mode .popup-dark .leaflet-popup-content-wrapper {
   box-shadow: 0 0 30px rgba(56,189,248,0.25), 0 10px 40px rgba(0,0,0,0.9);
 }
 
-/* Safe route brighter glow */
-body.night-mode .marker-safe-route {
-  box-shadow: 0 0 10px #4ade80;
-}
 
 /* Scroll bar in night mode */
 body.night-mode .panel-scroll::-webkit-scrollbar-thumb,

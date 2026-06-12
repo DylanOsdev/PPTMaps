@@ -194,10 +194,8 @@ export function createMedellinLayers(map, data) {
   AppState.layerGroups["medellin-comunas"] = comunasGroup;
   AppState.layerGroups["metro-municipios"] = metroGroup;
 
-  // Agregar todo al mapa
-  metroGroup.addTo(map);
-  cityGroup.addTo(map);
-  comunasGroup.addTo(map);
+  // Las capas se controlarán desde layers-panel.js según los checkboxes
+  // NO se agregan automáticamente al mapa
 
   // Ajustar vista a TODO el Valle del Aburrá
   map.fitBounds(VALLE_BOUNDS, { padding: [50, 50], maxZoom: 12 });

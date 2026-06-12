@@ -1,6 +1,6 @@
 import { AppState } from "../core/state.js";
 import { escapeHtml } from "../core/utils.js";
-import { onWsEvent, fetchRoute, fetchAccidentsGeoJSON, fetchAlerts, fetchTrafficPredictions } from "../services/api.js";
+import { onWsEvent, fetchRoute, fetchAccidentsGeoJSON, fetchAlerts, fetchTrafficPredictions, fetchAccidentRiskHeatmap } from "../services/api.js";
 import { getAccidentSvg } from "../icons/react-icons.js";
 
 const driverIconCache = new Map();
@@ -89,7 +89,6 @@ function makePredictionZone(center, radiusM, riskLevel = 0.7) {
 export function createDemoLayers(map) {
   const groups = AppState.layerGroups;
 
-  groups["safe-route"]        = L.layerGroup();
   groups["blocked-roads"]     = L.layerGroup();
   groups["accident-clusters"] = L.markerClusterGroup({
     disableClusteringAtZoom: 16,
@@ -114,6 +113,7 @@ export function createDemoLayers(map) {
     disableClusteringAtZoom: 16,
     maxClusterRadius: 50,
   });
+  groups["accident-risk"]    = L.layerGroup();
 
   // Vías bloqueadas demo
   const blockedGroup = groups["blocked-roads"];
@@ -320,53 +320,6 @@ function makeBlockedRoadIcon(name, reason) {
     iconSize: [200, 40],
     iconAnchor: [100, 20],
   });
-}
-
-export async function updateSafeRoutes(map) {
-  const group = AppState.layerGroups["safe-route"];
-  if (!group) return;
-  group.clearLayers();
-
-  const destinations = [
-    { label: "Centro → Aeropuerto", dest: "6.3900,-75.5870" },
-    { label: "Estadio → Centro", dest: "6.2518,-75.5636" },
-    { label: "Poblado → Laureles", dest: "6.2520,-75.5900" },
-  ];
-
-  const startIcon = L.divIcon({
-    className: "",
-    html: '<span class="marker-dest">Ruta segura</span>',
-    iconSize: [80, 20],
-    iconAnchor: [40, 10],
-  });
-
-  for (const route of destinations) {
-    try {
-      const data = await fetchRoute(route.dest);
-      if (data.coordinates?.length >= 2) {
-        const coords = data.coordinates.map(c => [c[0], c[1]]);
-        const polyline = L.polyline(coords, {
-          color: "#4ade80", weight: 4, opacity: 0.7, dashArray: "10 6",
-        });
-        const avoided = data.avoided_zones || 0;
-        polyline.bindPopup(`
-          <div class="popup-accident">
-            <div class="popup-accident-title">${route.label}</div>
-            <div class="popup-accident-sev">Distancia: ${data.distance_km?.toFixed(1) ?? "?"} km</div>
-            <div class="popup-accident-coords">Zonas de riesgo evitadas: ${avoided}</div>
-          </div>
-        `, { className: "popup-dark" });
-        group.addLayer(polyline);
-
-        const start = coords[0];
-        const end = coords[coords.length - 1];
-        L.marker(start, { icon: startIcon }).addTo(group);
-        L.marker(end, { icon: startIcon }).addTo(group);
-      }
-    } catch (e) {
-      console.warn("[safe-route] No se pudo obtener ruta:", route.label, e);
-    }
-  }
 }
 
 /* FUNCIÓN DESHABILITADA - Vías bloqueadas removidas (accidentes históricos no reflejan bloqueos actuales)
@@ -847,5 +800,66 @@ export async function updateTrafficPredictions(map, group) {
     
   } catch (e) {
     console.error("[traffic-predictions] Error cargando predicciones:", e);
+  }
+}
+
+
+export async function updateAccidentRiskHeatmap(map) {
+  const group = AppState.layerGroups["accident-risk"];
+  if (!group) return;
+
+  group.clearLayers();
+
+  try {
+    const data = await fetchAccidentRiskHeatmap();
+    const points = data.points || [];
+
+    if (!points.length) {
+      console.warn("[accident-risk] No hay datos de riesgo disponibles");
+      return;
+    }
+
+    const heatPoints = points.map(p => [p.lat, p.lng, p.risk_score]);
+
+    console.log(`[accident-risk] ${heatPoints.length} puntos cargados`);
+    if (typeof L.heatLayer === 'function') {
+      const heat = L.heatLayer(heatPoints, {
+        radius: 40,
+        blur: 30,
+        maxZoom: 14,
+        gradient: { 0.2: '#22c55e', 0.4: '#eab308', 0.6: '#f97316', 0.8: '#ef4444', 1.0: '#7f1d1d' }
+      });
+      group.addLayer(heat);
+    } else {
+      const topRisk = points.slice(0, 10);
+      topRisk.forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lng], {
+          radius: 6 + p.risk_score * 12,
+          fillColor: p.risk_score >= 0.7 ? '#dc2626'
+                    : p.risk_score >= 0.5 ? '#f59e0b'
+                    : p.risk_score >= 0.3 ? '#eab308'
+                    : '#22c55e',
+          color: '#fff',
+          weight: 1.5,
+          fillOpacity: 0.6,
+        });
+        marker.bindPopup(`
+          <div class="popup-accident">
+            <div class="popup-accident-title">🚦 Riesgo de accidente</div>
+            <div class="popup-accident-sev">
+              <strong>${Math.round(p.risk_score * 100)}%</strong>
+            </div>
+            <div class="popup-accident-coords">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">
+              Modelo clima + accidentes
+            </div>
+          </div>
+        `, { className: "popup-dark" });
+        group.addLayer(marker);
+      });
+    }
+
+  } catch (e) {
+    console.error("[accident-risk] Error cargando heatmap:", e);
   }
 }
