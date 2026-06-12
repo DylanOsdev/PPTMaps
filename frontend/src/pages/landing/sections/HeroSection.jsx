@@ -73,12 +73,12 @@ function useLiveClock() {
 
 function StatusIndicator() {
   return (
-    <div className="flex items-center gap-2">
-      <span className="relative flex h-2.5 w-2.5">
+    <div className="flex items-center gap-3">
+      <span className="relative flex h-3 w-3">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400 shadow-[0_0_12px_rgba(74,222,128,0.9)]" />
       </span>
-      <span className="font-mono text-[10px] text-green-400 tracking-[0.15em] font-bold">SISTEMA ACTIVO</span>
+      <span className="font-mono text-xs text-green-400 tracking-[0.15em] font-bold">SISTEMA ACTIVO</span>
     </div>
   );
 }
@@ -95,19 +95,19 @@ function TopBar({ weather }) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <StatusIndicator />
         <div className="flex items-center gap-4 md:gap-6">
-          <div className="hidden sm:flex items-center gap-2 font-mono text-[10px] text-cyan-400/60">
+          <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-cyan-400/60">
             <span className="text-cyan-400/40">NODE:</span>
-            <span className="text-white font-bold tracking-wider">MEDELLÍN</span>
+            <span className="text-white font-bold tracking-wider text-sm">MEDELLÍN</span>
           </div>
-          <div className="w-[1px] h-4 bg-cyan-400/20 hidden sm:block" />
-          <div className="font-mono text-[11px] text-cyan-300 tracking-wider tabular-nums">{time}</div>
-          <div className="w-[1px] h-4 bg-cyan-400/20 hidden sm:block" />
-          <div className="font-mono text-[9px] text-cyan-400/50 tracking-wider hidden md:block">{date}</div>
+          <div className="w-[1px] h-5 bg-cyan-400/20 hidden sm:block" />
+          <div className="font-mono text-sm text-cyan-300 tracking-wider tabular-nums font-medium">{time}</div>
+          <div className="w-[1px] h-5 bg-cyan-400/20 hidden sm:block" />
+          <div className="font-mono text-[11px] text-cyan-400/50 tracking-wider hidden md:block font-medium">{date}</div>
           {weather && (
             <>
-              <div className="w-[1px] h-4 bg-cyan-400/20 hidden md:block" />
-              <div className="hidden md:flex items-center gap-1.5 font-mono text-[11px] text-cyan-300">
-                <span>{weather.condition.icon}</span>
+              <div className="w-[1px] h-5 bg-cyan-400/20 hidden md:block" />
+              <div className="hidden md:flex items-center gap-2 font-mono text-sm text-cyan-300 font-medium">
+                <span className="text-lg">{weather.condition.icon}</span>
                 <span className="tabular-nums">{weather.temp}°C</span>
               </div>
             </>
@@ -127,23 +127,23 @@ const STAT_CARDS = [
 
 function StatIcon({ type }) {
   if (type === 'sat') return (
-    <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="w-7 h-7 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-5.5 3 2-7L3 9h7l2-7z" />
     </svg>
   );
   if (type === 'com') return (
-    <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="w-7 h-7 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   );
   if (type === 'lay') return (
-    <svg className="w-5 h-5 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="w-7 h-7 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
     </svg>
   );
   return (
-    <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="w-7 h-7 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
     </svg>
   );
@@ -159,20 +159,22 @@ function StatCard({ label, end, suffix, icon, color, delay, duration }) {
       className="relative group"
     >
       <div className="absolute -inset-[1px] bg-gradient-to-br from-white/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="relative bg-[#0A1A30]/60 backdrop-blur-sm border border-cyan-400/15 rounded-xl px-4 py-3 overflow-hidden">
+      <div className="relative bg-[#0A1A30]/60 backdrop-blur-sm border border-cyan-400/15 rounded-xl px-5 py-4 overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
-        <div className="flex items-center gap-3">
-          <StatIcon type={icon} />
+        <div className="flex items-center gap-4">
+          <div className="scale-125">
+            <StatIcon type={icon} />
+          </div>
           <div className="flex flex-col">
-            <span className="font-mono text-xl md:text-2xl font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] tabular-nums">
+            <span className="font-mono text-2xl md:text-3xl lg:text-4xl font-bold text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.25)] tabular-nums leading-none">
               {count}{suffix}
             </span>
-            <span className="font-mono text-[8px] md:text-[9px] text-cyan-400/50 tracking-[0.2em]">
+            <span className="font-mono text-[10px] md:text-xs text-cyan-400/50 tracking-[0.2em] mt-1">
               {label}
             </span>
           </div>
         </div>
-        <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r ${color} opacity-30 group-hover:opacity-60 transition-opacity duration-500`} />
+        <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r ${color} opacity-40 group-hover:opacity-70 transition-opacity duration-500`} />
       </div>
     </motion.div>
   );
@@ -184,23 +186,23 @@ function DataPanel({ config, weather }) {
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
-      className="w-full lg:w-[420px] xl:w-[480px] flex-shrink-0"
+      className="w-full lg:w-[520px] xl:w-[580px] 2xl:w-[620px] flex-shrink-0"
     >
       <div className="bg-[#0A1A30]/80 border border-cyan-400/20 rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(34,211,238,0.08),inset_0_0_60px_rgba(34,211,238,0.02)]">
-        <div className="px-5 py-3 border-b border-cyan-400/10 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-cyan-400/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-red-500" />
-            <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
           </div>
-          <span className="font-mono text-[9px] text-cyan-400/40 tracking-[0.2em] uppercase">control room · v2.4</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-            <span className="font-mono text-[8px] text-green-400/60 tracking-wider">LINK</span>
+          <span className="font-mono text-xs text-cyan-400/40 tracking-[0.2em] uppercase font-semibold">control room · v2.4</span>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]" />
+            <span className="font-mono text-[10px] text-green-400/70 tracking-wider font-bold">LINK</span>
           </div>
         </div>
-        <div className="p-5 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             {STAT_CARDS.map((stat, i) => (
               <StatCard
                 key={stat.label}
@@ -226,43 +228,43 @@ function WeatherWidget({ weather }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.6, duration: 0.5 }}
-      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl p-3"
+      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl p-4"
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.25em] uppercase">Condiciones actuales</span>
-        <span className="font-mono text-[8px] text-cyan-400/30">{weather ? 'LIVE' : '--'}</span>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-mono text-[10px] text-cyan-400/40 tracking-[0.25em] uppercase font-semibold">Condiciones actuales</span>
+        <span className="font-mono text-[10px] text-cyan-400/40 font-semibold">{weather ? 'LIVE' : '--'}</span>
       </div>
       {loading ? (
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-cyan-400/10 rounded-full animate-pulse" />
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 bg-cyan-400/10 rounded-full animate-pulse" />
           <div className="space-y-1.5 flex-1">
-            <div className="h-4 w-16 bg-cyan-400/10 rounded animate-pulse" />
-            <div className="h-3 w-24 bg-cyan-400/10 rounded animate-pulse" />
+            <div className="h-5 w-20 bg-cyan-400/10 rounded animate-pulse" />
+            <div className="h-4 w-32 bg-cyan-400/10 rounded animate-pulse" />
           </div>
         </div>
       ) : weather ? (
-        <div className="flex items-center gap-3">
-          <div className="text-3xl font-mono font-bold text-cyan-300 w-12 text-center">{weather.condition.icon}</div>
+        <div className="flex items-center gap-4">
+          <div className="text-4xl font-mono font-bold text-cyan-300 w-14 text-center drop-shadow-[0_0_12px_rgba(34,211,238,0.3)]">{weather.condition.icon}</div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-2xl font-bold text-white tabular-nums">{weather.temp}°</span>
-              <span className="font-mono text-[10px] text-cyan-400/40">ST {weather.feelsLike}°</span>
+            <div className="flex items-baseline gap-3">
+              <span className="font-mono text-3xl font-bold text-white tabular-nums drop-shadow-[0_0_10px_rgba(255,255,255,0.15)]">{weather.temp}°</span>
+              <span className="font-mono text-xs text-cyan-400/50">ST {weather.feelsLike}°</span>
             </div>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="font-mono text-[10px] text-cyan-400/70">{weather.condition.label}</span>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="font-mono text-xs text-cyan-400/80 font-medium">{weather.condition.label}</span>
               <span className="text-cyan-400/30">·</span>
-              <span className="font-mono text-[10px] text-cyan-400/50">HUM {weather.humidity}%</span>
+              <span className="font-mono text-xs text-cyan-400/60">HUM {weather.humidity}%</span>
               <span className="text-cyan-400/30">·</span>
-              <span className="font-mono text-[10px] text-cyan-400/50">WND {weather.windSpeed} km/h</span>
+              <span className="font-mono text-xs text-cyan-400/60">WND {weather.windSpeed} km/h</span>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <div className="text-3xl font-mono font-bold text-cyan-300 w-12 text-center">SOL</div>
+        <div className="flex items-center gap-4">
+          <div className="text-4xl font-mono font-bold text-cyan-300 w-14 text-center drop-shadow-[0_0_12px_rgba(34,211,238,0.3)]">SOL</div>
           <div>
-            <div className="font-mono text-2xl font-bold text-white">24°</div>
-            <div className="font-mono text-[10px] text-cyan-400/50">Medellín · Parcialmente nublado</div>
+            <div className="font-mono text-3xl font-bold text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.15)]">24°</div>
+            <div className="font-mono text-xs text-cyan-400/60 mt-0.5">Medellín · Parcialmente nublado</div>
           </div>
         </div>
       )}
@@ -305,14 +307,14 @@ function DataStream() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 2, duration: 0.5 }}
-      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl px-3 py-2.5 overflow-hidden"
+      className="bg-[#041327]/40 backdrop-blur-sm border border-cyan-400/10 rounded-xl px-4 py-3 overflow-hidden"
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="font-mono text-[8px] text-cyan-400/30 tracking-[0.25em] uppercase">Data Stream</span>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="font-mono text-[10px] text-cyan-400/40 tracking-[0.25em] uppercase font-semibold">Data Stream</span>
         <span className="flex-1" />
-        <span className="relative flex h-1.5 w-1.5">
+        <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
         </span>
       </div>
       <AnimatePresence mode="wait">
@@ -323,7 +325,7 @@ function DataStream() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
-            className="font-mono text-[11px] text-cyan-300/80 tracking-wide"
+            className="font-mono text-sm text-cyan-300/90 tracking-wide font-medium"
           >
             {messages[index]}
           </motion.div>
@@ -586,9 +588,9 @@ export default function HeroSection() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="flex flex-col items-center lg:items-start text-center lg:text-left flex-1 max-w-2xl"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22D3EE]" />
-              <span className="font-mono text-[10px] text-cyan-400/50 tracking-[0.25em] uppercase">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#22D3EE]" />
+              <span className="font-mono text-xs text-cyan-400/50 tracking-[0.25em] uppercase font-semibold">
                 Plataforma de Inteligencia Urbana
               </span>
             </div>
@@ -615,7 +617,7 @@ export default function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 2.2, duration: 0.8 }}
-              className="font-mono text-[11px] md:text-xs text-slate-400 tracking-[0.25em] uppercase leading-relaxed mt-5 max-w-lg"
+              className="font-mono text-sm md:text-base text-slate-400 tracking-[0.25em] uppercase leading-relaxed mt-6 max-w-xl"
             >
               Monitoreo geoespacial en tiempo real · Medellín, Colombia
             </motion.p>
@@ -624,13 +626,13 @@ export default function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 2.5, duration: 0.8 }}
-              className="mt-3 flex items-center gap-4 font-mono text-[9px] text-cyan-400/30 tracking-[0.2em]"
+              className="mt-4 flex items-center gap-5 font-mono text-xs text-cyan-400/40 tracking-[0.2em] font-semibold"
             >
-              <span>SIATA</span>
-              <span className="w-1 h-1 rounded-full bg-cyan-400/30" />
-              <span>OPEN-METEO</span>
-              <span className="w-1 h-1 rounded-full bg-cyan-400/30" />
-              <span>MEDATA</span>
+              <span className="hover:text-cyan-300 transition-colors duration-300 cursor-default">SIATA</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/30" />
+              <span className="hover:text-cyan-300 transition-colors duration-300 cursor-default">OPEN-METEO</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/30" />
+              <span className="hover:text-cyan-300 transition-colors duration-300 cursor-default">MEDATA</span>
             </motion.div>
 
             <div className="mt-8 md:mt-10">
