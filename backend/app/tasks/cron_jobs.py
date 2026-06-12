@@ -50,8 +50,10 @@ def generate_weather_alerts_task() -> int:
 
 async def _run_air_quality_sync() -> int:
     """Ejecuta sync de calidad del aire."""
+    from app.core.config import settings
+    
     async with async_session_maker() as db:
-        client = await _create_air_quality_client()
+        client = await _create_air_quality_client(settings.WAQI_API_TOKEN or "")
         return await AirQualitySyncService(client).sync(db)
 
 
