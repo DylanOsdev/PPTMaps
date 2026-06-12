@@ -11,7 +11,6 @@ class AlertCreate(BaseModel):
     type: str
     message: str
     severity: AlertSeverity = AlertSeverity.INFO
-    vehicle_id: Optional[UUID] = None
 
 
 class AlertUpdate(BaseModel):
@@ -22,7 +21,6 @@ class AlertUpdate(BaseModel):
 
 class Alert(BaseModel):
     id: UUID
-    vehicle_id: Optional[UUID] = None
     type: str
     severity: AlertSeverity
     message: str
