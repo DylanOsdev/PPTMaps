@@ -88,46 +88,21 @@ else
     echo "✅ historical_weather_medellin ya contiene $WEATHER_COUNT registros. Saltando carga."
 fi
 
-echo "🤖 Precargando caché ML para chatbot..."
-python -c "
-from pathlib import Path
-model_path = Path('/repo/backend/app/ml/models/traffic_model.joblib')
-if model_path.exists():
-    print('   📊 Modelo ML encontrado. Generando predicciones iniciales...')
-    import json
-    from redis import Redis
-    from app.core.config import settings
-    from app.services.traffic_prediction import get_prediction_service
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from datetime import datetime
-    
-    sync_db_url = settings.SQLALCHEMY_DATABASE_URI.replace('+asyncpg', '')
-    engine = create_engine(sync_db_url)
-    SessionLocal = sessionmaker(bind=engine)
-    redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
-    
-    try:
-        with SessionLocal() as db:
-            service = get_prediction_service()
-            predictions = service.predict_sync(db)
-            
-            cache_data = {
-                'predictions': predictions,
-                'model': 'XGBoost',
-                'cached_at': datetime.utcnow().isoformat()
-            }
-            
-            redis.setex('ml:traffic_predictions', 900, json.dumps(cache_data, default=str))
-            print(f'   ✅ {len(predictions)} predicciones cacheadas — chatbot listo')
-    except Exception as e:
-        print(f'   ⚠️  Error cacheando predicciones: {e}')
-    finally:
-        redis.close()
-        engine.dispose()
-else:
-    print('   ⚠️  Modelo ML no encontrado — chatbot no disponible')
-" || echo "   ⚠️  Error en precarga ML (continuando...)"
 
 echo "🚀 Iniciando API..."
+echo "   🔥 Precargando cache de mapa de calor en background..."
+(
+  sleep 15
+  python -c "
+import urllib.request, json, logging
+try:
+    resp = urllib.request.urlopen('http://localhost:8000/api/v1/public/accident-risk/heatmap', timeout=120)
+    data = json.loads(resp.read())
+    pts = len(data.get('points', []))
+    print(f'   ✅ Heatmap precargado: {pts} puntos')
+except Exception as e:
+    print(f'   ⚠️  Precarga de heatmap falló: {e}')
+" 2>&1 || true
+) &
+
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000

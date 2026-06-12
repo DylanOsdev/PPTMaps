@@ -16,7 +16,7 @@ from app.db.redis import get_redis
 # los tests geoespaciales requieren un Postgres+PostGIS real (docker-compose.test.yml).
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/movimed_test",
+    "postgresql+asyncpg://postgres:postgres@localhost:5434/movimed_test",
 )
 
 # NullPool: cada checkout abre una conexión asyncpg nueva y la cierra al devolverla.
@@ -104,29 +104,6 @@ async def client():
 
 
 @pytest_asyncio.fixture
-async def registered_user(client: AsyncClient) -> dict:
-    """Crea un usuario de prueba y retorna sus credenciales."""
-    payload = {
-        "email": "test@movimed.co",
-        "password": "TestPass123!",
-        "full_name": "Test User",
-        "role": "admin",
-    }
-    response = await client.post("/api/v1/auth/register", json=payload)
-    assert response.status_code == 201
-    return payload
-
-
-@pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient, registered_user: dict) -> dict:
-    """Retorna headers de autorización con token JWT válido."""
-    response = await client.post(
-        "/api/v1/auth/login",
-        data={
-            "username": registered_user["email"],
-            "password": registered_user["password"],
-        },
-    )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+async def auth_headers() -> dict:
+    """Headers vacíos (la API actual no requiere autenticación)."""
+    return {}

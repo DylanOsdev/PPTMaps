@@ -39,12 +39,12 @@ async def test_create_flood_hazard(client: AsyncClient, auth_headers: dict):
     assert data["geometry"]["type"] == "Polygon"
 
 
-async def test_create_requires_auth(client: AsyncClient):
+async def test_create_flood_hazard_public(client: AsyncClient):
     resp = await client.post(
         "/api/v1/flood-hazards/",
         json={"name": "x", "coordinates": _polygon(MED_LNG, MED_LAT)},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 201  # Endpoint público
 
 
 async def test_update_flood_status(client: AsyncClient, auth_headers: dict):

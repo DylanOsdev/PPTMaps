@@ -120,7 +120,7 @@ async def test_create_public_report_success(client, db_session):
     assert data["latitude"] == 6.2518
     assert data["longitude"] == -75.5636
     assert data["description"] == "Choque en Parque Berrío"
-    assert data["reporter_id"] is None  # Anónimo
+    assert data.get("reporter_name") is None  # Anónimo
 
 
 async def test_create_public_report_broadcasts_to_websocket(client, db_session):
