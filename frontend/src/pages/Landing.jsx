@@ -7,6 +7,7 @@ import CustomCursor from './landing/components/CustomCursor.jsx';
 import Navbar from './landing/components/Navbar.jsx';
 
 const HeroSection = lazy(() => import('./landing/sections/HeroSection.jsx'));
+const SatelliteNetwork = lazy(() => import('./landing/sections/SatelliteNetwork.jsx'));
 const WeatherSection = lazy(() => import('./landing/sections/WeatherSection.jsx'));
 const ReportsSection = lazy(() => import('./landing/sections/ReportsSection.jsx'));
 const BackendSection = lazy(() => import('./landing/sections/BackendSection.jsx'));
@@ -15,6 +16,7 @@ const FinalCTA = lazy(() => import('./landing/sections/FinalCTA.jsx'));
 
 const SECTIONS = [
   { id: 'hero', Component: HeroSection },
+  { id: 'satellite', Component: SatelliteNetwork },
   { id: 'weather', Component: WeatherSection },
   { id: 'reports', Component: ReportsSection },
   { id: 'backend', Component: BackendSection },
