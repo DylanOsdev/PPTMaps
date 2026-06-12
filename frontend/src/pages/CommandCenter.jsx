@@ -12,6 +12,7 @@ import { AppState } from "../static/js/core/state.js";
 import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaFileAlt, FaBars, FaGlobeAmericas } from 'react-icons/fa';
 import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
+import { AirQualityWidget } from '../components/AirQualityWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
 import Chatbot from '../components/Chatbot.jsx';
 
@@ -391,6 +392,10 @@ export default function CommandCenter() {
                 CLIMA — MEDELLÍN TIEMPO REAL
               </div>
               <WeatherWidget weather={weather} loading={weatherLoading} error={weatherError} />
+            </div>
+
+            <div style={{ borderBottom: '1px solid rgba(56, 189, 248, 0.15)', padding: '12px' }}>
+              <AirQualityWidget />
             </div>
 
             <section className="tool-section">

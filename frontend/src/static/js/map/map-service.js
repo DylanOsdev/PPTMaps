@@ -1,7 +1,7 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones } from "./demo-layers.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones, addAirQualityLayer } from "./demo-layers.js";
 import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
@@ -234,6 +234,7 @@ export async function setupMapLayers() {
   loadAccidentZonesData();
   loadFloodZonesData(map);
   loadWeatherData();
+  addAirQualityLayer(map);
   startReportsPolling();
   startFatalitiesPolling();
   updateSafeRoutes(map);
