@@ -198,10 +198,10 @@ describe('services/api.js - Cliente HTTP', () => {
         json: async () => ({ route: [[6.2, -75.5], [6.3, -75.6]] }),
       });
 
-      const result = await fetchRoute('Parque Lleras');
+      const result = await fetchRoute('6.2,-75.5');
       expect(result).toEqual({ route: [[6.2, -75.5], [6.3, -75.6]] });
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/routes?destination=Parque%20Lleras'),
+        expect.stringContaining('/public/routes/safe-weather?origin_lat=6.2518&origin_lng=-75.5636&dest_lat=6.2&dest_lng=-75.5'),
         expect.any(Object)
       );
     });
@@ -212,9 +212,9 @@ describe('services/api.js - Cliente HTTP', () => {
         json: async () => ({ route: [[6.2, -75.5], [6.3, -75.6]] }),
       });
 
-      await fetchRoute('Parque Lleras', 'Parque Berrío');
+      await fetchRoute('6.2,-75.5', '6.3,-75.6');
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('origin=Parque%20Berr%C3%ADo'),
+        expect.stringContaining('origin_lat=6.3&origin_lng=-75.6'),
         expect.any(Object)
       );
     });
@@ -225,7 +225,7 @@ describe('services/api.js - Cliente HTTP', () => {
         json: async () => ({}),
       });
 
-      await fetchRoute('Test');
+      await fetchRoute('6.2,-75.5');
       expect(fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -240,7 +240,7 @@ describe('services/api.js - Cliente HTTP', () => {
         status: 500,
       });
 
-      await expect(fetchRoute('Test')).rejects.toThrow('Route fetch failed');
+      await expect(fetchRoute('6.2,-75.5')).rejects.toThrow('Route fetch failed');
     });
   });
 
