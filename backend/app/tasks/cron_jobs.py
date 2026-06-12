@@ -1,4 +1,7 @@
 import asyncio
+import nest_asyncio
+
+nest_asyncio.apply()
 
 from app.db.database import async_session_maker
 from app.db.redis import get_redis
