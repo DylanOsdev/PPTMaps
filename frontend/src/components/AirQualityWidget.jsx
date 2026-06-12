@@ -22,10 +22,10 @@ export const AirQualityWidget = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">🌬️ Calidad del Aire</h3>
+      <div className="bg-gray-900 bg-opacity-95 rounded-lg shadow-xl border border-cyan-500/30 p-4 mb-4">
+        <h3 className="text-sm font-bold text-cyan-400 mb-2 uppercase tracking-wider">🌬️ Calidad del Aire</h3>
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
         </div>
       </div>
     );
@@ -33,9 +33,9 @@ export const AirQualityWidget = () => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">🌬️ Calidad del Aire</h3>
-        <p className="text-sm text-red-600">Error al cargar datos: {error}</p>
+      <div className="bg-gray-900 bg-opacity-95 rounded-lg shadow-xl border border-red-500/30 p-4 mb-4">
+        <h3 className="text-sm font-bold text-cyan-400 mb-2 uppercase tracking-wider">🌬️ Calidad del Aire</h3>
+        <p className="text-xs text-red-400">Error: {error}</p>
       </div>
     );
   }
@@ -48,28 +48,32 @@ export const AirQualityWidget = () => {
   const recommendation = getHealthRecommendation(avgAQI);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-      <h3 className="text-lg font-semibold text-gray-800 mb-3">🌬️ Calidad del Aire</h3>
+    <div className="bg-gray-900 bg-opacity-95 rounded-lg shadow-xl border border-cyan-500/30 p-4 mb-4">
+      <h3 className="text-sm font-bold text-cyan-400 mb-3 uppercase tracking-wider">🌬️ Calidad del Aire</h3>
       
       <div 
-        className="rounded-lg p-4 mb-3 text-center" 
-        style={{ backgroundColor: color }}
+        className="rounded-lg p-4 mb-3 text-center border-2" 
+        style={{ 
+          backgroundColor: `${color}20`,
+          borderColor: color,
+          boxShadow: `0 0 15px ${color}40`
+        }}
       >
-        <div className="text-3xl font-bold" style={{ color: textColor }}>
+        <div className="text-4xl font-bold" style={{ color }}>
           {avgAQI !== null ? avgAQI : '—'}
         </div>
-        <div className="text-sm font-medium mt-1" style={{ color: textColor }}>
+        <div className="text-xs font-semibold mt-1 uppercase tracking-wide" style={{ color }}>
           AQI • {level}
         </div>
       </div>
 
-      <p className="text-xs text-gray-600 leading-relaxed">
+      <p className="text-xs text-gray-300 leading-relaxed">
         {recommendation}
       </p>
 
       {data && data.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
+        <div className="mt-3 pt-3 border-t border-cyan-500/20">
+          <p className="text-xs text-cyan-400/70">
             {data.length} estaciones monitoreadas
           </p>
         </div>
