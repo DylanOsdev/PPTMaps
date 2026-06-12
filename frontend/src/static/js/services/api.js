@@ -187,6 +187,14 @@ export async function fetchRainRisk() {
   return res.json();
 }
 
+export async function fetchAirQualityStations() {
+  const res = await fetch(`${CONFIG.apiBase}/public/air-quality/current`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching air quality");
+  return res.json();
+}
+
 export async function fetchPublicReports() {
   const res = await fetch(`${CONFIG.apiBase}/public/reports`, {
     signal: AbortSignal.timeout(8000),

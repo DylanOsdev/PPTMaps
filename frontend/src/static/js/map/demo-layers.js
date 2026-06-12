@@ -98,6 +98,7 @@ export function createDemoLayers(map) {
   });
   groups["accident-zones"]    = L.layerGroup();
   groups["fatalities-layer"]  = L.layerGroup();
+  groups["air-quality-stations"] = L.layerGroup();
   groups["flood-zones"]       = L.layerGroup();
   groups["reports-collision"] = L.markerClusterGroup({
     disableClusteringAtZoom: 16,
@@ -486,6 +487,87 @@ export function updateWeather(rainRisk, weather) {
   }
 }
 
+// ── Calidad del Aire ──
+
+function getAQIColor(aqi) {
+  if (aqi <= 50) return '#10B981';
+  if (aqi <= 100) return '#FBBF24';
+  if (aqi <= 150) return '#F97316';
+  return '#DC2626';
+}
+
+function getAQILevel(aqi) {
+  if (aqi <= 50) return 'Buena';
+  if (aqi <= 100) return 'Moderada';
+  if (aqi <= 150) return 'Mala';
+  return 'Muy Mala';
+}
+
+export function updateAirQualityStations(data) {
+  const aqGroup = AppState.layerGroups["air-quality-stations"];
+  if (!aqGroup?.clearLayers) return;
+  aqGroup.clearLayers();
+  if (!Array.isArray(data)) return;
+
+  for (let i = 0; i < data.length; i++) {
+    const station = data[i];
+    if (station.lat == null || station.lng == null) continue;
+
+    const color = getAQIColor(station.aqi);
+    const level = getAQILevel(station.aqi);
+
+    const icon = L.divIcon({
+      className: 'air-quality-marker',
+      html: `
+        <div style="
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: ${color};
+          border: 3px solid white;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: white;
+          font-size: 12px;
+        ">
+          ${station.aqi}
+        </div>
+      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -20]
+    });
+
+    const marker = L.marker([station.lat, station.lng], { icon });
+    
+    marker.bindPopup(`
+      <div class="popup-accident">
+        <div class="popup-accident-title">🌬️ ${escapeHtml(String(station.station_name))}</div>
+        <div class="popup-accident-sev" style="color: ${color}; font-weight: bold;">
+          AQI ${station.aqi} • ${level}
+        </div>
+        <div class="popup-accident-coords" style="margin-top: 8px; font-size: 11px; line-height: 1.5;">
+          ${station.pm25 != null ? `PM2.5: ${station.pm25} µg/m³<br>` : ''}
+          ${station.pm10 != null ? `PM10: ${station.pm10} µg/m³<br>` : ''}
+          ${station.temp != null ? `Temp: ${station.temp}°C` : ''}
+          ${station.humidity != null ? ` • Humedad: ${station.humidity}%` : ''}
+        </div>
+        <div style="margin-top: 6px; font-size: 10px; opacity: 0.7;">
+          ${new Date(station.timestamp).toLocaleString('es-CO', { 
+            dateStyle: 'short', 
+            timeStyle: 'short' 
+          })}
+        </div>
+      </div>
+    `, { className: "popup-dark" });
+
+    aqGroup.addLayer(marker);
+  }
+}
+
 // ── Reportes ciudadanos ──
 
 const REPORT_TYPE_CONFIG = {
@@ -765,119 +847,5 @@ export async function updateTrafficPredictions(map, group) {
     
   } catch (e) {
     console.error("[traffic-predictions] Error cargando predicciones:", e);
-  }
-}
-
-
-// ── Calidad del Aire ──
-
-const AQI_LEVELS = {
-  good: { min: 0, max: 50, color: "#10b981", label: "Buena" },
-  moderate: { min: 51, max: 100, color: "#fbbf24", label: "Moderada" },
-  unhealthy: { min: 101, max: 150, color: "#f97316", label: "Mala" },
-  veryUnhealthy: { min: 151, max: Infinity, color: "#dc2626", label: "Muy Mala" }
-};
-
-function getAQILevel(aqi) {
-  if (aqi === null || aqi === undefined) return null;
-  for (const level of Object.values(AQI_LEVELS)) {
-    if (aqi >= level.min && aqi <= level.max) return level;
-  }
-  return AQI_LEVELS.veryUnhealthy;
-}
-
-function getHealthRecommendation(aqi) {
-  if (aqi === null || aqi === undefined) return "Sin datos";
-  if (aqi <= 50) return "Calidad del aire excelente";
-  if (aqi <= 100) return "Aceptable para la mayoría";
-  if (aqi <= 150) return "Grupos sensibles evitar ejercicio prolongado";
-  return "Peligroso — evitar salir";
-}
-
-export async function addAirQualityLayer(map) {
-  const group = AppState.layerGroups["air-quality"];
-  if (!group) {
-    AppState.layerGroups["air-quality"] = L.layerGroup();
-    return addAirQualityLayer(map);
-  }
-  
-  group.clearLayers();
-  
-  try {
-    const response = await fetch('/api/v1/public/air-quality/map');
-    if (!response.ok) {
-      console.warn("[air-quality] Error fetching data:", response.status);
-      return;
-    }
-    
-    const geojson = await response.json();
-    
-    if (!geojson?.features || geojson.features.length === 0) {
-      console.warn("[air-quality] No hay estaciones disponibles");
-      return;
-    }
-    
-    geojson.features.forEach(feature => {
-      const { coordinates } = feature.geometry;
-      const { station_name, aqi, pm25, no2, o3 } = feature.properties;
-      
-      const lat = coordinates[1];
-      const lng = coordinates[0];
-      
-      const level = getAQILevel(aqi);
-      if (!level) return;
-      
-      // Radio proporcional al AQI (min 300m, max 2000m)
-      const radius = Math.min(2000, Math.max(300, aqi * 10));
-      
-      // Círculo graduado
-      const circle = L.circle([lat, lng], {
-        radius: radius,
-        color: level.color,
-        weight: 2,
-        opacity: 0.6,
-        fillColor: level.color,
-        fillOpacity: 0.15
-      });
-      
-      const recommendation = getHealthRecommendation(aqi);
-      
-      circle.bindPopup(`
-        <div class="popup-accident">
-          <div class="popup-accident-title">🌬️ ${escapeHtml(station_name)}</div>
-          <div class="popup-accident-sev">
-            AQI: <strong style="color:${level.color}">${aqi}</strong> · ${level.label}
-          </div>
-          <div class="popup-accident-coords" style="font-size: 0.85rem; margin-top: 0.5rem;">
-            ${pm25 ? `PM2.5: ${pm25.toFixed(1)} µg/m³<br>` : ''}
-            ${no2 ? `NO₂: ${no2.toFixed(1)} µg/m³<br>` : ''}
-            ${o3 ? `O₃: ${o3.toFixed(1)} µg/m³` : ''}
-          </div>
-          <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; color: #94a3b8;">
-            ${recommendation}
-          </div>
-        </div>
-      `, { className: "popup-dark" });
-      
-      group.addLayer(circle);
-      
-      // Marker central
-      const marker = L.circleMarker([lat, lng], {
-        radius: 8,
-        fillColor: level.color,
-        color: '#ffffff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      });
-      
-      marker.bindPopup(circle.getPopup());
-      group.addLayer(marker);
-    });
-    
-    console.log(`[air-quality] ${geojson.features.length} estaciones cargadas`);
-    
-  } catch (e) {
-    console.error("[air-quality] Error cargando estaciones:", e);
   }
 }

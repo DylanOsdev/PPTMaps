@@ -5,6 +5,7 @@ const STORAGE_KEY = "tppmaps_layer_state";
 const LAYER_GROUPS = {
   comunas:   ["medellin-city", "medellin-comunas", "metro-municipios", "satellite-base"],
   telemetry: ["telemetry-predict", "accident-clusters", "accident-zones", "fatalities-layer"],
+  "air-quality": ["air-quality-stations"],
   climate:   ["flood-zones", "rain-risk", "weather-alerts"],
   reports:   ["reports-collision", "reports-flood"],
   routes:    ["safe-route"],

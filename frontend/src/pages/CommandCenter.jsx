@@ -233,7 +233,7 @@ export default function CommandCenter() {
           <div className="panel-head">
             <h2>DATA LAYERS</h2>
             <span className="layer-status-dot" id="layerStatusDot" style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:'#fbbf24',marginRight:4,boxShadow:'0 0 6px #fbbf24'}} title="Cargando capas..."></span>
-            <span className="layer-fraction" id="layerFraction">0/16</span>
+            <span className="layer-fraction" id="layerFraction">0/17</span>
             <button type="button" className="panel-close" aria-label="Cerrar">×</button>
           </div>
           <div className="panel-scroll" id="layersList">
@@ -291,6 +291,24 @@ export default function CommandCenter() {
                 <h3>GO TO LOCATION</h3>
                 <ul className="comunas-list" id="comunasList"></ul>
               </div>
+            </details>
+
+            <details className="layer-group" open data-group="air-quality">
+              <summary>
+                <span className="layer-icon">🌬️</span>
+                <span>CALIDAD DEL AIRE</span>
+                <span className="group-count" id="count-air-quality">0/1</span>
+                <button type="button" className="btn-toggle-all" data-group="air-quality" title="Toggle all">⊞</button>
+                <span className="chevron"></span>
+              </summary>
+              <ul className="layer-items">
+                <li>
+                  <label className="layer-row">
+                    <span>Estaciones de monitoreo AQI</span>
+                    <input type="checkbox" className="toggle" data-layer="air-quality-stations" />
+                  </label>
+                </li>
+              </ul>
             </details>
 
             <details className="layer-group" open data-group="climate">

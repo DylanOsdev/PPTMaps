@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones, addAirQualityLayer } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateSafeRoutes, updateAccidentZones, updateAirQualityStations } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones, fetchAirQualityStations } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -85,6 +85,19 @@ export async function loadWeatherData() {
     trackLayer(true);
   } catch (err) {
     console.warn("[map] No se pudieron cargar datos de clima:", err);
+    trackLayer(false);
+  }
+}
+
+export async function loadAirQualityData() {
+  try {
+    const data = await fetchAirQualityStations();
+    if (Array.isArray(data)) {
+      updateAirQualityStations(data);
+    }
+    trackLayer(true);
+  } catch (err) {
+    console.warn("[map] No se pudieron cargar estaciones de calidad del aire:", err);
     trackLayer(false);
   }
 }
@@ -234,7 +247,7 @@ export async function setupMapLayers() {
   loadAccidentZonesData();
   loadFloodZonesData(map);
   loadWeatherData();
-  addAirQualityLayer(map);
+  loadAirQualityData();
   startReportsPolling();
   startFatalitiesPolling();
   updateSafeRoutes(map);
