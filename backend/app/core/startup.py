@@ -38,7 +38,6 @@ async def seed_initial_data() -> None:
         await SiataSyncService(client).sync(db)
 
         await _seed_alerts(db)
-        await _seed_demo_vehicles(db)
 
     _enqueue_startup_syncs()
 
@@ -61,42 +60,6 @@ async def _seed_alerts(db) -> None:
         logger.info("Alertas iniciales sembradas: %d", len(seed_alerts))
 
 
-async def _seed_demo_vehicles(db) -> None:
-    from app.models.vehicle import Vehicle
-    from app.models.telemetry import Telemetry
-
-    existing_vehicles = (await db.execute(select(Vehicle).limit(1))).scalar_one_or_none()
-    if existing_vehicles:
-        return
-
-    DEMO_VEHICLES = [
-        {"plate": "AMB-001", "type": "ambulance", "lat": 6.2515, "lng": -75.5635, "speed": 42.0, "heading": 180},
-        {"plate": "AMB-002", "type": "ambulance", "lat": 6.2398, "lng": -75.5902, "speed": 35.0, "heading": 270},
-        {"plate": "PAT-010", "type": "patrol", "lat": 6.2178, "lng": -75.5705, "speed": 0.0, "heading": 0},
-        {"plate": "PAT-011", "type": "patrol", "lat": 6.2756, "lng": -75.5387, "speed": 95.0, "heading": 45},
-        {"plate": "BMB-020", "type": "fire", "lat": 6.1978, "lng": -75.5762, "speed": 65.0, "heading": 135},
-        {"plate": "BMB-021", "type": "fire", "lat": 6.2489, "lng": -75.5725, "speed": 28.0, "heading": 90},
-        {"plate": "PAT-012", "type": "patrol", "lat": 6.2356, "lng": -75.5489, "speed": 55.0, "heading": 315},
-        {"plate": "AMB-003", "type": "ambulance", "lat": 6.2265, "lng": -75.5552, "speed": 72.0, "heading": 0},
-    ]
-    for v in DEMO_VEHICLES:
-        vehicle = Vehicle(plate=v["plate"], type=v["type"])
-        db.add(vehicle)
-        await db.flush()
-        telemetry = Telemetry(
-            vehicle_id=vehicle.id,
-            latitude=v["lat"],
-            longitude=v["lng"],
-            speed=v["speed"],
-            heading=v["heading"],
-            location=ST_SetSRID(ST_MakePoint(v["lng"], v["lat"]), 4326),
-            timestamp=datetime.now(timezone.utc),
-        )
-        db.add(telemetry)
-    await db.commit()
-    logger.info("Telemetría demo sembrada: %d vehículos", len(DEMO_VEHICLES))
-
-
 def _enqueue_startup_syncs() -> None:
     from app.tasks.cron_jobs import sync_weather
     try:
@@ -106,12 +69,6 @@ def _enqueue_startup_syncs() -> None:
 
 
 async def start_background_tasks(app_state: dict) -> None:
-    from app.services.demo_simulator import run_demo_simulator
-    _sim_stop = asyncio.Event()
-    _sim_task = asyncio.create_task(run_demo_simulator(_sim_stop))
-    app_state["sim_stop"] = _sim_stop
-    app_state["sim_task"] = _sim_task
-
     from app.db.redis import check_redis_ready, get_redis
     from app.services.alert_broadcaster import listen_and_broadcast_alerts
 
@@ -136,14 +93,5 @@ async def stop_background_tasks(app_state: dict) -> None:
         alert_task.cancel()
         try:
             await alert_task
-        except asyncio.CancelledError:
-            pass
-
-    if sim_stop := app_state.get("sim_stop"):
-        sim_stop.set()
-    if sim_task := app_state.get("sim_task"):
-        sim_task.cancel()
-        try:
-            await sim_task
         except asyncio.CancelledError:
             pass

@@ -1,0 +1,141 @@
+"""
+Tests para el sistema anti-spam (rate limiting + CAPTCHA).
+"""
+import pytest
+from httpx import AsyncClient
+from unittest.mock import patch, AsyncMock
+
+from app.main import app
+from app.core.config import settings
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_reports(client: AsyncClient):
+    """Verifica que el rate limiting bloquea después de 5 reportes."""
+    report_data = {
+        "report_type": "accident",
+        "description": "Test spam",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+    }
+    
+    # Enviar 5 reportes (debe pasar)
+    for i in range(5):
+        response = await client.post("/api/v1/reports/", json=report_data)
+        assert response.status_code in [201, 429], f"Request {i+1} falló: {response.status_code}"
+    
+    # El 6to debe ser bloqueado (429 Too Many Requests)
+    response = await client.post("/api/v1/reports/", json=report_data)
+    assert response.status_code == 429
+    assert "rate limit" in response.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_captcha_disabled_allows_reports(client: AsyncClient):
+    """Verifica que los reportes funcionan cuando CAPTCHA está desactivado."""
+    # CAPTCHA desactivado por defecto en tests
+    assert settings.TURNSTILE_ENABLED is False
+    
+    report_data = {
+        "report_type": "pothole",
+        "description": "Test sin CAPTCHA",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+    }
+    
+    response = await client.post("/api/v1/reports/", json=report_data)
+    assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+@patch('app.core.config.settings.TURNSTILE_ENABLED', True)
+async def test_captcha_required_when_enabled(client: AsyncClient):
+    """Verifica que el CAPTCHA es requerido cuando está activado."""
+    report_data = {
+        "report_type": "accident",
+        "description": "Test con CAPTCHA",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+        # Sin captcha_token
+    }
+    
+    response = await client.post("/api/v1/reports/", json=report_data)
+    assert response.status_code == 400
+    assert "captcha" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+@patch('app.core.config.settings.TURNSTILE_ENABLED', True)
+@patch('app.services.captcha.verify_turnstile', new_callable=AsyncMock)
+async def test_captcha_validation_success(mock_verify, client: AsyncClient):
+    """Verifica que el reporte pasa cuando el CAPTCHA es válido."""
+    mock_verify.return_value = True
+    
+    report_data = {
+        "report_type": "flooding",
+        "description": "Test CAPTCHA válido",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+        "captcha_token": "valid_token_123",
+    }
+    
+    response = await client.post("/api/v1/reports/", json=report_data)
+    assert response.status_code == 201
+    mock_verify.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch('app.core.config.settings.TURNSTILE_ENABLED', True)
+@patch('app.services.captcha.verify_turnstile', new_callable=AsyncMock)
+async def test_captcha_validation_failure(mock_verify, client: AsyncClient):
+    """Verifica que el reporte es bloqueado cuando el CAPTCHA es inválido."""
+    mock_verify.return_value = False
+    
+    report_data = {
+        "report_type": "accident",
+        "description": "Test CAPTCHA inválido",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+        "captcha_token": "invalid_token",
+    }
+    
+    response = await client.post("/api/v1/reports/", json=report_data)
+    assert response.status_code == 403
+    assert "captcha" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+@patch('app.services.captcha.verify_turnstile', new_callable=AsyncMock)
+async def test_captcha_service_timeout_allows_request(mock_verify):
+    """Verifica que si el servicio de CAPTCHA falla, se permite la request (fail-open)."""
+    from app.services.captcha import verify_turnstile
+    
+    # Simular timeout/error de red
+    mock_verify.side_effect = Exception("Timeout")
+    
+    # En el servicio real, debería permitir la request
+    # (fail-open para no bloquear usuarios legítimos)
+    with patch('app.core.config.settings.TURNSTILE_ENABLED', True):
+        with patch('app.core.config.settings.TURNSTILE_SECRET_KEY', 'test_key'):
+            result = await verify_turnstile("any_token", "127.0.0.1")
+            assert result is True  # Permitir en caso de error
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_different_ips_not_blocked(client: AsyncClient):
+    """Verifica que IPs diferentes no comparten el rate limit."""
+    report_data = {
+        "report_type": "accident",
+        "description": "Test desde otra IP",
+        "latitude": 6.2476,
+        "longitude": -75.5658,
+    }
+    
+    # Simular requests desde diferentes IPs usando headers X-Forwarded-For
+    for i in range(3):
+        response = await client.post(
+            "/api/v1/reports/",
+            json=report_data,
+            headers={"X-Forwarded-For": f"192.168.1.{i}"}
+        )
+        assert response.status_code == 201, f"Request desde IP {i} falló"

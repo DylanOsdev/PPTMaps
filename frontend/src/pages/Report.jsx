@@ -22,6 +22,7 @@ export default function Report() {
   const isMounted = useRef(true);
   const [selected, setSelected] = useState(null);
   const [description, setDescription] = useState('');
+  const [reporterName, setReporterName] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -118,6 +119,12 @@ export default function Report() {
       return;
     }
 
+    // VALIDACIÓN OBLIGATORIA: nombre es requerido
+    if (!reporterName.trim()) {
+      setError('Debes ingresar tu nombre para enviar el reporte.');
+      return;
+    }
+
     setSending(true);
     setError(null);
 
@@ -126,13 +133,14 @@ export default function Report() {
       description: description.trim() || `Reporte: ${REPORT_TYPES.find(t => t.id === selected)?.label || selected}`,
       latitude: coords.lat,
       longitude: coords.lng,
+      reporter_name: reporterName.trim(),
     };
 
     console.log('[Report] Enviando reporte con coordenadas exactas:', body);
 
     try {
       const API_BASE = window.TPPMAPS_API || '/api/v1';
-      const res = await fetch(`${API_BASE}/public/reports`, {
+      const res = await fetch(`${API_BASE}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -176,7 +184,7 @@ export default function Report() {
             Tu reporte fue registrado y será procesado en tiempo real.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button onClick={() => { setSubmitted(false); setSelected(null); setDescription(''); }} style={btnOutline}>
+            <button onClick={() => { setSubmitted(false); setSelected(null); setDescription(''); setReporterName(''); }} style={btnOutline}>
               Nuevo reporte
             </button>
             <button onClick={() => navigate(`/map?lat=${coords.lat}&lng=${coords.lng}&zoom=16`)} style={btnPrimary}>
@@ -347,6 +355,35 @@ export default function Report() {
             />
           </div>
 
+          {/* Nombre */}
+          <div style={{ marginBottom: '2rem' }}>
+            <label style={{
+              display: 'block', fontSize: '0.875rem', fontWeight: 600,
+              color: '#94a3b8', marginBottom: '0.5rem',
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}>
+              Tu nombre <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={reporterName}
+              onChange={e => setReporterName(e.target.value)}
+              placeholder="Ej: Juan Pérez"
+              required
+              style={{
+                width: '100%', padding: '0.875rem 1rem',
+                backgroundColor: '#1e293b',
+                border: '1px solid rgba(56,189,248,0.15)',
+                borderRadius: '10px', outline: 'none',
+                color: '#e2e8f0', fontSize: '0.95rem',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+              onFocus={e => e.target.style.borderColor = '#22d3ee'}
+              onBlur={e => e.target.style.borderColor = 'rgba(56,189,248,0.15)'}
+            />
+          </div>
+
           {/* Error */}
           {error && (
             <div style={{
@@ -362,11 +399,11 @@ export default function Report() {
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
               type="submit"
-              disabled={!selected || sending}
+              disabled={!selected || !reporterName.trim() || sending}
               style={{
                 ...btnPrimary,
-                opacity: (selected && !sending) ? 1 : 0.4,
-                cursor: (selected && !sending) ? 'pointer' : 'not-allowed',
+                opacity: (selected && reporterName.trim() && !sending) ? 1 : 0.4,
+                cursor: (selected && reporterName.trim() && !sending) ? 'pointer' : 'not-allowed',
                 padding: '0.875rem 2.5rem',
                 fontSize: '1rem',
               }}

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 
 const NAV_LINKS = [
   { id: "hero", label: "CONSOLA" },
-  { id: "telemetry", label: "TELEMETRÍA" },
   { id: "weather", label: "CLIMA" },
   { id: "reports", label: "REPORTES" },
   { id: "backend", label: "RED" },

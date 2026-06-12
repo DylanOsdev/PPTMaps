@@ -1,9 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -21,6 +25,9 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Rate limiter global
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -51,20 +58,33 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=(
-        "**PPTMaps API** — Plataforma unificada de movilidad inteligente para Medellín.\n\n"
-        "Gestiona reportes ciudadanos, zonas de accidentalidad y riesgos de inundación."
+        "**PPTMaps API** — Plataforma de clima y seguridad ciudadana para Medellín.\n\n"
+        "Sistema público de reportes ciudadanos, zonas de riesgo y alertas meteorológicas."
     ),
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
     openapi_tags=[
-        {"name": "🔐 Autenticación", "description": "Registro, login y gestión de sesión JWT."},
-        {"name": "👤 Usuarios", "description": "CRUD de usuarios y gestión de roles."},
-        {"name": "📍 Reportes", "description": "Reportes ciudadanos de incidentes viales."},
-        {"name": "🗺️ Rutas", "description": "Consulta de rutas optimizadas."},
+        {"name": "📍 Reportes", "description": "Reportes ciudadanos anónimos de incidentes."},
+        {"name": "🗺️ Público", "description": "Endpoints públicos de consulta geográfica."},
+        {"name": "🌤️ Clima", "description": "Pronóstico meteorológico y estadísticas."},
+        {"name": "🤖 Chatbot", "description": "Asistente de inteligencia geoespacial."},
     ],
 )
+
+# Rate limiter con mensaje personalizado en español
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Handler personalizado para errores de rate limiting con mensaje claro."""
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Has alcanzado el límite de 5 reportes por hora. Por favor, intenta de nuevo más tarde."
+        }
+    )
 
 # CORS
 app.add_middleware(

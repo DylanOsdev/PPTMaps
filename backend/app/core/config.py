@@ -38,9 +38,15 @@ class Settings(BaseSettings):
     # API key para ingesta de telemetría (dispositivos GPS = máquinas, no users)
     TELEMETRY_API_KEY: str = Field(default=_DEV_TELEMETRY_KEY, repr=False)
     
+    # WAQI API token para calidad del aire
+    WAQI_API_TOKEN: str = Field(default="", repr=False)
+    
     # Groq API para Chatbot IA
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
+    # Rate Limiting para reportes ciudadanos
+    RATE_LIMIT_REPORTS: str = "5/hour"  # 5 reportes por hora por IP
 
     # Ruta del JSON de comunas/municipios que se siembra en PostGIS al arrancar.
     ZONES_JSON_PATH: str = "../frontend/public/assets/data/medellin-comunas.json"

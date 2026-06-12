@@ -28,6 +28,10 @@ celery_app.conf.update(
             "task": "weather.generate_alerts",
             "schedule": crontab(minute="*/15"),
         },
+        "air-quality-sync-hourly": {
+            "task": "air_quality.sync",
+            "schedule": crontab(minute="0"),
+        },
         "telemetry-flush-every-min": {
             "task": "telemetry.flush",
             "schedule": crontab(minute="*"),

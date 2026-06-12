@@ -15,7 +15,6 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True, index=True)
     type = Column(String, nullable=False)
     severity = Column(Enum(AlertSeverity, name="alertseverity"), nullable=False, default=AlertSeverity.INFO)
     message = Column(String, nullable=False)

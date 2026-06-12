@@ -3,7 +3,6 @@ import React, { useEffect, useRef } from 'react';
 import CustomCursor from './landing/components/CustomCursor.jsx';
 import Navbar from './landing/components/Navbar.jsx';
 import HeroSection from './landing/sections/HeroSection.jsx';
-import TelemetrySection from './landing/sections/TelemetrySection.jsx';
 import WeatherSection from './landing/sections/WeatherSection.jsx';
 import ReportsSection from './landing/sections/ReportsSection.jsx';
 import BackendSection from './landing/sections/BackendSection.jsx';
@@ -12,7 +11,6 @@ import FinalCTA from './landing/sections/FinalCTA.jsx';
 
 const SECTIONS = [
   { id: 'hero', Component: HeroSection },
-  { id: 'telemetry', Component: TelemetrySection },
   { id: 'weather', Component: WeatherSection },
   { id: 'reports', Component: ReportsSection },
   { id: 'backend', Component: BackendSection },

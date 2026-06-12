@@ -1,6 +1,6 @@
 """Endpoints públicos (sin auth) que alimentan el mapa del frontend.
 
-Leen exclusivamente de las tablas reales (telemetry, alerts, reports, flood_hazards).
+Leen exclusivamente de las tablas reales (alerts, reports, flood_hazards, weather).
 No incluyen datos de fallback embebidos: si no hay datos, devuelven colecciones vacías.
 """
 import json
@@ -21,17 +21,11 @@ from app.schemas.report import Report as SchemaReport, ReportCreate
 from app.models.zone import Zone
 from app.models.accident_incident import AccidentIncident
 from app.services.weather import ForecastClient, OpenMeteoForecastClient
-from app.websocket.ws_router import _latest_telemetry
 
 router = APIRouter()
 
 # Umbral de probabilidad de lluvia (%) para considerar "riesgo de lluvia".
 RAIN_RISK_THRESHOLD = 50
-
-
-@router.get("/telemetry/latest", summary="Última posición conocida de cada vehículo")
-async def public_telemetry_latest(db: AsyncSession = Depends(get_db)):
-    return await _latest_telemetry(db)
 
 
 @router.get("/alerts", summary="Alertas activas")
@@ -259,28 +253,19 @@ async def public_comunas(db: AsyncSession = Depends(get_db)):
     return {"city": _CITY, "comunas": comunas, "municipios": municipios}
 
 
-@router.get("/comunas/stats", summary="Accidentes y vehículos por comuna (cruce espacial)")
+@router.get("/comunas/stats", summary="Accidentes por comuna (cruce espacial)")
 async def public_comunas_stats(db: AsyncSession = Depends(get_db)):
-    """Cuenta, por comuna (polígono), los accidentes y la última posición de vehículos
-    que caen dentro vía ST_Contains. Solo comunas (los municipios son puntos)."""
+    """Cuenta, por comuna (polígono), los accidentes que caen dentro vía ST_Contains."""
     rows = (
         await db.execute(
             text(
                 """
-                WITH last_pos AS (
-                    SELECT DISTINCT ON (vehicle_id) vehicle_id, location
-                    FROM telemetry
-                    ORDER BY vehicle_id, timestamp DESC
-                )
                 SELECT
                     z.name, z.slug, z.number,
-                    COUNT(DISTINCT r.id) AS accident_count,
-                    COUNT(DISTINCT lp.vehicle_id) AS vehicle_count
+                    COUNT(DISTINCT r.id) AS accident_count
                 FROM zones z
                 LEFT JOIN reports r
                     ON r.report_type = 'accident' AND ST_Contains(z.geom, r.geom)
-                LEFT JOIN last_pos lp
-                    ON ST_Contains(z.geom, lp.location)
                 WHERE z.kind = 'comuna'
                 GROUP BY z.name, z.slug, z.number
                 ORDER BY z.number NULLS LAST, z.name
@@ -294,7 +279,6 @@ async def public_comunas_stats(db: AsyncSession = Depends(get_db)):
             "slug": r.slug,
             "number": r.number,
             "accident_count": r.accident_count,
-            "vehicle_count": r.vehicle_count,
         }
         for r in rows
     ]
@@ -317,78 +301,6 @@ async def create_public_report(
 ):
     from app.crud import crud_report
     return await crud_report.create_report(db, report_in=report_in, reporter_id=None)
-
-
-@router.get("/routes", summary="Ruta segura que evita zonas de riesgo (OSRM + datos reales OSM)")
-async def public_safe_route(
-    origin_lat: float,
-    origin_lng: float,
-    dest_lat: float,
-    dest_lng: float,
-    db: AsyncSession = Depends(get_db)
-):
-    """Calcula ruta segura usando OSRM (datos OpenStreetMap) evitando zonas de riesgo activas.
-    
-    - Usa calles reales de Medellín (OpenStreetMap)
-    - Evita deprimidos inundados (flood_hazards status=watch/flooded)
-    - Evita zonas de alta accidentalidad (accident_zones severity≥3)
-    - Devuelve geometría completa de la ruta + distancia
-    """
-    from app.services.routing import compute_route
-    
-    origin = (origin_lat, origin_lng)
-    destination = (dest_lat, dest_lng)
-    
-    return await compute_route(db, origin, destination)
-
-
-@router.get("/traffic/predictions", summary="Predicción ML de congestión por zona (modelo XGBoost + 702k datos)")
-async def public_traffic_predictions(
-    db: AsyncSession = Depends(get_db),
-    redis = Depends(get_redis)
-):
-    """Predicciones de riesgo de congestión en tiempo real por comuna.
-    
-    Modelo ML entrenado con 702,540 accidentes históricos (2008-2025).
-    Considera: hora actual, día de semana, mes, comuna, ubicación geográfica.
-    
-    Returns:
-        Lista de zonas con risk_score (0-100) ordenadas por riesgo descendente.
-    """
-    import json
-    from app.services.traffic_prediction import get_prediction_service
-    
-    # Intentar leer desde caché Redis primero
-    cached = await redis.get("ml:traffic_predictions")
-    
-    if cached:
-        return json.loads(cached)
-    
-    # Fallback: calcular en tiempo real si no hay caché
-    try:
-        from sqlalchemy import text
-        
-        # Obtener count de deprimidos en riesgo
-        deprimidos_result = await db.execute(text("""
-            SELECT COUNT(*) as count FROM flood_hazards WHERE status IN ('watch', 'flooded')
-        """))
-        deprimidos_riesgo = int(deprimidos_result.scalar() or 0)
-        
-        service = get_prediction_service()
-        predictions = await service.predict_current(db)
-        
-        return {
-            "predictions": predictions,
-            "model": "XGBoost",
-            "features": ["hora", "dia_semana", "mes", "comuna", "lat", "lng", "gravedad", "clima", "SIATA"],
-            "training_examples": 22526,
-            "deprimidos_riesgo": deprimidos_riesgo
-        }
-    except FileNotFoundError:
-        return {
-            "predictions": [],
-            "error": "Modelo ML no disponible. Ejecutar train_traffic_model.py"
-        }
 
 
 @router.get("/weather/stats", summary="Estadísticas de lluvia histórica (2008-2025)")

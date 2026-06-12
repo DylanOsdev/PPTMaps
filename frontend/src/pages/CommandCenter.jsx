@@ -292,48 +292,6 @@ export default function CommandCenter() {
               </div>
             </details>
 
-            <details className="layer-group" open data-group="telemetry">
-              <summary>
-                <span className="layer-icon"><FaSatelliteDish /></span>
-                <span>TELEMETRÍA VIAL</span>
-                <span className="group-count" id="count-telemetry">0/5</span>
-                <button type="button" className="btn-toggle-all" data-group="telemetry" title="Toggle all">⊞</button>
-                <span className="chevron"></span>
-              </summary>
-              <ul className="layer-items">
-                <li>
-                  <label className="layer-row">
-                    <span>GPS conductores (tiempo real) <span className="badge badge-soon">Próximamente</span></span>
-                    <input type="checkbox" className="toggle" data-layer="telemetry-gps" disabled />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span>Mapa predictivo congestión</span>
-                    <input type="checkbox" className="toggle" data-layer="telemetry-predict" />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span>Clusters accidentes (DBSCAN)</span>
-                    <input type="checkbox" className="toggle" data-layer="accident-clusters" />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span>🔥 Zonas calientes (630 hotspots)</span>
-                    <input type="checkbox" className="toggle" data-layer="accident-zones" />
-                  </label>
-                </li>
-                <li>
-                  <label className="layer-row">
-                    <span><FaSkull size={14} style={{verticalAlign:'middle',marginRight:6,color:'#ef4444'}} /> Muertes en tiempo real</span>
-                    <input type="checkbox" className="toggle" data-layer="fatalities-layer" />
-                  </label>
-                </li>
-              </ul>
-            </details>
-
             <details className="layer-group" open data-group="climate">
               <summary>
                 <span className="layer-icon"><FaCloudRain /></span>

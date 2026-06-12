@@ -3,10 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role
 from app.crud import crud_accident_zone
 from app.db.database import get_db
-from app.models.user import User, UserRole
 from app.schemas.accident_zone import AccidentZone, AccidentZoneCreate
 
 router = APIRouter()
@@ -30,10 +28,10 @@ async def get_zone(zone_id: int, db: AsyncSession = Depends(get_db)):
     return zone
 
 
-@router.post("/", response_model=AccidentZone, status_code=201, summary="Crear zona de accidentalidad")
+@router.post("/", response_model=AccidentZone, status_code=201, summary="Crear zona de accidentalidad (público)")
 async def create_zone(
     zone_in: AccidentZoneCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.authority)),
 ):
+    """Crea una zona de accidentalidad. Endpoint público."""
     return await crud_accident_zone.create_accident_zone(db, zone_in=zone_in)
