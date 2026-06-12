@@ -1,7 +1,4 @@
 import asyncio
-import nest_asyncio
-
-nest_asyncio.apply()
 
 from app.db.database import async_session_maker
 from app.db.redis import get_redis
@@ -19,6 +16,8 @@ async def _run_sync() -> int:
 @celery_app.task(name="siata.sync_flood_hazards")
 def sync_siata_flood_hazards() -> int:
     """Sincroniza los niveles de las estaciones SIATA con flood_hazards."""
+    import nest_asyncio
+    nest_asyncio.apply()
     return asyncio.run(_run_sync())
 
 
@@ -32,6 +31,8 @@ async def _run_weather_sync() -> int:
 @celery_app.task(name="weather.sync")
 def sync_weather() -> int:
     """Sincroniza el clima/lluvia del Valle de Aburrá (Open-Meteo) con weather_snapshots."""
+    import nest_asyncio
+    nest_asyncio.apply()
     return asyncio.run(_run_weather_sync())
 
 
@@ -45,6 +46,8 @@ async def _run_weather_alerts() -> int:
 @celery_app.task(name="weather.generate_alerts")
 def generate_weather_alerts_task() -> int:
     """Analiza weather snapshots y genera alertas meteorológicas automáticas."""
+    import nest_asyncio
+    nest_asyncio.apply()
     return asyncio.run(_run_weather_alerts())
 
 
@@ -60,4 +63,6 @@ async def _run_air_quality_sync() -> int:
 @celery_app.task(name="air_quality.sync")
 def sync_air_quality() -> int:
     """Sincroniza datos de calidad del aire (WAQI API) con air_quality_readings."""
+    import nest_asyncio
+    nest_asyncio.apply()
     return asyncio.run(_run_air_quality_sync())
