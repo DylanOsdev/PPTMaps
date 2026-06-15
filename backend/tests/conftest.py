@@ -1,6 +1,7 @@
 """
 Fixtures compartidos para los tests de PPTMaps.
 """
+import os
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -8,28 +9,24 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy import text
 from app.main import app
 from app.db.base import Base
-from app.core.config import settings
+
+
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/movimed",
+)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     """Sesión de BD limpia para cada test."""
-    # Crear engine dentro de la fixture para usar el event loop correcto
-    engine = create_async_engine(
-        settings.ASYNC_DATABASE_URI.replace("movimed_test", "movimed"), 
-        echo=False,
-        poolclass=None
-    )
-    
-    # Crear sesión
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=None)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async with async_session() as session:
-        # Asegurar tabla existe
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         
-        # Limpiar tabla air_quality_readings antes del test
         try:
             await session.execute(text("TRUNCATE TABLE air_quality_readings CASCADE"))
             await session.commit()
@@ -37,10 +34,8 @@ async def db_session():
             await session.rollback()
         
         yield session
-        
         await session.rollback()
     
-    # Cleanup engine
     await engine.dispose()
 
 

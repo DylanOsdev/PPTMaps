@@ -74,6 +74,22 @@ async def setup_database():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        # Tablas legacy creadas por migraciones raw SQL (no tienen modelo ORM)
+        from sqlalchemy import text as sa_text
+        await conn.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS historical_weather_medellin (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP NOT NULL,
+                temperature_c REAL,
+                precipitation_mm REAL,
+                humidity INTEGER,
+                UNIQUE(timestamp)
+            )
+        """))
+        await conn.execute(sa_text("""
+            CREATE INDEX IF NOT EXISTS idx_historical_weather_timestamp
+            ON historical_weather_medellin(timestamp)
+        """))
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
