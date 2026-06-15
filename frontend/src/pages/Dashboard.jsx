@@ -4,13 +4,13 @@ import '../static/css/tppmaps.css';
 import {
   Chart as ChartJS,
   ArcElement, BarElement, LineElement, PointElement,
-  CategoryScale, LinearScale, Tooltip, Legend,
+  CategoryScale, LinearScale, Tooltip, Legend, Filler,
 } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import { useAccidentStats } from '../hooks/useAccidentStats.js';
 import { useWeatherStats } from '../hooks/useWeatherStats.js';
 
-ChartJS.register(ArcElement, BarElement, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
+ChartJS.register(ArcElement, BarElement, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler);
 
 const CYAN = '#22d3ee';
 const PALETTE = ['#22d3ee', '#67e8f9', '#fbbf24', '#f87171', '#a78bfa', '#4ade80'];
@@ -71,7 +71,8 @@ export default function Dashboard() {
 
   const wrap = {
     minHeight: '100vh', background: '#0f172a', color: '#e2e8f0',
-    fontFamily: '"JetBrains Mono", monospace', padding: '20px 24px 48px',
+    fontFamily: '"JetBrains Mono", monospace',
+    paddingTop: 20, paddingRight: 24, paddingBottom: 48, paddingLeft: 24,
   };
 
   if (loading) return <div className="dashboard-page" style={{ ...wrap, textAlign: 'center', paddingTop: 80, color: CYAN }}>CARGANDO ANALÍTICA…</div>;

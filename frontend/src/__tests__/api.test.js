@@ -11,35 +11,14 @@ import {
   fetchRainRisk,
   fetchPublicReports,
   createPublicReport,
-  connectWebSocket,
-  disconnectWebSocket,
-  onWsEvent,
-  offWsEvent,
-  clearAllWsListeners,
 } from '../static/js/services/api.js';
 
 // Mock de fetch global
 global.fetch = vi.fn();
 
-// Mock de WebSocket
-global.WebSocket = vi.fn().mockImplementation(() => ({
-  readyState: 0,
-  close: vi.fn(),
-  addEventListener: vi.fn(),
-  onopen: null,
-  onmessage: null,
-  onclose: null,
-  onerror: null,
-}));
-
 describe('services/api.js - Cliente HTTP', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    disconnectWebSocket();
-    clearAllWsListeners();
   });
 
   describe('pingHealth', () => {
@@ -335,41 +314,4 @@ describe('services/api.js - Cliente HTTP', () => {
     });
   });
 
-  describe('WebSocket listeners', () => {
-    it('debe agregar listener a un tipo de evento', () => {
-      const mockListener = vi.fn();
-      onWsEvent('telemetry', mockListener);
-
-      // Simular dispatchWsEvent interno (esto es más complejo de testear sin refactor)
-      // Por ahora solo verificamos que no lance error
-      expect(() => onWsEvent('telemetry', mockListener)).not.toThrow();
-    });
-
-    it('debe remover listener de un tipo de evento', () => {
-      const mockListener = vi.fn();
-      onWsEvent('telemetry', mockListener);
-      offWsEvent('telemetry', mockListener);
-
-      expect(() => offWsEvent('telemetry', mockListener)).not.toThrow();
-    });
-
-    it('debe limpiar todos los listeners', () => {
-      const mockListener1 = vi.fn();
-      const mockListener2 = vi.fn();
-      onWsEvent('telemetry', mockListener1);
-      onWsEvent('alerts', mockListener2);
-
-      clearAllWsListeners();
-
-      // Después de clear, no debe haber listeners
-      expect(() => clearAllWsListeners()).not.toThrow();
-    });
-  });
-
-  describe('WebSocket connection', () => {
-    it('debe intentar crear conexión WebSocket al llamar connectWebSocket', () => {
-      // Solo verificamos que no lance error
-      expect(() => connectWebSocket()).not.toThrow();
-    });
-  });
 });

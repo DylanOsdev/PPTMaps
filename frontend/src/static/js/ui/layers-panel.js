@@ -9,6 +9,7 @@ const LAYER_GROUPS = {
   climate:   ["flood-zones", "rain-risk", "weather-alerts"],
   reports:   ["reports-collision", "reports-flood"],
   risk:      ["accident-risk"],
+  historical: ["historical-accidents"],
 };
 
 function saveLayerState() {
@@ -113,8 +114,8 @@ export function initLayersPanel() {
   // Keyboard shortcuts 1-9
   document.addEventListener("keydown", e => {
     if (e.target.matches("input, textarea, [contenteditable]")) return;
-    const n = parseInt(e.key);
-    if (n < 1 || n > 9) return;
+    const n = Number(e.key);
+    if (!Number.isInteger(n) || n < 1 || n > 9) return;
     const toggles = document.querySelectorAll(".toggle[data-layer]");
     if (n - 1 >= toggles.length) return;
     e.preventDefault();

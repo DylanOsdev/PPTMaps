@@ -1,6 +1,6 @@
 import { escapeHtml } from "../core/utils.js";
 import { AppState } from "../core/state.js";
-import { onWsEvent, fetchAlerts } from "../services/api.js";
+import { fetchAlerts } from "../services/api.js";
 import { getAlertIconSvg } from "../icons/react-icons.js";
 
 let alerts = [];
@@ -88,33 +88,11 @@ export function initAlerts() {
       .then((data) => {
         if (Array.isArray(data)) replaceAlerts(data);
       })
-      .catch(() => {
-        console.warn("[alerts] API no disponible, esperando WebSocket...");
-      });
+      .catch(() => {});
   }
   loadFromRest();
 
   // Polling REST cada 30s como respaldo cuando WS no está disponible.
   AppState._alertPollTimer = setInterval(loadFromRest, 30000);
 
-  // Listen for WebSocket real-time alerts
-  AppState._alertsWsHandler = (data) => {
-    if (Array.isArray(data)) {
-      if (data.length === 1 && alerts.length > 0) {
-        // Broadcast de una alerta individual (ej: overspeed desde Celery).
-        addAlert(data[0]);
-      } else {
-        replaceAlerts(data);
-      }
-    } else {
-      addAlert(data);
-    }
-  };
-  onWsEvent("alerts", AppState._alertsWsHandler);
-}
-
-// Export solo para testing - NO usar en producción
-export function __resetForTesting() {
-  alerts = [];
-  renderAlerts();
 }

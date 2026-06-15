@@ -1,6 +1,6 @@
 import { AppState } from "../core/state.js";
 import { escapeHtml } from "../core/utils.js";
-import { onWsEvent, fetchRoute, fetchAccidentsGeoJSON, fetchAlerts, fetchTrafficPredictions, fetchAccidentRiskHeatmap } from "../services/api.js";
+import { fetchRoute, fetchAccidentsGeoJSON, fetchAlerts, fetchTrafficPredictions, fetchAccidentRiskHeatmap } from "../services/api.js";
 import { getAccidentSvg } from "../icons/react-icons.js";
 
 const driverIconCache = new Map();
@@ -114,6 +114,9 @@ export function createDemoLayers(map) {
     maxClusterRadius: 50,
   });
   groups["accident-risk"]    = L.layerGroup();
+  groups["historical-accidents"] = L.layerGroup();
+  groups["historical-precipitation"] = L.layerGroup();
+  groups["precip-comunas"] = L.layerGroup();
 
   // Vías bloqueadas demo
   const blockedGroup = groups["blocked-roads"];
@@ -147,15 +150,7 @@ export function createDemoLayers(map) {
   connectRealTimeLayer(map, groups);
 }
 
-function connectRealTimeLayer(map, groups) {
-  onWsEvent("accidents", (data) => {
-    updateAccidents(data);
-  });
-
-  onWsEvent("new_report", (data) => {
-    addSingleReport(data);
-  });
-}
+function connectRealTimeLayer(_map, _groups) {}
 
 export function updateAccidents(data) {
   const groups = AppState.layerGroups;
@@ -687,7 +682,7 @@ export function updateAccidentZones(geojson) {
   
   group.clearLayers();
   
-  if (!geojson || !geojson.features) return;
+  if (!geojson || !geojson.features?.length) return;
   
   geojson.features.forEach(feature => {
     const { properties } = feature;
@@ -862,4 +857,90 @@ export async function updateAccidentRiskHeatmap(map) {
   } catch (e) {
     console.error("[accident-risk] Error cargando heatmap:", e);
   }
+}
+
+export function updateHistoricalPrecipitation(geojson) {
+  const group = AppState.layerGroups["historical-precipitation"];
+  if (!group) return;
+  group.clearLayers();
+
+  if (!geojson?.features?.length) return;
+
+  const year = geojson.year;
+
+  geojson.features.forEach(f => {
+    const [lng, lat] = f.geometry.coordinates;
+    const { total_mm, avg_mm, record_count } = f.properties;
+
+    const intensity = Math.min(total_mm / 4000, 1);
+    const radius = 400 + intensity * 3600;
+    const hue = Math.round(240 - intensity * 210);
+    const fillOpacity = 0.20 + intensity * 0.50;
+
+    const circle = L.circle([lat, lng], {
+      radius: Math.round(radius),
+      color: `hsl(${hue}, 80%, 50%)`,
+      weight: 2,
+      opacity: 0.8,
+      fillColor: `hsl(${hue}, 85%, 55%)`,
+      fillOpacity,
+    });
+
+    circle.bindPopup(`
+      <div class="popup-dark">
+        <div style="font-weight:700;margin-bottom:4px;font-size:13px;">CELDA ERA5-Land</div>
+        <div>Precipitación ${year}: <strong>${total_mm.toLocaleString()}</strong> mm</div>
+        <div>Promedio: <strong>${avg_mm}</strong> mm/h</div>
+        <div>Registros: ${record_count.toLocaleString()}</div>
+        <div style="margin-top:4px;font-size:10px;color:#94a3b8;">
+          ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°O
+        </div>
+      </div>
+    `, { className: "popup-dark" });
+
+    group.addLayer(circle);
+  });
+}
+
+function precipColor(totalMm, maxMm) {
+  const intensity = maxMm > 0 ? Math.min(totalMm / maxMm, 1) : 0;
+  const r = Math.round(40 + intensity * 215);
+  const g = Math.round(200 - intensity * 180);
+  const b = Math.round(255 - intensity * 230);
+  return `rgb(${r},${g},${b})`;
+}
+
+export function updateHistoricalPrecipComunas(geojson) {
+  const group = AppState.layerGroups["precip-comunas"];
+  if (!group) return;
+  group.clearLayers();
+
+  if (!geojson?.features?.length) return;
+
+  const year = geojson.year;
+
+  geojson.features.forEach(f => {
+    const { total_mm, avg_mm, comuna, nombre } = f.properties;
+    const color = precipColor(total_mm, 4000);
+
+    const layer = L.geoJSON(f, {
+      style: {
+        color: "#94a3b8",
+        weight: 0.8,
+        opacity: 0.6,
+        fillColor: color,
+        fillOpacity: 0.55,
+      },
+    });
+
+    layer.bindPopup(`
+      <div class="popup-dark">
+        <div style="font-weight:700;margin-bottom:4px;font-size:13px;">${nombre}</div>
+        <div>Precipitación ${year}: <strong style="color:${color}">${total_mm.toLocaleString()}</strong> mm</div>
+        <div>Promedio: ${avg_mm} mm/h</div>
+      </div>
+    `, { className: "popup-dark" });
+
+    group.addLayer(layer);
+  });
 }

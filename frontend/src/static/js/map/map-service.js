@@ -1,8 +1,8 @@
 import { CONFIG } from "../config/constants.js";
 import { AppState } from "../core/state.js";
 import { findComunaAt } from "../services/geocode.js";
-import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateAccidentZones, updateAirQualityStations, updateAccidentRiskHeatmap } from "./demo-layers.js";
-import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones, fetchAirQualityStations } from "../services/api.js";
+import { createDemoLayers, updateAccidents, updateFloodZones, updateFatalitiesMarkers, updateWeather, updateReportsLayers, updateAccidentZones, updateAirQualityStations, updateAccidentRiskHeatmap, updateHistoricalPrecipitation, updateHistoricalPrecipComunas } from "./demo-layers.js";
+import { fetchAccidentsGeoJSON, fetchFloodZones, fetchFatalities, fetchWeather, fetchRainRisk, fetchPublicReports, fetchAccidentZones, fetchAirQualityStations, fetchHistoricalAccidents, fetchHistoricalPrecipitationGrid, fetchHistoricalPrecipComunas, fetchHistoricalAccidentHeatmap } from "../services/api.js";
 export { updateAccidents };
 import { createMedellinLayers, renderComunasList } from "./medellin-layers.js";
 
@@ -238,6 +238,7 @@ export function toggleSatellite(enabled) {
 export async function setupMapLayers() {
   const map = AppState.map;
   const data = await loadComunasData();
+  if (AppState.map !== map) return { isInsideCity: () => false };
   AppState.comunasData = data;
 
   const city = createMedellinLayers(map, data);
@@ -253,6 +254,7 @@ export async function setupMapLayers() {
   loadAirQualityData();
   startReportsPolling();
   startFatalitiesPolling();
+  loadHistoricalAccidentsData();
 
   let statsTimer;
   map.on("moveend zoomend", () => {
@@ -286,6 +288,61 @@ function bindLayerToggles(map) {
           updateAccidentRiskHeatmap(map);
         } else {
           map.removeLayer(lg);
+        }
+        document.dispatchEvent(new CustomEvent("tppmaps:layers-changed"));
+      });
+      return;
+    }
+
+    if (key === "historical-accidents") {
+      input.addEventListener("change", () => {
+        const lg = AppState.layerGroups[key];
+        if (!lg) return;
+        const filtersEl = document.getElementById("historicalFilters");
+        if (input.checked) {
+          map.addLayer(lg);
+          initHistoricalFilters();
+          if (filtersEl) filtersEl.style.display = "block";
+          loadHistoricalAccidentsData();
+        } else {
+          map.removeLayer(lg);
+          if (filtersEl) filtersEl.style.display = "none";
+        }
+        document.dispatchEvent(new CustomEvent("tppmaps:layers-changed"));
+      });
+      return;
+    }
+
+    if (key === "historical-precipitation") {
+      input.addEventListener("change", () => {
+        const lg = AppState.layerGroups[key];
+        if (!lg) return;
+        const filtersEl = document.getElementById("historicalPrecipFilters");
+        if (input.checked) {
+          map.addLayer(lg);
+          if (filtersEl) filtersEl.style.display = "block";
+          loadHistoricalPrecipitationData();
+        } else {
+          map.removeLayer(lg);
+          if (filtersEl) filtersEl.style.display = "none";
+        }
+        document.dispatchEvent(new CustomEvent("tppmaps:layers-changed"));
+      });
+      return;
+    }
+
+    if (key === "precip-comunas") {
+      input.addEventListener("change", () => {
+        const lg = AppState.layerGroups[key];
+        if (!lg) return;
+        const filtersEl = document.getElementById("precipComunaFilters");
+        if (input.checked) {
+          map.addLayer(lg);
+          if (filtersEl) filtersEl.style.display = "block";
+          loadHistoricalPrecipComunasData();
+        } else {
+          map.removeLayer(lg);
+          if (filtersEl) filtersEl.style.display = "none";
         }
         document.dispatchEvent(new CustomEvent("tppmaps:layers-changed"));
       });
@@ -336,3 +393,170 @@ export function updateMapStats(isInsideCity) {
   const total = document.querySelectorAll(".toggle[data-layer]").length;
   if (frac) frac.textContent = `${active}/${total}`;
 }
+
+function readHistoricalFilters() {
+  const sevEls = document.querySelectorAll(".historical-severity:checked");
+  const severities = Array.from(sevEls).map(el => el.value);
+  const yearEl = document.getElementById("historicalYear");
+  const comunaEl = document.getElementById("historicalComuna");
+  return {
+    severities: severities.length === 0 ? [] : severities.length === 3 ? null : severities,
+    year: yearEl?.value || null,
+    comuna: comunaEl?.value || null,
+  };
+}
+
+function refetchHistoricalData() {
+  const input = document.querySelector('.toggle[data-layer="historical-accidents"]');
+  if (!input?.checked) return;
+  loadHistoricalAccidentsData();
+}
+
+export async function loadHistoricalPrecipComunasData() {
+  const group = AppState.layerGroups["precip-comunas"];
+  if (!group) return;
+  group.clearLayers();
+
+  const input = document.querySelector('.toggle[data-layer="precip-comunas"]');
+  if (!input?.checked) return;
+
+  const yearEl = document.getElementById("precipComunaYear");
+  const year = yearEl?.value ? parseInt(yearEl.value, 10) : null;
+  const filtersEl = document.getElementById("precipComunaFilters");
+  if (filtersEl) filtersEl.style.display = "block";
+
+  try {
+    const data = await fetchHistoricalPrecipComunas(year);
+    updateHistoricalPrecipComunas(data);
+  } catch (e) {
+    console.warn("[precip-comunas] Error cargando:", e);
+  }
+}
+
+export async function loadHistoricalPrecipitationData() {
+  const group = AppState.layerGroups["historical-precipitation"];
+  if (!group) return;
+  group.clearLayers();
+
+  const input = document.querySelector('.toggle[data-layer="historical-precipitation"]');
+  if (!input?.checked) return;
+
+  const yearEl = document.getElementById("historicalPrecipYear");
+  const selectedYear = yearEl?.value ? parseInt(yearEl.value, 10) : null;
+  const filtersEl = document.getElementById("historicalPrecipFilters");
+  if (filtersEl) filtersEl.style.display = "block";
+
+  try {
+    const data = await fetchHistoricalPrecipitationGrid(selectedYear);
+    updateHistoricalPrecipitation(data);
+  } catch (e) {
+    console.warn("[historical-precipitation] Error cargando:", e);
+  }
+}
+
+let _historicalHeatLayer = null;
+
+export async function loadHistoricalAccidentsData() {
+  const group = AppState.layerGroups["historical-accidents"];
+  if (!group) return;
+  group.clearLayers();
+
+  const input = document.querySelector('.toggle[data-layer="historical-accidents"]');
+  const filtersEl = document.getElementById("historicalFilters");
+  if (input?.checked && filtersEl) {
+    initHistoricalFilters();
+    filtersEl.style.display = "block";
+  }
+
+  const filters = readHistoricalFilters();
+  if (Array.isArray(filters.severities) && filters.severities.length === 0) {
+    if (_historicalHeatLayer) {
+      group.removeLayer(_historicalHeatLayer);
+      _historicalHeatLayer = null;
+    }
+    return;
+  }
+  const params = {};
+  if (filters.severities) params.severities = filters.severities;
+  if (filters.year) params.year = parseInt(filters.year, 10);
+  if (filters.comuna) params.comuna = filters.comuna;
+
+  const isSingle = filters.severities?.length === 1;
+  const sev = isSingle ? filters.severities[0] : null;
+  const sevSet = filters.severities ? new Set(filters.severities) : null;
+  let gradient;
+  if (sev === 'MUERTO') {
+    gradient = { 0.0: 'transparent', 0.05: '#450a0a', 0.2: '#991b1b', 0.4: '#dc2626', 0.7: '#ef4444', 1.0: '#f87171' };
+  } else if (sev === 'HERIDO') {
+    gradient = { 0.0: 'transparent', 0.05: '#431407', 0.2: '#78350f', 0.4: '#d97706', 0.7: '#f59e0b', 1.0: '#fbbf24' };
+  } else if (sev === 'SOLO DAÑOS') {
+    gradient = { 0.0: 'transparent', 0.05: '#052e16', 0.2: '#166534', 0.4: '#16a34a', 0.7: '#22c55e', 1.0: '#86efac' };
+  } else if (sevSet?.has('MUERTO') && sevSet?.has('SOLO DAÑOS')) {
+    gradient = { 0.0: 'transparent', 0.02: '#052e16', 0.1: '#166534', 0.25: '#22c55e', 0.45: '#f59e0b', 0.65: '#ef4444', 1.0: '#7f1d1d' };
+  } else if (sevSet?.has('HERIDO') && sevSet?.has('SOLO DAÑOS')) {
+    gradient = { 0.0: 'transparent', 0.02: '#052e16', 0.1: '#166534', 0.25: '#22c55e', 0.45: '#d97706', 0.65: '#f59e0b', 1.0: '#fbbf24' };
+  } else {
+    gradient = { 0.0: 'transparent', 0.05: '#431407', 0.2: '#78350f', 0.4: '#d97706', 0.6: '#f59e0b', 0.8: '#ef4444', 1.0: '#7f1d1d' };
+  }
+
+  try {
+    const data = await fetchHistoricalAccidentHeatmap(params);
+    if (!data?.points?.length) return;
+
+    if (_historicalHeatLayer) {
+      group.removeLayer(_historicalHeatLayer);
+      _historicalHeatLayer = null;
+    }
+    const norm = data.normalizer || (data.max_weight || 500);
+    _historicalHeatLayer = L.heatLayer(data.points, {
+      radius: 18,
+      blur: 12,
+      maxZoom: 17,
+      max: norm,
+      gradient,
+    });
+    group.addLayer(_historicalHeatLayer);
+  } catch (e) {
+    console.warn("[historical-accidents] Error cargando heatmap:", e);
+  }
+}
+
+let _historicalFiltersReady = false;
+
+export async function initHistoricalFilters() {
+  if (_historicalFiltersReady) return;
+  _historicalFiltersReady = true;
+
+  const yearEl = document.getElementById("historicalYear");
+  const comunaEl = document.getElementById("historicalComuna");
+
+  // Fetch comunas and dispatch to React via custom event
+  try {
+    const resp = await fetch("/api/v1/public/accidents/stats");
+    if (resp.ok) {
+      const stats = await resp.json();
+      if (Array.isArray(stats.by_comuna)) {
+        document.dispatchEvent(new CustomEvent("tppmaps:historical-comunas", {
+          detail: stats.by_comuna,
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn("[historical] Error cargando filtros:", e);
+  }
+
+  document.querySelectorAll(".historical-severity").forEach(el => {
+    el.addEventListener("change", refetchHistoricalData);
+  });
+  if (yearEl) yearEl.addEventListener("change", refetchHistoricalData);
+  if (comunaEl) comunaEl.addEventListener("change", refetchHistoricalData);
+}
+
+document.addEventListener("change", (e) => {
+  if (e.target?.id === "historicalPrecipYear") {
+    loadHistoricalPrecipitationData();
+  }
+  if (e.target?.id === "precipComunaYear") {
+    loadHistoricalPrecipComunasData();
+  }
+});

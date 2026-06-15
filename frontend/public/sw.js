@@ -1,5 +1,3 @@
-// Service worker mínimo de PPTMaps: app-shell offline + network-first para navegación.
-// Sin Workbox (Vite 8 aún no soporta vite-plugin-pwa: issue vite-pwa/vite-plugin-pwa#923).
 const CACHE = 'pptmaps-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
@@ -17,11 +15,17 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  // No interceptar POST ni ningún método que no sea GET
   if (request.method !== 'GET') return;
 
   // Navegación (HTML): network-first, cae al app-shell cacheado si no hay red.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')));
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match('/index.html').then((r) => r || new Response('Offline', { status: 503 })),
+      ),
+    );
     return;
   }
 
@@ -39,7 +43,7 @@ self.addEventListener('fetch', (event) => {
           const copy = resp.clone();
           caches.open(CACHE).then((c) => c.put(request, copy));
           return resp;
-        }).catch(() => cached),
+        }).catch(() => cached || new Response('', { status: 503 })),
       ),
     );
   }

@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import '../static/css/tppmaps.css';
 import '../static/css/movil.css';
 import { initMap, setupMapLayers, updateMapStats, stopFatalitiesPolling, stopReportsPolling } from "../static/js/map/map-service.js";
-import { pingHealth, connectWebSocket, disconnectWebSocket, onWsEvent, offWsEvent } from "../static/js/services/api.js";
+import { pingHealth } from "../static/js/services/api.js";
 import { initAlerts } from "../static/js/ui/alerts.js";
 import { initClock, initTicker, initThroughput } from "../static/js/ui/clock.js";
 import { applySavedLayerState, initLayersPanel } from "../static/js/ui/layers-panel.js";
@@ -11,11 +11,12 @@ import { initResponsive } from "../static/js/ui/responsive.js";
 import { initSearch } from "../static/js/ui/search.js";
 import { AppState } from "../static/js/core/state.js";
 
-import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaFileAlt, FaBars, FaGlobeAmericas } from 'react-icons/fa';
+import { FaCrosshairs, FaSkull, FaCity, FaSatelliteDish, FaCloudRain, FaExclamationTriangle, FaRoad, FaUser, FaFileAlt, FaBars, FaGlobeAmericas, FaHistory } from 'react-icons/fa';
 import { TopBar } from '../components/TopBar.jsx';
 import { WeatherWidget } from '../components/WeatherWidget.jsx';
 import { AirQualityWidget } from '../components/AirQualityWidget.jsx';
 import { useWeather } from '../hooks/useWeather.js';
+import Chatbot from '../components/Chatbot.jsx';
 
 export default function CommandCenter() {
   const mapRef = useRef(false);
@@ -26,6 +27,7 @@ export default function CommandCenter() {
   const [isSystemOk, setIsSystemOk]     = React.useState(false);
   const { weather, loading: weatherLoading, error: weatherError } = useWeather();
   const [locating, setLocating] = React.useState(false);
+  const [historicalComunas, setHistoricalComunas] = React.useState([]);
   const handleLocateMe = () => {
     const m = AppState.map;
     if (!m) return;
@@ -76,6 +78,9 @@ export default function CommandCenter() {
   useEffect(() => {
     if (mapRef.current) return;
     mapRef.current = true;
+
+    const handleHistoricalComunas = (e) => setHistoricalComunas(e.detail || []);
+    document.addEventListener("tppmaps:historical-comunas", handleHistoricalComunas);
 
     async function boot() {
       try {
@@ -134,20 +139,11 @@ export default function CommandCenter() {
         setSystemStatus(ok ? "SISTEMA: CONECTADO" : "SISTEMA: OFFLINE (demo local)");
         setIsSystemOk(ok);
 
-        if (ok) {
-          connectWebSocket();
-          AppState.wsConnected = true;
-        }
-
         let healthTimer;
         const scheduleHealthCheck = async () => {
           const h = await pingHealth();
           setSystemStatus(h ? "SISTEMA: CONECTADO" : "SISTEMA: OFFLINE");
           setIsSystemOk(h);
-          if (h && !AppState.wsConnected) {
-            connectWebSocket();
-            AppState.wsConnected = true;
-          }
           healthTimer = setTimeout(scheduleHealthCheck, 30000);
         };
         healthTimer = setTimeout(scheduleHealthCheck, 30000);
@@ -161,6 +157,7 @@ export default function CommandCenter() {
     boot();
 
     return () => {
+      document.removeEventListener("tppmaps:historical-comunas", handleHistoricalComunas);
       if (AppState.map) {
         AppState.map.off();
         AppState.map.remove();
@@ -182,15 +179,9 @@ export default function CommandCenter() {
         document.removeEventListener("tppmaps:layers-changed", AppState._layersChangedHandler);
         delete AppState._layersChangedHandler;
       }
-      if (AppState._throughputReset) {
-        clearInterval(AppState._throughputReset);
-        AppState._throughputReset = null;
-      }
       AppState._throughputInit = false;
       stopFatalitiesPolling();
       stopReportsPolling();
-      disconnectWebSocket();
-      AppState.wsConnected = false;
       mapRef.current = false;
     };
   }, []);
@@ -226,7 +217,7 @@ export default function CommandCenter() {
                 <span className="layer-icon"><FaCity /></span>
                 <span>VALLE DEL ABURRÁ — COMUNAS Y CORREGIMIENTOS</span>
                 <span className="group-count" id="count-comunas">0/4</span>
-                <button type="button" className="btn-toggle-all" data-group="comunas" title="Toggle all">⊞</button>
+                <button type="button" className="btn-toggle-all" data-group="comunas" title="Toggle all" aria-label="Toggle all layers">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -272,7 +263,7 @@ export default function CommandCenter() {
                 <span className="layer-icon">🌬️</span>
                 <span>CALIDAD DEL AIRE</span>
                 <span className="group-count" id="count-air-quality">0/1</span>
-                <button type="button" className="btn-toggle-all" data-group="air-quality" title="Toggle all">⊞</button>
+                <button type="button" className="btn-toggle-all" data-group="air-quality" title="Toggle all" aria-label="Toggle all layers">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -290,7 +281,7 @@ export default function CommandCenter() {
                 <span className="layer-icon"><FaCloudRain /></span>
                 <span>SIATA Y CLIMA</span>
                 <span className="group-count" id="count-climate">0/3</span>
-                <button type="button" className="btn-toggle-all" data-group="climate" title="Toggle all">⊞</button>
+                <button type="button" className="btn-toggle-all" data-group="climate" title="Toggle all" aria-label="Toggle all layers">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -320,7 +311,7 @@ export default function CommandCenter() {
                 <span className="layer-icon"><FaExclamationTriangle /></span>
                 <span>REPORTES CIUDADANOS</span>
                 <span className="group-count" id="count-reports">0/2</span>
-                <button type="button" className="btn-toggle-all" data-group="reports" title="Toggle all">⊞</button>
+                <button type="button" className="btn-toggle-all" data-group="reports" title="Toggle all" aria-label="Toggle all layers">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -344,7 +335,7 @@ export default function CommandCenter() {
                 <span className="layer-icon"><FaExclamationTriangle /></span>
                 <span>RIESGO DE ACCIDENTES (CLIMA + ML)</span>
                 <span className="group-count" id="count-risk">0/1</span>
-                <button type="button" className="btn-toggle-all" data-group="risk" title="Toggle all">⊞</button>
+                <button type="button" className="btn-toggle-all" data-group="risk" title="Toggle all" aria-label="Toggle all layers">⊞</button>
                 <span className="chevron"></span>
               </summary>
               <ul className="layer-items">
@@ -353,6 +344,114 @@ export default function CommandCenter() {
                     <span>Heatmap de riesgo climático</span>
                     <input type="checkbox" className="toggle" data-layer="accident-risk" />
                   </label>
+                </li>
+              </ul>
+            </details>
+
+            <details className="layer-group" data-group="historical">
+              <summary>
+                <span className="layer-icon"><FaHistory /></span>
+                <span>DATOS HISTÓRICOS</span>
+                <span className="group-count" id="count-historical">0/3</span>
+                <button type="button" className="btn-toggle-all" data-group="historical" title="Toggle all" aria-label="Toggle all layers">⊞</button>
+                <span className="chevron"></span>
+              </summary>
+              <ul className="layer-items">
+                <li>
+                  <label className="layer-row" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" className="toggle" data-layer="historical-accidents" />
+                    <span>ACCIDENTES HISTÓRICOS (702K)</span>
+                  </label>
+                </li>
+                <li id="historicalFilters" style={{
+                  display: 'none',
+                  padding: '8px 12px 12px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 10,
+                }}>
+                  <div style={{ marginBottom: 6, fontSize: 9, color: '#94a3b8', letterSpacing: '0.1em' }}>SEVERIDAD</div>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                    {['MUERTO','HERIDO','SOLO DAÑOS'].map(s => (
+                      <label key={s} className="historical-sev-label" data-severity={s} style={{
+                        display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                      }}>
+                        <input type="checkbox" className="historical-severity" value={s} defaultChecked data-severity={s} style={{ accentColor: s === 'MUERTO' ? '#ef4444' : s === 'HERIDO' ? '#f59e0b' : '#22c55e' }} />
+                        <span style={{
+                          width: 7, height: 7, borderRadius: '50%', display: 'inline-block',
+                          background: s === 'MUERTO' ? '#ef4444' : s === 'HERIDO' ? '#f59e0b' : '#22c55e',
+                        }} />
+                        {s === 'SOLO DAÑOS' ? 'Daños' : s === 'MUERTO' ? 'Muertes' : 'Heridos'}
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ marginBottom: 4, fontSize: 9, color: '#94a3b8', letterSpacing: '0.1em' }}>AÑO</div>
+                  <select id="historicalYear" style={{
+                    width: '100%', marginBottom: 8, padding: '4px 6px', fontSize: 10,
+                    background: '#0a0f16', color: '#e2e8f0',
+                    border: '1px solid rgba(56,189,248,0.2)', borderRadius: 4,
+                  }}>
+                    <option value="">Todos</option>
+                    {Array.from({length: 2025 - 2008 + 1}, (_, i) => 2025 - i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  <div style={{ marginBottom: 4, fontSize: 9, color: '#94a3b8', letterSpacing: '0.1em' }}>COMUNA</div>
+                  <select id="historicalComuna" style={{
+                    width: '100%', padding: '4px 6px', fontSize: 10,
+                    background: '#0a0f16', color: '#e2e8f0',
+                    border: '1px solid rgba(56,189,248,0.2)', borderRadius: 4,
+                  }}>
+                    <option value="">Todas</option>
+                    {historicalComunas.map(c => (
+                      <option key={c.key} value={c.key}>{c.key} ({c.count.toLocaleString()})</option>
+                    ))}
+                  </select>
+                </li>
+                <li>
+                  <label className="layer-row" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" className="toggle" data-layer="historical-precipitation" />
+                    <span>PRECIPITACIÓN HISTÓRICA</span>
+                  </label>
+                </li>
+                <li id="historicalPrecipFilters" style={{
+                  display: 'none',
+                  padding: '8px 12px 12px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 10,
+                }}>
+                  <div style={{ marginBottom: 4, fontSize: 9, color: '#94a3b8', letterSpacing: '0.1em' }}>AÑO</div>
+                  <select id="historicalPrecipYear" style={{
+                    width: '100%', padding: '4px 6px', fontSize: 10,
+                    background: '#0a0f16', color: '#e2e8f0',
+                    border: '1px solid rgba(56,189,248,0.2)', borderRadius: 4,
+                  }}>
+                    {Array.from({length: 2025 - 2008 + 1}, (_, i) => 2025 - i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </li>
+                <li>
+                  <label className="layer-row" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" className="toggle" data-layer="precip-comunas" />
+                    <span>PRECIPITACIÓN POR COMUNAS</span>
+                  </label>
+                </li>
+                <li id="precipComunaFilters" style={{
+                  display: 'none',
+                  padding: '8px 12px 12px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 10,
+                }}>
+                  <div style={{ marginBottom: 4, fontSize: 9, color: '#94a3b8', letterSpacing: '0.1em' }}>AÑO</div>
+                  <select id="precipComunaYear" style={{
+                    width: '100%', padding: '4px 6px', fontSize: 10,
+                    background: '#0a0f16', color: '#e2e8f0',
+                    border: '1px solid rgba(56,189,248,0.2)', borderRadius: 4,
+                  }}>
+                    {Array.from({length: 2025 - 2008 + 1}, (_, i) => 2025 - i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
                 </li>
               </ul>
             </details>
@@ -602,6 +701,7 @@ export default function CommandCenter() {
         <Link to="/map" className="dock-item dock-active">Comando</Link>
       </nav>
 
+      <Chatbot />
 
     </>
   );

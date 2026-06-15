@@ -24,6 +24,7 @@ function ensurePane(map, name, zIndex) {
 const VALLE_BOUNDS = [[6.055, -75.685], [6.478, -75.298]];
 
 export function createMedellinLayers(map, data) {
+  if (!map || !map._container || !map._container.parentNode) return { outline: data?.city?.outline || [], isInsideCity: () => false };
   const paneMetro  = ensurePane(map, "metroPane",   340); // debajo de Medellín
   const paneCity   = ensurePane(map, "medellinPane", 350);
   const paneComunas = ensurePane(map, "comunasPane", 360);

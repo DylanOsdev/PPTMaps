@@ -1,102 +1,5 @@
 import { CONFIG } from "../config/constants.js";
 
-const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/telemetry?channel=global`;
-
-let ws = null;
-let wsReconnectTimer = null;
-let wsReconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 10;
-const wsListeners = {};
-
-export function onWsEvent(type, fn) {
-  if (!wsListeners[type]) wsListeners[type] = [];
-  wsListeners[type].push(fn);
-}
-
-export function offWsEvent(type, fn) {
-  if (!wsListeners[type]) return;
-  wsListeners[type] = wsListeners[type].filter(f => f !== fn);
-}
-
-function dispatchWsEvent(type, data) {
-  (wsListeners[type] || []).forEach(fn => fn(data));
-  document.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
-}
-
-export function connectWebSocket() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
-
-  try {
-    ws = new WebSocket(WS_URL);
-  } catch (err) {
-    console.warn("[ws] No se pudo crear WebSocket:", err);
-    scheduleReconnect();
-    return;
-  }
-
-  ws.onopen = () => {
-    console.log("[ws] Conectado a telemetría en tiempo real");
-    wsReconnectAttempts = 0;
-    dispatchWsEvent("connected", null);
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "telemetry") {
-        dispatchWsEvent("telemetry", msg.data || msg);
-      } else if (msg.type === "alerts") {
-        dispatchWsEvent("alerts", msg.data || msg);
-      } else if (msg.type === "accident") {
-        dispatchWsEvent("accidents", msg.data || msg);
-      } else if (msg.type === "new_report") {
-        dispatchWsEvent("new_report", msg.data || msg);
-      } else {
-        dispatchWsEvent("message", msg);
-      }
-    } catch {
-      // Non-JSON message
-    }
-  };
-
-  ws.onclose = () => {
-    console.log("[ws] Desconectado, reconectando...");
-    ws = null;
-    dispatchWsEvent("disconnected", null);
-    scheduleReconnect();
-  };
-
-  ws.onerror = () => {
-    ws?.close();
-  };
-}
-
-function scheduleReconnect() {
-  if (wsReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.warn("[ws] Máximo de reintentos alcanzado");
-    return;
-  }
-  const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
-  wsReconnectAttempts++;
-  clearTimeout(wsReconnectTimer);
-  wsReconnectTimer = setTimeout(connectWebSocket, delay);
-}
-
-export function clearAllWsListeners() {
-  Object.keys(wsListeners).forEach(key => delete wsListeners[key]);
-}
-
-export function disconnectWebSocket() {
-  clearTimeout(wsReconnectTimer);
-  wsReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
-  if (ws) {
-    ws.onclose = null;
-    ws.close();
-    ws = null;
-  }
-  clearAllWsListeners();
-}
-
 export async function pingHealth() {
   try {
     const res = await fetch("/health", { signal: AbortSignal.timeout(5000) });
@@ -216,6 +119,53 @@ export async function fetchAccidentRiskHeatmap() {
     signal: AbortSignal.timeout(60000),
   });
   if (!res.ok) throw new Error("Error fetching accident risk heatmap");
+  return res.json();
+}
+
+export async function fetchHistoricalAccidentHeatmap({ severities, year, comuna } = {}) {
+  const params = new URLSearchParams();
+  if (severities && severities.length > 0) {
+    severities.forEach(s => params.append("severities", s));
+  }
+  if (year) params.set("year", String(year));
+  if (comuna) params.set("comuna", comuna);
+  const res = await fetch(`${CONFIG.apiBase}/public/accidents/historical/heatmap?${params}`, {
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error("Error fetching historical accident heatmap");
+  return res.json();
+}
+
+export async function fetchHistoricalPrecipComunas(year) {
+  const params = year ? `?year=${year}` : "";
+  const res = await fetch(`${CONFIG.apiBase}/public/weather/historical/comunas${params}`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching precipitation by comuna");
+  return res.json();
+}
+
+export async function fetchHistoricalPrecipitationGrid(year) {
+  const params = year ? `?year=${year}` : "";
+  const res = await fetch(`${CONFIG.apiBase}/public/weather/historical/grid${params}`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error("Error fetching historical precipitation grid");
+  return res.json();
+}
+
+export async function fetchHistoricalAccidents({ limit = 5000, severities, year, comuna } = {}) {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  if (severities && severities.length > 0) {
+    severities.forEach(s => params.append("severities", s));
+  }
+  if (year) params.set("year", String(year));
+  if (comuna) params.set("comuna", comuna);
+  const res = await fetch(`${CONFIG.apiBase}/public/accidents/historical?${params}`, {
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error("Error fetching historical accidents");
   return res.json();
 }
 
