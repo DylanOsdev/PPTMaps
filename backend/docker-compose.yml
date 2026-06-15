@@ -36,6 +36,7 @@ services:
       ZONES_JSON_PATH: /data/medellin-comunas.json
     volumes:
       - ../frontend/public/assets/data/medellin-comunas.json:/data/medellin-comunas.json:ro
+      - .:/repo/backend
     env_file:
       - path: .env
         required: false

@@ -43,6 +43,7 @@ async def _flush(db, batch):
 async def ingest(path: str) -> int:
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.active
+    total_rows = ws.max_row - 1  # -1 por el header
     rows = ws.iter_rows(values_only=True)
     headers = next(rows)
     idx = {h: i for i, h in enumerate(headers)}
@@ -52,15 +53,16 @@ async def ingest(path: str) -> int:
         return r[i] if i is not None and i < len(r) else None
 
     def s(v):
-        """Normaliza a str/None: el dataset trae enteros en columnas de texto."""
         if v is None or v == "":
             return None
         return str(v)
 
     inserted = 0
     batch = []
+    last_log = 0
+    log_interval = max(total_rows // 20, 1)
     async with async_session_maker() as db:
-        for r in rows:
+        for i, r in enumerate(rows, 1):
             llave = col(r, "LLAVE")
             if llave is None:
                 continue
@@ -77,6 +79,10 @@ async def ingest(path: str) -> int:
                 "lat": float(lat) if lat not in (None, "", "N/D") else None,
                 "lng": float(lng) if lng not in (None, "", "N/D") else None,
             })
+            if i - last_log >= log_interval:
+                pct = i * 100 // total_rows
+                print(f"   Progreso: {pct}% ({i:,}/{total_rows:,})")
+                last_log = i
             if len(batch) >= BATCH:
                 await _flush(db, batch)
                 inserted += len(batch)

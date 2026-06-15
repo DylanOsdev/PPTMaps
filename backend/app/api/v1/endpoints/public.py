@@ -4,6 +4,7 @@ Leen exclusivamente de las tablas reales (alerts, reports, flood_hazards, weathe
 No incluyen datos de fallback embebidos: si no hay datos, devuelven colecciones vacías.
 """
 import json
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -191,7 +192,7 @@ async def public_accidents_stats(db: AsyncSession = Depends(get_db)):
         "total": total,
         "by_severity": await _group_count(db, AccidentIncident.severity),
         "by_class": await _group_count(db, AccidentIncident.incident_class),
-        "by_comuna": await _group_count(db, AccidentIncident.comuna, limit=10),
+        "by_comuna": await _group_count(db, AccidentIncident.comuna),  # sin límite = todas
         "by_year": await _group_count(db, AccidentIncident.year),
     }
 
@@ -349,6 +350,105 @@ async def public_weather_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/weather/historical/comunas", summary="Precipitación histórica por comuna (GeoJSON)")
+async def public_weather_historical_comunas(
+    year: Optional[int] = Query(None, description="Año (default: último disponible)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Polígonos de comunas coloreados por precipitación total del año seleccionado.
+    Cada comuna hereda los datos de la celda ERA5-Land más cercana."""
+    if not year:
+        result = await db.execute(text("""
+            SELECT MAX(EXTRACT(YEAR FROM timestamp)::int) FROM historical_weather_grid
+        """))
+        year = result.scalar()
+
+    rows = await db.execute(text("""
+        WITH yearly_precip AS (
+            SELECT grid_cell_lat, grid_cell_lng,
+                   ROUND(SUM(precipitation_mm)::numeric, 1) as total_mm,
+                   ROUND(AVG(precipitation_mm)::numeric, 2) as avg_mm,
+                   COUNT(*) as record_count
+            FROM historical_weather_grid
+            WHERE timestamp >= :start_ts AND timestamp < :end_ts
+            GROUP BY grid_cell_lat, grid_cell_lng
+        ),
+        comuna_assignment AS (
+            SELECT DISTINCT ON (z.id)
+                z.number, z.name, z.geom,
+                y.total_mm, y.avg_mm, y.record_count
+            FROM zones z
+            CROSS JOIN yearly_precip y
+            WHERE z.kind = 'comuna'
+            ORDER BY z.id, ST_Distance(
+                ST_Centroid(z.geom),
+                ST_SetSRID(ST_MakePoint(y.grid_cell_lng, y.grid_cell_lat), 4326)
+            )
+        )
+        SELECT number, name, total_mm, avg_mm, record_count,
+               ST_AsGeoJSON(geom) as geom_json
+        FROM comuna_assignment
+        ORDER BY number
+    """), {"start_ts": date(year, 1, 1), "end_ts": date(year + 1, 1, 1)})
+
+    features = []
+    for row in rows.fetchall():
+        features.append({
+            "type": "Feature",
+            "geometry": json.loads(row.geom_json),
+            "properties": {
+                "comuna": row.number,
+                "nombre": row.name,
+                "total_mm": float(row.total_mm),
+                "avg_mm": float(row.avg_mm),
+                "record_count": row.record_count,
+            },
+        })
+
+    return {"type": "FeatureCollection", "features": features, "year": year}
+
+
+@router.get("/weather/historical/grid", summary="Celdas ERA5-Land con precipitación anual (GeoJSON)")
+async def public_weather_historical_grid(
+    year: Optional[int] = Query(None, description="Año (default: último disponible)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """FeatureCollection con un Point por celda ERA5-Land, cada una con su precipitación total del año."""
+    if not year:
+        result = await db.execute(text("""
+            SELECT MAX(EXTRACT(YEAR FROM timestamp)::int) FROM historical_weather_grid
+        """))
+        year = result.scalar()
+
+    rows = await db.execute(text("""
+        SELECT grid_cell_lat, grid_cell_lng,
+               ROUND(SUM(precipitation_mm)::numeric, 1) as total_mm,
+               ROUND(AVG(precipitation_mm)::numeric, 2) as avg_mm,
+               COUNT(*) as record_count
+        FROM historical_weather_grid
+        WHERE timestamp >= :start_ts AND timestamp < :end_ts
+        GROUP BY grid_cell_lat, grid_cell_lng
+        ORDER BY grid_cell_lat, grid_cell_lng
+    """), {"start_ts": date(year, 1, 1), "end_ts": date(year + 1, 1, 1)})
+
+    features = []
+    for row in rows.fetchall():
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [row.grid_cell_lng, row.grid_cell_lat],
+            },
+            "properties": {
+                "total_mm": float(row.total_mm),
+                "avg_mm": float(row.avg_mm),
+                "record_count": row.record_count,
+            },
+        })
+
+    return {"type": "FeatureCollection", "features": features, "year": year}
+
+
 @router.get("/accident-zones", summary="Zonas de accidentalidad (clustering DBSCAN de 702k incidentes)")
 async def public_accident_zones(limit: int = 0, db: AsyncSession = Depends(get_db)):  # limit=0 = sin límite
     """Zonas calientes de accidentes detectadas con DBSCAN sobre 702,540 registros históricos."""
@@ -387,51 +487,117 @@ async def public_accident_zones(limit: int = 0, db: AsyncSession = Depends(get_d
 
 @router.get("/accidents/historical", summary="Accidentes históricos geolocalizados (702k incidentes 2008-2025)")
 async def public_historical_accidents(
-    limit: int = 1000,
+    limit: int = 5000,
     comuna: Optional[str] = None,
     severity: Optional[str] = None,
+    severities: Optional[list[str]] = Query(None),
     year: Optional[int] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """702,540 incidentes viales reales de Medellín. Fuente: Secretaría de Movilidad."""
+    """702,540 incidentes viales reales de Medellín. Fuente: Secretaría de Movilidad.
+    Retorna GeoJSON FeatureCollection con color por severidad para renderizado directo."""
     from app.models.accident_incident import AccidentIncident
+    
+    SEVERITY_COLORS = {"MUERTO": "#ef4444", "HERIDO": "#f59e0b", "SOLO DAÑOS": "#22c55e"}
     
     query = select(
         AccidentIncident.id,
-        AccidentIncident.date,
+        AccidentIncident.incident_date,
         AccidentIncident.severity,
         AccidentIncident.incident_class,
         AccidentIncident.comuna,
-        AccidentIncident.neighborhood,
+        AccidentIncident.barrio,
         ST_Y(AccidentIncident.geom).label("lat"),
         ST_X(AccidentIncident.geom).label("lng"),
     )
     
     if comuna:
         query = query.where(AccidentIncident.comuna == comuna)
-    if severity:
+    if severities:
+        query = query.where(AccidentIncident.severity.in_(severities))
+    elif severity:
         query = query.where(AccidentIncident.severity == severity)
     if year:
         query = query.where(AccidentIncident.year == year)
     
-    query = query.order_by(desc(AccidentIncident.date)).limit(limit)
+    query = query.order_by(desc(AccidentIncident.incident_date)).limit(limit)
     
     rows = (await db.execute(query)).all()
     
-    return [
-        {
-            "id": r.id,
-            "date": r.date.isoformat() if r.date else None,
-            "severity": r.severity,
-            "class": r.incident_class,
-            "comuna": r.comuna,
-            "neighborhood": r.neighborhood,
-            "lat": r.lat,
-            "lng": r.lng,
-        }
-        for r in rows
-    ]
+    features = []
+    for r in rows:
+        if r.lat is None or r.lng is None:
+            continue
+        sev = r.severity or "SOLO DAÑOS"
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [r.lng, r.lat]},
+            "properties": {
+                "id": r.id,
+                "date": r.incident_date.isoformat() if r.incident_date else None,
+                "severity": sev,
+                "class": r.incident_class,
+                "comuna": r.comuna,
+                "barrio": r.barrio,
+                "marker-color": SEVERITY_COLORS.get(sev, "#22c55e"),
+            }
+        })
+    
+    return {"type": "FeatureCollection", "features": features}
 
+
+@router.get("/accidents/historical/heatmap", summary="Heatmap de accidentes históricos (702k)")
+async def public_historical_accidents_heatmap(
+    comuna: Optional[str] = None,
+    severities: Optional[list[str]] = Query(None),
+    year: Optional[int] = None,
+    grid: float = Query(0.001, description="Tamaño de celda en grados (~100m)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Grilla de calor espacial. Agrupa los 702k incidentes en celdas de ~100m
+    y devuelve [lat, lng, peso_acumulado] para renderizar con L.heatLayer.
+    Peso: MUERTO=1.0, HERIDO=0.7, SOLO DAÑOS=0.4"""
+    scale = round(1.0 / grid)
+
+    clauses = ["geom IS NOT NULL"]
+    params = {}
+    if comuna:
+        clauses.append("comuna = :comuna")
+        params["comuna"] = comuna
+    if severities:
+        placeholders = [f":sev_{i}" for i in range(len(severities))]
+        clauses.append(f"severity IN ({', '.join(placeholders)})")
+        for i, s in enumerate(severities):
+            params[f"sev_{i}"] = s
+    if year:
+        clauses.append("year = :year")
+        params["year"] = year
+
+    sql = f"""
+        SELECT
+            FLOOR(ST_Y(geom) * {scale}) / {scale}::double precision as lat,
+            FLOOR(ST_X(geom) * {scale}) / {scale}::double precision as lng,
+            SUM(
+                CASE severity
+                    WHEN 'MUERTO' THEN 1.0
+                    WHEN 'HERIDO' THEN 0.7
+                    ELSE 0.4
+                END
+            ) as weight
+        FROM accident_incidents
+        WHERE {' AND '.join(clauses)}
+        GROUP BY FLOOR(ST_Y(geom) * {scale}), FLOOR(ST_X(geom) * {scale})
+        ORDER BY weight DESC
+    """
+
+    rows = (await db.execute(text(sql), params)).all()
+
+    points = [[float(r.lat), float(r.lng), float(r.weight)] for r in rows]
+    max_weight = float(max(p[2] for p in points)) if points else 0
+    weights = sorted([p[2] for p in points])
+    p80_weight = float(weights[int(len(weights) * 0.80)]) if weights else max_weight
+    normalizer = p80_weight if p80_weight > 0 else (max_weight or 500)
+    return {"points": points, "total": len(points), "grid_deg": grid, "max_weight": max_weight, "normalizer": normalizer}
 
 
 from app.services.routing import compute_route

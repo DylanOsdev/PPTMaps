@@ -1,35 +1,17 @@
-import json
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-import httpx
 
-from geoalchemy2.functions import ST_SetSRID, ST_MakePoint, ST_DWithin, ST_X, ST_Y
+from geoalchemy2.functions import ST_SetSRID, ST_MakePoint, ST_X, ST_Y
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.models.report import Report, ReportType
 from app.models.flood_hazard import FloodHazard, FloodStatus
 from app.models.accident_zone import AccidentZone
-from app.crud.crud_report import create_report
 
 logger = logging.getLogger(__name__)
 
-SODA_INCIDENTES_URL = "https://www.datos.gov.co/resource/9wqu-juqb.json"
 SIATA_NIVELES_URL = "https://siata.gov.co/sitio_web/index.php/?r=site/getNiveles"
-
-SEED_ACCIDENTS = [
-    {"lat": 6.2515, "lng": -75.5635, "desc": "Choque entre dos vehículos en la Avenida Oriental", "type": "accident"},
-    {"lat": 6.2398, "lng": -75.5902, "desc": "Atropellamiento de peatón en la Avenida 33", "type": "accident"},
-    {"lat": 6.2178, "lng": -75.5705, "desc": "Colisión múltiple en la Autopista Sur", "type": "accident"},
-    {"lat": 6.2023, "lng": -75.5623, "desc": "Motociclista lesionado en la Carrera 48", "type": "accident"},
-    {"lat": 6.2756, "lng": -75.5387, "desc": "Vehículo volcado en la Regional", "type": "accident"},
-    {"lat": 6.1978, "lng": -75.5762, "desc": "Choque por alcance en la Avenida Las Vegas", "type": "accident"},
-    {"lat": 6.2675, "lng": -75.5648, "desc": "Accidente en intersección de la Avenida San Juan", "type": "accident"},
-    {"lat": 6.2265, "lng": -75.5552, "desc": "Colisión de bus y taxi en el Centro", "type": "accident"},
-    {"lat": 6.2489, "lng": -75.5725, "desc": "Peatón arrollado en la Avenida El Poblado", "type": "accident"},
-    {"lat": 6.2356, "lng": -75.5489, "desc": "Choque de motocicletas en la Carrera 70", "type": "accident"},
-]
 
 SEED_FLOOD_ZONES = [
     {"name": "Quebrada La Iguaná - Sector Aguas Frías", "station": "Q001", "status": "watch", "level": 1.8,
@@ -43,66 +25,6 @@ SEED_FLOOD_ZONES = [
     {"name": "Quebrada La Presidenta - Sector El Poblado", "station": "Q004", "status": "dry", "level": 0.4,
      "coords": [[[-75.565, 6.215], [-75.558, 6.220], [-75.552, 6.212], [-75.562, 6.208], [-75.565, 6.215]]]},
 ]
-
-async def sync_soda_incidents(db: AsyncSession) -> int:
-    count = 0
-    from app.schemas.report import ReportCreate
-
-    async def _report_exists(lat: float, lng: float, desc: str) -> bool:
-        point = ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-        stmt = select(Report).where(
-            Report.report_type == ReportType.accident,
-            ST_DWithin(Report.geom, point, 0.0001),
-            Report.description == desc,
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none() is not None
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(f"{SODA_INCIDENTES_URL}?$limit=100")
-            if resp.status_code == 200:
-                data = resp.json()
-                if isinstance(data, list):
-                    for item in data:
-                        lat = item.get("latitude") or item.get("lat")
-                        lng = item.get("longitude") or item.get("lng")
-                        if lat and lng:
-                            lat_f, lng_f = float(lat), float(lng)
-                            desc = item.get("description", "Sincronizado desde SODA")
-                            if await _report_exists(lat_f, lng_f, desc):
-                                continue
-                            await create_report(db, ReportCreate(
-                                report_type=ReportType.accident,
-                                description=desc,
-                                latitude=lat_f,
-                                longitude=lng_f,
-                            ))
-                            count += 1
-                    await db.commit()
-                logger.info("SODA sync: %d incidentes importados", count)
-            else:
-                logger.warning("SODA API responded with %s", resp.status_code)
-    except Exception as e:
-        logger.warning("SODA API error (fallback to seed): %s", e)
-
-    if count == 0:
-        for acc in SEED_ACCIDENTS:
-            if await _report_exists(acc["lat"], acc["lng"], acc["desc"]):
-                continue
-            await create_report(db, ReportCreate(
-                report_type=ReportType(acc["type"]),
-                description=acc["desc"],
-                latitude=acc["lat"],
-                longitude=acc["lng"],
-                reporter_name="Sistema MEData",
-            ))
-            count += 1
-        if count:
-            await db.commit()
-        logger.info("Seed data: %d accidentes sembrados", count)
-
-    return count
 
 async def seed_flood_zones(db: AsyncSession) -> int:
     count = 0
@@ -128,5 +50,4 @@ async def seed_flood_zones(db: AsyncSession) -> int:
     return count
 
 async def run_ingestion(db: AsyncSession):
-    await sync_soda_incidents(db)
     await seed_flood_zones(db)

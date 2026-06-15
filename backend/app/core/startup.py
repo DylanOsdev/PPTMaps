@@ -30,9 +30,6 @@ async def seed_zones_if_empty() -> int:
 
 async def seed_initial_data() -> None:
     async with async_session_maker() as db:
-        from app.services.ingestion import sync_soda_incidents
-        await sync_soda_incidents(db)
-
         from app.services.siata_sync import SiataSyncService, _create_siata_client
         client = await _create_siata_client()
         await SiataSyncService(client).sync(db)
@@ -79,7 +76,7 @@ def _enqueue_startup_syncs() -> None:
 
 
 async def start_background_tasks(app_state: dict) -> None:
-    from app.db.redis import check_redis_ready, get_redis
+    from app.db.redis import check_redis_ready
     from app.services.alert_broadcaster import listen_and_broadcast_alerts
 
     async def _start_alert_listener():
@@ -88,8 +85,17 @@ async def start_background_tasks(app_state: dict) -> None:
             logger.info("Redis no disponible — listener de alertas desactivado.")
             return
         try:
-            redis = get_redis()
-            await listen_and_broadcast_alerts(redis)
+            from redis.asyncio import Redis
+            redis_pubsub = Redis.from_url(
+                settings.REDIS_URL,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=None,
+                retry_on_timeout=False,
+                health_check_interval=30,
+            )
+            app_state["alert_redis"] = redis_pubsub
+            await listen_and_broadcast_alerts(redis_pubsub)
         except asyncio.CancelledError:
             logger.info("Listener de alertas detenido.")
         except Exception as e:
@@ -105,3 +111,5 @@ async def stop_background_tasks(app_state: dict) -> None:
             await alert_task
         except asyncio.CancelledError:
             pass
+    if alert_redis := app_state.get("alert_redis"):
+        await alert_redis.aclose()

@@ -34,6 +34,7 @@ services:
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       ZONES_JSON_PATH: /data/medellin-comunas.json
+      DISABLE_DEV_WARNINGS: "1"
     volumes:
       - ../frontend/public/assets/data/medellin-comunas.json:/data/medellin-comunas.json:ro
     env_file:
@@ -47,7 +48,7 @@ services:
     ports:
       - "8000:8000"
     # Entrypoint automático: migraciones + ingesta de datos + API
-    command: sh /repo/backend/scripts/docker/docker-entrypoint.sh
+    command: bash /repo/backend/scripts/docker/docker-entrypoint.sh
 
   worker:
     build:
